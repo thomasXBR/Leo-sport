@@ -36,7 +36,7 @@ export default function InicioPage() {
                 <Link href="/produtos">Explorar Produtos</Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-blue-600">
-                <Link href="/venda-na-leosport">Seja um Parceiro</Link>
+                <Link href="/venda-na-leosport" className="text-black">Seja um Parceiro</Link>
               </Button>
             </div>
           </div>
