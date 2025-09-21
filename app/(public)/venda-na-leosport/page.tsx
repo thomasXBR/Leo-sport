@@ -56,19 +56,19 @@ export default function VendaNaLeoSportPage() {
   return (
     <div className="space-y-16">
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-green-600 to-green-800 text-white">
+      <section className="bg-gradient-to-r from-blue-900 to-blue-950 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-6">
               Venda na LeoSport
             </h1>
-            <p className="text-xl text-green-100 max-w-3xl mx-auto mb-8">
+            <p className="text-xl text-blue-100 max-w-3xl mx-auto mb-8">
               Junte-se aos nossos parceiros e expanda seu negócio no maior 
               marketplace esportivo do Brasil.
             </p>
             <div className="flex items-center justify-center space-x-2">
-              <CheckCircle className="w-5 h-5 text-green-300" />
-              <span className="text-green-100">Cadastro gratuito</span>
+              <CheckCircle className="w-5 h-5 text-blue-300" />
+              <span className="text-blue-100">Cadastro gratuito</span>
             </div>
           </div>
         </div>
@@ -89,8 +89,8 @@ export default function VendaNaLeoSportPage() {
           {benefits.map((benefit, index) => (
             <Card key={index} className="text-center hover:shadow-lg transition-shadow duration-300">
               <CardContent className="p-6">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-                  <benefit.icon className="w-8 h-8 text-green-600" />
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                  <benefit.icon className="w-8 h-8 text-blue-900" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">{benefit.title}</h3>
                 <p className="text-gray-600">{benefit.description}</p>
@@ -194,7 +194,7 @@ export default function VendaNaLeoSportPage() {
                 />
               </div>
 
-              <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" size="lg">
+              <Button type="submit" className="w-full bg-blue-900 hover:bg-blue-950" size="lg">
                 Enviar Solicitação de Parceria
               </Button>
             </form>
@@ -218,7 +218,7 @@ export default function VendaNaLeoSportPage() {
               { step: '4', title: 'Vendas', description: 'Comece a vender seus produtos' }
             ].map((item, index) => (
               <div key={index} className="text-center">
-                <div className="w-12 h-12 bg-green-600 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">
+                <div className="w-12 h-12 bg-blue-900 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">
                   {item.step}
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">{item.title}</h3>

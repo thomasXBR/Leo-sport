@@ -22,7 +22,7 @@ export default function Header() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link href="/inicio" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-blue-900 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-lg">L</span>
             </div>
             <span className="text-xl font-bold text-gray-900">LeoSport</span>
@@ -34,7 +34,7 @@ export default function Header() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="text-gray-600 hover:text-blue-600 transition-colors duration-200"
+                className="text-gray-600 hover:text-blue-900 transition-colors duration-200"
               >
                 {item.label}
               </Link>
@@ -72,7 +72,7 @@ export default function Header() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="text-gray-600 hover:text-blue-600 py-2 transition-colors duration-200"
+                  className="text-gray-600 hover:text-blue-900 py-2 transition-colors duration-200"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {item.label}

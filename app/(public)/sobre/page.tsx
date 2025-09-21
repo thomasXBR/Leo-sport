@@ -28,7 +28,7 @@ export default function SobrePage() {
   return (
     <div className="space-y-16">
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+      <section className="bg-gradient-to-r from-blue-900 to-blue-950 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-6">
@@ -91,7 +91,7 @@ export default function SobrePage() {
               <Card key={index} className="text-center hover:shadow-lg transition-shadow duration-300">
                 <CardContent className="p-6">
                   <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-                    <value.icon className="w-8 h-8 text-blue-600" />
+                    <value.icon className="w-8 h-8 text-blue-900" />
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">{value.title}</h3>
                   <p className="text-gray-600">{value.description}</p>
@@ -106,7 +106,7 @@ export default function SobrePage() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <h2 className="text-3xl font-bold text-gray-900 mb-6">Nossa Missão</h2>
-          <p className="text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed">
+          <p className="text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed pb-10">
             Facilitar o acesso a produtos esportivos de qualidade, conectando atletas 
             e entusiastas do esporte com os melhores parceiros vendedores do Brasil, 
             promovendo um ecossistema saudável e sustentável para o crescimento do 

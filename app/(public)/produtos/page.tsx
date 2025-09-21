@@ -131,7 +131,7 @@ export default function ProdutosPage() {
                   alt={product.name}
                   className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                 />
-                <Badge className="absolute top-2 left-2 bg-blue-600">
+                <Badge className="absolute top-2 left-2 bg-blue-900">
                   {product.category}
                 </Badge>
               </div>
@@ -143,7 +143,7 @@ export default function ProdutosPage() {
                 <p className="text-sm text-gray-600 mb-2">por {product.partner}</p>
                 
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-2xl font-bold text-blue-600">
+                  <span className="text-2xl font-bold text-blue-900">
                     R$ {product.price.toFixed(2)}
                   </span>
                   <div className="flex items-center">
@@ -152,7 +152,7 @@ export default function ProdutosPage() {
                   </div>
                 </div>
                 
-                <Button className="w-full bg-blue-600 hover:bg-blue-700">
+                <Button className="w-full bg-blue-900 hover:bg-blue-950">
                   <ShoppingCart className="w-4 h-4 mr-2" />
                   Adicionar ao Carrinho
                 </Button>

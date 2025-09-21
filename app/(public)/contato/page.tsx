@@ -54,7 +54,7 @@ export default function ContatoPage() {
   return (
     <div className="space-y-16">
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+      <section className="bg-gradient-to-r from-blue-900 to-blue-950 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-6">
@@ -82,7 +82,7 @@ export default function ContatoPage() {
                 <div key={index} className="flex items-start space-x-4">
                   <div className="flex-shrink-0">
                     <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <info.icon className="w-6 h-6 text-blue-600" />
+                      <info.icon className="w-6 h-6 text-blue-900" />
                     </div>
                   </div>
                   <div>
@@ -189,7 +189,7 @@ export default function ContatoPage() {
                     />
                   </div>
 
-                  <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" size="lg">
+                  <Button type="submit" className="w-full bg-blue-900 hover:bg-blue-950" size="lg">
                     Enviar Mensagem
                   </Button>
                 </form>

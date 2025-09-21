@@ -21,21 +21,21 @@ export default function InicioPage() {
   return (
     <div className="space-y-16">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+      <section className="relative bg-gradient-to-r from-blue-900 to-blue-950 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              Bem-vindo à <span className="text-yellow-400">LeoSport</span>
+              Bem-vindo à <span className="text-orange-500">LeoSport</span>
             </h1>
             <p className="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
               O maior marketplace de produtos esportivos do Brasil. 
               Encontre tudo o que você precisa para sua prática esportiva.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild size="lg" className="bg-yellow-500 hover:bg-yellow-600 text-black">
+              <Button asChild size="lg" className="bg-orange-500 hover:bg-orange-600 text-black">
                 <Link href="/produtos">Explorar Produtos</Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-blue-600">
+              <Button asChild variant="outline" size="lg" className="border-white text-black hover:bg-stone-300">
                 <Link href="/venda-na-leosport" className="text-black">Seja um Parceiro</Link>
               </Button>
             </div>
@@ -49,7 +49,7 @@ export default function InicioPage() {
           {stats.map((stat, index) => (
             <div key={index} className="text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-                <stat.icon className="w-8 h-8 text-blue-600" />
+                <stat.icon className="w-8 h-8 text-blue-900" />
               </div>
               <div className="text-3xl font-bold text-gray-900 mb-2">{stat.value}</div>
               <div className="text-gray-600">{stat.label}</div>
@@ -97,7 +97,7 @@ export default function InicioPage() {
             <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
               Junte-se a milhares de atletas que já encontraram seus produtos ideais na LeoSport.
             </p>
-            <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700">
+            <Button asChild size="lg" className="bg-blue-900 hover:bg-blue-950">
               <Link href="/produtos">Ver Todos os Produtos</Link>
             </Button>
           </div>
