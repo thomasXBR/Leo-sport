@@ -4,8 +4,19 @@ import Link from 'next/link';
 import { ShoppingCart, User, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function Header() {
+  const router = useRouter();
+
+  const handleClick = () => {
+    router.push('/login');
+  }
+
+  const gotoCart = () => {
+    router.push('/cart');
+  }
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const navigationItems = [
@@ -14,6 +25,7 @@ export default function Header() {
     { href: '/produtos', label: 'Produtos' },
     { href: '/venda-na-leosport', label: 'Venda na LeoSport' },
     { href: '/contato', label: 'Contato' },
+    {href: '/login', label: 'Entrar'}
   ];
 
   return (
@@ -43,11 +55,11 @@ export default function Header() {
 
           {/* Actions */}
           <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" onClick={gotoCart}>
               <ShoppingCart className="w-5 h-5" />
               <span className="ml-2 hidden sm:inline">Carrinho</span>
-            </Button>
-            <Button variant="ghost" size="sm">
+            </Button >
+            <Button onClick={handleClick} className="flex items-center justify-center bg-gray-900 text-white font-semibold py-2 px-5 rounded-lg hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500">
               <User className="w-5 h-5" />
               <span className="ml-2 hidden sm:inline">Entrar</span>
             </Button>

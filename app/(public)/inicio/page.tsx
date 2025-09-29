@@ -25,14 +25,14 @@ export default function InicioPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              Bem-vindo à <span className="text-orange-500">LeoSport</span>
+              Bem-vindo à <span className="text-gray-400">LeoSport</span>
             </h1>
             <p className="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
               O maior marketplace de produtos esportivos do Brasil. 
               Encontre tudo o que você precisa para sua prática esportiva.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild size="lg" className="bg-orange-500 hover:bg-orange-600 text-black">
+              <Button asChild size="lg" className="bg-gray-400 hover:bg-zinc-500 text-black">
                 <Link href="/produtos">Explorar Produtos</Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="border-white text-black hover:bg-stone-300">
