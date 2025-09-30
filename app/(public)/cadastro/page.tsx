@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { supabase } from '@/lib/supabaseClient';
 
-export default function Login() {
+export default function Cadastro() {
   const router = useRouter();
+  const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -19,35 +19,24 @@ export default function Login() {
     setLoading(true);
     setError("");
     setSuccess("");
-  
     if (password !== confirmPassword) {
       setError("As senhas não coincidem.");
       setLoading(false);
       return;
     }
-  
     try {
-      // ---- AQUI COMEÇA A MUDANÇA ----
-      // Substituímos o 'fetch' pela chamada direta ao Supabase
-      /*
-      const { data, error } = await supabase.auth.signUp({
-        email: email,
-        password: password,
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, action: "register" }),
       });
-        */
-      if (error) {
-        // Se o Supabase retornar um erro (ex: e-mail já existe), mostramos a mensagem
-        //setError(error.message);
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Erro ao cadastrar");
       } else {
-        // Se o cadastro for bem-sucedido
-        setSuccess("Cadastro realizado! Verifique seu e-mail para confirmar a conta.");
-        // Limpamos o formulário
-        setEmail("");
-        setPassword("");
-        setConfirmPassword("");
-        // Não redirecionamos mais automaticamente, pois o usuário precisa confirmar o e-mail.
+        setSuccess("Cadastro realizado com sucesso! Faça login para continuar.");
+        setTimeout(() => router.push("/login"), 2000);
       }
-      // ---- AQUI TERMINA A MUDANÇA ----
     } catch (err) {
       setError("Erro inesperado. Tente novamente.");
     } finally {
@@ -64,8 +53,19 @@ export default function Login() {
         }}
       />
       <div className="w-full max-w-md bg-white/70 backdrop-blur-sm p-8 rounded-lg shadow-x">
-        <h1 className="text-2xl font-bold mb-6 text-center text-gray-900">Entrar na LeoSport</h1>
+        <h1 className="text-2xl font-bold mb-6 text-center text-gray-900">Criar conta na LeoSport</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+            <label htmlFor="username" className="block text-sm font-medium text-gray-700">Nome</label>
+            <input
+              id="name"
+              type="string"
+              required
+              value={nome}
+              onChange={e => setNome(e.target.value)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            />
+          </div>
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
             <input
@@ -83,21 +83,33 @@ export default function Login() {
             <input
               id="password"
               type="password"
-              autoComplete="current-password"
+              autoComplete="new-password"
               required
               value={password}
               onChange={e => setPassword(e.target.value)}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
+          <div>
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">Confirmar Senha</label>
+            <input
+              id="confirmPassword"
+              type="password"
+              autoComplete="new-password"
+              required
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            />
+          </div>
           {error && <div className="text-red-600 text-sm text-center">{error}</div>}
           {success && <div className="text-green-600 text-sm text-center">{success}</div>}
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Entrando..." : "Entrar"}
+            {loading ? "Cadastrando..." : "Cadastrar"}
           </Button>
           <div className="text-center text-sm mt-2">
-            Não tem uma conta?{' '}
-            <span className="text-blue-600 hover:underline cursor-pointer" onClick={() => router.push("/cadastro")}>Cadastre-se</span>
+            Já tem uma conta?{' '}
+            <span className="text-blue-600 hover:underline cursor-pointer" onClick={() => router.push("/login")}>Entrar</span>
           </div>
         </form>
       </div>

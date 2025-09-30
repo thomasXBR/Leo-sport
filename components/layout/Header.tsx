@@ -25,7 +25,6 @@ export default function Header() {
     { href: '/produtos', label: 'Produtos' },
     { href: '/venda-na-leosport', label: 'Venda na LeoSport' },
     { href: '/contato', label: 'Contato' },
-    {href: '/login', label: 'Entrar'}
   ];
 
   return (

@@ -8,6 +8,7 @@ import {
   TrendingUp,
   AlertCircle
 } from 'lucide-react';
+import { Button } from '@/components/ui/button'
 
 export default function AdminDashboard() {
   // TODO: Replace with real data from Supabase

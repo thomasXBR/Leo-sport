@@ -98,7 +98,7 @@ export default function ContatoPage() {
             </div>
 
             {/* FAQ Section */}
-            <div className="mt-12">
+            <div className="mt-12 pb-4">
               <h3 className="text-xl font-bold text-gray-900 mb-6">
                 Perguntas Frequentes
               </h3>
