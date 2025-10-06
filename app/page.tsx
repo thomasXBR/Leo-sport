@@ -1,6 +1,6 @@
-import { redirect } from 'next/navigation';
+import InicioPage from './(pages)/inicio/page';
 
 export default function Home() {
   // Redirect root to inicio page
-  redirect('/inicio');
+  return <InicioPage />;
 }

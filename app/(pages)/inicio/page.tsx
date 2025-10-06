@@ -38,16 +38,16 @@ export default function InicioPage() {
         {/* Content */}
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
-              <h1 className="text-4xl md:text-6xl font-bold mb-6">
-                Bem-vindo à <span className="text-blue-900 [text-shadow:_0_0_10px_#fff,_0_0_20px_#fff,_0_0_30px_#fff]">LeoSport</span>
-              </h1>
+            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+              Bem-vindo à <span className="text-blue-900 [text-shadow:_0_0_10px_#fff,_0_0_20px_#fff,_0_0_30px_#fff]">LeoSport</span>
+            </h1>
             <p className="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
-              O maior marketplace de produtos esportivos do Brasil. 
+              O maior marketplace de produtos esportivos do Brasil.
               Encontre tudo o que você precisa para sua prática esportiva.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button asChild size="lg" className="bg-blue-900 hover:bg-blue-950 text-white">
-                <Link href="/produtos">Explorar Produtos</Link>
+                <Link href="/sobre">Conheça a LeoSport</Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="text-black bg-white hover:bg-zinc-400">
                 <Link href="/venda-na-leosport">Seja um Parceiro</Link>
@@ -78,7 +78,7 @@ export default function InicioPage() {
           <h2 className="text-3xl font-bold text-gray-900 mb-4">Categorias em Destaque</h2>
           <p className="text-lg text-gray-600">Descubra produtos para seu esporte favorito</p>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {featuredCategories.map((category, index) => (
             <Card key={index} className="group cursor-pointer hover:shadow-lg transition-shadow duration-300">
@@ -112,7 +112,7 @@ export default function InicioPage() {
               Junte-se a milhares de atletas que já encontraram seus produtos ideais na LeoSport.
             </p>
             <Button asChild size="lg" className="bg-blue-900 hover:bg-blue-950">
-              <Link href="/produtos">Ver Todos os Produtos</Link>
+              <Link href="/contato">Entre em Contato</Link>
             </Button>
           </div>
         </div>
