@@ -7,6 +7,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { CheckCircle, Store, TrendingUp, Users, Shield } from 'lucide-react';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Venda na LeoSport',
+  description: 'Seja um parceiro da LeoSport e venda seus produtos esportivos.',
+  keywords: ['LeoSport', 'Venda na LeoSport', 'Seja um Parceiro'],
+};
+
 
 export default function VendaNaLeoSportPage() {
   const [formData, setFormData] = useState({
@@ -63,7 +71,7 @@ export default function VendaNaLeoSportPage() {
               Venda na LeoSport
             </h1>
             <p className="text-xl text-blue-100 max-w-3xl mx-auto mb-8">
-              Junte-se aos nossos parceiros e expanda seu negócio no maior 
+              Junte-se aos nossos parceiros e expanda seu negócio no maior
               marketplace esportivo do Brasil.
             </p>
             <div className="flex items-center justify-center space-x-2">
@@ -84,7 +92,7 @@ export default function VendaNaLeoSportPage() {
             Oferecemos tudo que você precisa para fazer seu negócio crescer
           </p>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {benefits.map((benefit, index) => (
             <Card key={index} className="text-center hover:shadow-lg transition-shadow duration-300">
@@ -122,7 +130,7 @@ export default function VendaNaLeoSportPage() {
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="contactName">Nome do Responsável *</Label>
                   <Input
@@ -147,7 +155,7 @@ export default function VendaNaLeoSportPage() {
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="phone">Telefone *</Label>
                   <Input
@@ -209,7 +217,7 @@ export default function VendaNaLeoSportPage() {
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Como Funciona</h2>
             <p className="text-lg text-gray-600">Processo simples em 4 etapas</p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {[
               { step: '1', title: 'Cadastro', description: 'Preencha o formulário com suas informações' },

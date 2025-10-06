@@ -3,6 +3,13 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Trophy, Users, ShoppingBag, Star } from 'lucide-react';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'LeoSport',
+  description: 'O maior marketplace de produtos esportivos do Brasil.',
+  keywords: ['LeoSport', 'Produtos Esportivos', 'Marketplace de Produtos Esportivos'],
+};
 
 export default function InicioPage() {
   const featuredCategories = [

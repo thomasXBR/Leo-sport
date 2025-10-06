@@ -7,6 +7,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { MapPin, Phone, Mail, Clock } from 'lucide-react';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Contato',
+  description: 'Entre em contato conosco para dúvidas, sugestões ou suporte.',
+  keywords: ['LeoSport', 'Contato', 'Dúvidas', 'Sugestões', 'Suporte'],
+};
 
 export default function ContatoPage() {
   const [formData, setFormData] = useState({
@@ -61,7 +68,7 @@ export default function ContatoPage() {
               Entre em Contato
             </h1>
             <p className="text-xl text-blue-100 max-w-3xl mx-auto">
-              Estamos aqui para ajudar! Entre em contato conosco para 
+              Estamos aqui para ajudar! Entre em contato conosco para
               dúvidas, sugestões ou suporte.
             </p>
           </div>
@@ -76,7 +83,7 @@ export default function ContatoPage() {
             <h2 className="text-2xl font-bold text-gray-900 mb-8">
               Informações de Contato
             </h2>
-            
+
             <div className="space-y-6">
               {contactInfo.map((info, index) => (
                 <div key={index} className="flex items-start space-x-4">
@@ -109,19 +116,19 @@ export default function ContatoPage() {
                       Como funciona o processo de venda?
                     </h4>
                     <p className="text-gray-600">
-                      Após aprovação como parceiro, você pode enviar propostas de produtos 
+                      Após aprovação como parceiro, você pode enviar propostas de produtos
                       que serão analisadas pela nossa equipe antes de serem publicadas.
                     </p>
                   </CardContent>
                 </Card>
-                
+
                 <Card>
                   <CardContent className="p-4">
                     <h4 className="font-semibold text-gray-900 mb-2">
                       Qual é a taxa de comissão?
                     </h4>
                     <p className="text-gray-600">
-                      Nossa taxa é competitiva e varia conforme o volume de vendas. 
+                      Nossa taxa é competitiva e varia conforme o volume de vendas.
                       Entre em contato para conhecer nossos planos.
                     </p>
                   </CardContent>
@@ -152,7 +159,7 @@ export default function ContatoPage() {
                         required
                       />
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="email">E-mail *</Label>
                       <Input
