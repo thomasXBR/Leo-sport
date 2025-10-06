@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Trophy, Users, ShoppingBag, Star } from 'lucide-react';
@@ -21,22 +22,35 @@ export default function InicioPage() {
   return (
     <div className="space-y-16">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-r from-blue-900 to-blue-950 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+      <section className="relative text-white overflow-hidden">
+        {/* Background Image */}
+        <div className="absolute inset-0">
+          <Image
+            src="/images/1920x1080-hd-sports-61oi85jh19u3ptld.jpg"
+            alt="Sports Background"
+            fill
+            className="object-cover"
+            priority
+          />
+          <div className="absolute inset-0 bg-black/50" />
+        </div>
+
+        {/* Content */}
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              Bem-vindo à <span className="text-gray-400">LeoSport</span>
-            </h1>
+              <h1 className="text-4xl md:text-6xl font-bold mb-6">
+                Bem-vindo à <span className="text-blue-900 [text-shadow:_0_0_10px_#fff,_0_0_20px_#fff,_0_0_30px_#fff]">LeoSport</span>
+              </h1>
             <p className="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
               O maior marketplace de produtos esportivos do Brasil. 
               Encontre tudo o que você precisa para sua prática esportiva.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild size="lg" className="bg-gray-400 hover:bg-zinc-500 text-black">
+              <Button asChild size="lg" className="bg-blue-900 hover:bg-blue-950 text-white">
                 <Link href="/produtos">Explorar Produtos</Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="border-white text-black hover:bg-stone-300">
-                <Link href="/venda-na-leosport" className="text-black">Seja um Parceiro</Link>
+              <Button asChild variant="outline" size="lg" className="text-black bg-white hover:bg-zinc-400">
+                <Link href="/venda-na-leosport">Seja um Parceiro</Link>
               </Button>
             </div>
           </div>
