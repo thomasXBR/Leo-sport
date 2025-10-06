@@ -7,13 +7,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { MapPin, Phone, Mail, Clock } from 'lucide-react';
-import { Metadata } from 'next';
-
-export const metadata: Metadata = {
-  title: 'Contato',
-  description: 'Entre em contato conosco para dúvidas, sugestões ou suporte.',
-  keywords: ['LeoSport', 'Contato', 'Dúvidas', 'Sugestões', 'Suporte'],
-};
 
 export default function ContatoPage() {
   const [formData, setFormData] = useState({

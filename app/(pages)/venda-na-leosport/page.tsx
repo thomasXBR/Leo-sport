@@ -7,14 +7,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { CheckCircle, Store, TrendingUp, Users, Shield } from 'lucide-react';
-import { Metadata } from 'next';
-
-export const metadata: Metadata = {
-  title: 'Venda na LeoSport',
-  description: 'Seja um parceiro da LeoSport e venda seus produtos esportivos.',
-  keywords: ['LeoSport', 'Venda na LeoSport', 'Seja um Parceiro'],
-};
-
 
 export default function VendaNaLeoSportPage() {
   const [formData, setFormData] = useState({
