@@ -47,11 +47,6 @@ export default function InicioPage() {
           />
           <div className="absolute inset-0 bg-black/50" />
         </div>
-        {/*ondas rsrs*/}
-        <div className="absolute bottom-0 left-0 w-full h-[25vh] min-h-[100px] max-h-[250px] pointer-events-none z-10">
-          <div style={{ marginBottom: '10px' }} /> {/* margin de 10px abaixo da imagem */}
-          <Ondas />
-        </div>
         {/* Content */}
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
