@@ -1,5 +1,5 @@
 import './globals.css';
-import type { Metadata } from 'next';
+import type { Metadata } from 'next/types';
 import { Inter } from 'next/font/google';
 import { Toaster } from '@/components/ui/sonner';
 
