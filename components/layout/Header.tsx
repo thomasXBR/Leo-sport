@@ -1,13 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { Menu, User, X } from 'lucide-react';
+import { Menu, User, X, LogOut, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useState, useEffect, useRef } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Header() {
+  const { user, profile, signIn, signUp, signOut } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
@@ -35,8 +37,16 @@ export default function Header() {
     }
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      let result;
+      if (isSignUp) {
+        result = await signUp(email, password, name);
+      } else {
+        result = await signIn(email, password);
+      }
+
+      if (result.error) {
+        throw result.error;
+      }
 
       setSuccess(isSignUp ? "Cadastro realizado com sucesso!" : "Login realizado!");
       // Reset form
@@ -48,10 +58,19 @@ export default function Header() {
         setIsAuthOpen(false);
         setSuccess("");
       }, 1500);
-    } catch (err) {
-      setError("Erro inesperado. Tente novamente.");
+    } catch (err: any) {
+      setError(err.message || "Erro inesperado. Tente novamente.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      setIsAuthOpen(false);
+    } catch (err) {
+      console.error('Error logging out:', err);
     }
   };
 
@@ -112,13 +131,24 @@ export default function Header() {
 
           {/* Actions */}
           <div className="flex items-center space-x-4 relative">
-            {/* Login Button */}
+            {/* Login/Profile Button */}
             <Button
               onClick={() => setIsAuthOpen(!isAuthOpen)}
               className="flex items-center justify-center bg-gray-900 text-white font-semibold py-2 px-5 rounded-lg hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500"
             >
-              <User className="w-5 h-5" />
-              <span className="ml-2 hidden sm:inline">Entrar</span>
+              {user && profile ? (
+                <>
+                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                    {profile.name?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                  <span className="ml-2 hidden sm:inline">{profile.name}</span>
+                </>
+              ) : (
+                <>
+                  <User className="w-5 h-5" />
+                  <span className="ml-2 hidden sm:inline">Entrar</span>
+                </>
+              )}
             </Button>
 
             {/* Mobile menu button */}
@@ -132,7 +162,7 @@ export default function Header() {
             </Button>
 
             {/* Auth Dropdown */}
-            {isAuthOpen && (
+            {isAuthOpen && !user && (
               <div ref={authDropdownRef} className="absolute right-0 top-12 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-2xl border p-6 z-50">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold text-gray-900">
@@ -217,6 +247,47 @@ export default function Header() {
                     </button>
                   </div>
                 </form>
+              </div>
+            )}
+
+            {/* User Menu Dropdown - When logged in */}
+            {isAuthOpen && user && (
+              <div ref={authDropdownRef} className="absolute right-0 top-12 w-72 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-2xl border z-50">
+                <div className="p-4 border-b bg-gray-50">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-blue-900 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                      {profile?.name?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 truncate">{profile?.name || 'Usuário'}</p>
+                      <p className="text-sm text-gray-500 truncate">{user.email}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-2">
+                  <Link href="/perfil">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-left hover:bg-gray-100"
+                      onClick={() => setIsAuthOpen(false)}
+                    >
+                      <UserCircle className="w-5 h-5 mr-3" />
+                      Meu Perfil
+                    </Button>
+                  </Link>
+                  
+                  <div className="border-t my-2"></div>
+                  
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-left hover:bg-red-50 text-red-600 hover:text-red-700"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="w-5 h-5 mr-3" />
+                    Sair
+                  </Button>
+                </div>
               </div>
             )}
           </div>
