@@ -1,3 +1,4 @@
+// src/components/Header.tsx (ou onde seu componente estiver)
 'use client';
 
 import Link from 'next/link';
@@ -6,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useState, useEffect, useRef } from 'react';
+import { supabase } from '@/lib/supabaseClient'; // 1. IMPORTAR O CLIENTE SUPABASE
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -22,38 +24,63 @@ export default function Header() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const authDropdownRef = useRef<HTMLDivElement>(null);
 
+  // 2. ALTERAR A FUNÇÃO DE SUBMISSÃO
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
     setSuccess("");
 
-    if (isSignUp && password !== confirmPassword) {
-      setError("As senhas não coincidem.");
-      setLoading(false);
-      return;
+    if (isSignUp) {
+      // --- Lógica de Cadastro (Sign Up) ---
+      if (password !== confirmPassword) {
+        setError("As senhas não coincidem.");
+        setLoading(false);
+        return;
+      }
+
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+          data: {
+            nome_completo: name, // Usando a chave que definimos no SQL
+          },
+        },
+      });
+
+      if (signUpError) {
+        setError(signUpError.message);
+      } else {
+        setSuccess("Cadastro realizado! Verifique seu e-mail para confirmar a conta e realizar o login.");
+        setTimeout(() => {
+          setIsAuthOpen(false);
+          setSuccess("");
+          setIsSignUp(false);
+        }, 2000);
+      }
+    } else {
+      // --- Lógica de Login (Sign In) ---
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+
+      if (signInError) {
+        setError("Credenciais inválidas. Verifique seu e-mail e senha.");
+      } else {
+        setSuccess("Login realizado com sucesso!");
+        // Não precisa de redirect, apenas fechamos o modal e a página pode se atualizar se necessário.
+        setTimeout(() => {
+          setIsAuthOpen(false);
+          setSuccess("");
+        }, 1500);
+      }
     }
 
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      setSuccess(isSignUp ? "Cadastro realizado com sucesso!" : "Login realizado!");
-      // Reset form
-      setName("");
-      setEmail("");
-      setPassword("");
-      setConfirmPassword("");
-      setTimeout(() => {
-        setIsAuthOpen(false);
-        setSuccess("");
-      }, 1500);
-    } catch (err) {
-      setError("Erro inesperado. Tente novamente.");
-    } finally {
-      setLoading(false);
-    }
+    setLoading(false);
   };
+
 
   const toggleAuthMode = () => {
     setIsSignUp(!isSignUp);
@@ -78,6 +105,11 @@ export default function Header() {
     };
   }, [isAuthOpen]);
 
+  // Toggle auth dropdown when clicking Entrar button
+  const handleAuthToggle = () => {
+    setIsAuthOpen(!isAuthOpen);
+  };
+
   const navigationItems = [
     { href: '/inicio', label: 'Início' },
     { href: '/sobre', label: 'Sobre' },
@@ -86,6 +118,9 @@ export default function Header() {
   ];
 
   return (
+    // O RESTO DO SEU CÓDIGO JSX CONTINUA EXATAMENTE O MESMO
+    // ...
+    // Nenhuma alteração visual é necessária
     <header className="bg-white shadow-sm border-b sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
@@ -114,7 +149,7 @@ export default function Header() {
           <div className="flex items-center space-x-4 relative">
             {/* Login Button */}
             <Button
-              onClick={() => setIsAuthOpen(!isAuthOpen)}
+              onClick={handleAuthToggle}
               className="flex items-center justify-center bg-gray-900 text-white font-semibold py-2 px-5 rounded-lg hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500"
             >
               <User className="w-5 h-5" />
@@ -238,7 +273,7 @@ export default function Header() {
               ))}
               <button
                 onClick={() => {
-                  setIsAuthOpen(true);
+                  handleAuthToggle();
                   setIsMenuOpen(false);
                 }}
                 className="text-gray-600 hover:text-blue-900 py-2 transition-colors duration-200 text-left"

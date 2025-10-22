@@ -15,7 +15,7 @@ export default function Footer() {
               <span className="text-xl font-bold">LeoSport</span>
             </Link>
             <p className="text-gray-400 mb-4 max-w-md">
-              O maior marketplace de produtos esportivos do Brasil. 
+              O maior marketplace de produtos esportivos do Brasil.
               Conectamos atletas e entusiastas aos melhores produtos e parceiros.
             </p>
             <div className="flex space-x-4">

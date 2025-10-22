@@ -8,6 +8,11 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'LeoSport - Marketplace Esportivo',
   description: 'O maior marketplace de produtos esportivos do Brasil',
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({
