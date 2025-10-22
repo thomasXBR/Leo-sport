@@ -12,6 +12,7 @@ import {
     Legend,
 } from 'chart.js'
 import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload } from 'lucide-react'
+import Image from 'next/image'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import { defaultSiteContent, SiteContent } from '@/lib/site-content'
@@ -31,7 +32,7 @@ export default function Dashboard() {
 
     // Modals state
     const [isModalOpen, setIsModalOpen] = useState(false)
-    const [modalType, setModalType] = useState<'invoice' | 'partner' | 'coupon' | 'content' | null>(null)
+    const [modalType, setModalType] = useState<'invoice' | 'partner' | 'coupon' | 'content' | 'product' | null>(null)
     const [editingItem, setEditingItem] = useState<any>(null)
 
     //vamo ter q por os dados do database depois em
@@ -74,12 +75,12 @@ export default function Dashboard() {
         { id: 'PAR02', companyName: 'Aventura & Cia', contact: 'parceria@aventura.com', status: 'Inativo' },
     ];
 
-    const products = [
-        { id: 1, name: 'Bicicleta Caloi Aro 29', category: 'Ciclismo', price: 'R$ 1.899,90', imageUrl: 'https://placehold.co/400x400/e2e8f0/334155?text=Bicicleta' },
-        { id: 2, name: 'Raquete de Tênis Wilson', category: 'Tênis', price: 'R$ 799,90', imageUrl: 'https://placehold.co/400x400/e2e8f0/334155?text=Raquete' },
-        { id: 3, name: 'Luva de Boxe Everlast', category: 'Lutas', price: 'R$ 249,90', imageUrl: 'https://placehold.co/400x400/e2e8f0/334155?text=Luva+de+Boxe' },
-        { id: 4, name: 'Skate Completo Profissional', category: 'Skate', price: 'R$ 499,90', imageUrl: 'https://placehold.co/400x400/e2e8f0/334155?text=Skate' },
-    ];
+    const [products, setProducts] = useState([
+        { id: 1, name: 'Bicicleta Caloi Aro 29', category: 'Ciclismo', price: 'R$ 1.899,90', imageUrl: 'https://placehold.co/400x400/e2e8f0/334155?text=Bicicleta', description: 'Bicicleta de alta qualidade para trilhas e passeios', stock: 15, sku: 'BIC001', brand: 'Caloi', weight: '15.5kg', dimensions: '180x70x100cm', status: 'Ativo' },
+        { id: 2, name: 'Raquete de Tênis Wilson', category: 'Tênis', price: 'R$ 799,90', imageUrl: 'https://placehold.co/400x400/e2e8f0/334155?text=Raquete', description: 'Raquete profissional para competições', stock: 8, sku: 'RAQ001', brand: 'Wilson', weight: '300g', dimensions: '68x32x2cm', status: 'Ativo' },
+        { id: 3, name: 'Luva de Boxe Everlast', category: 'Lutas', price: 'R$ 249,90', imageUrl: 'https://placehold.co/400x400/e2e8f0/334155?text=Luva+de+Boxe', description: 'Luva de boxe profissional para treinos', stock: 25, sku: 'LUV001', brand: 'Everlast', weight: '450g', dimensions: '30x15x10cm', status: 'Ativo' },
+        { id: 4, name: 'Skate Completo Profissional', category: 'Skate', price: 'R$ 499,90', imageUrl: 'https://placehold.co/400x400/e2e8f0/334155?text=Skate', description: 'Skate completo para iniciantes e profissionais', stock: 12, sku: 'SKT001', brand: 'Element', weight: '2.5kg', dimensions: '80x20x10cm', status: 'Ativo' },
+    ]);
 
     const [invoices, setInvoices] = useState([
         { id: 'NF001', orderId: 'PED123', customer: 'Carlos Silva', date: '2025-01-15', value: 'R$ 1.299,90', status: 'Emitida' },
@@ -142,6 +143,27 @@ export default function Dashboard() {
     const handleSaveContent = (id: string, newValue: string) => {
         setSiteContent(siteContent.map(c =>
             c.id === id ? { ...c, value: newValue } : c
+        ))
+    }
+
+    const handleDeleteProduct = (id: number) => {
+        if (confirm('Tem certeza que deseja deletar este produto?')) {
+            setProducts(products.filter(p => p.id !== id))
+        }
+    }
+
+    const handleAddProduct = (productData: any) => {
+        const newProduct = {
+            id: Math.max(...products.map(p => p.id)) + 1,
+            ...productData,
+            status: 'Ativo'
+        }
+        setProducts([...products, newProduct])
+    }
+
+    const handleEditProduct = (id: number, productData: any) => {
+        setProducts(products.map(p =>
+            p.id === id ? { ...p, ...productData } : p
         ))
     }
 
@@ -232,7 +254,10 @@ export default function Dashboard() {
                     <div>
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-semibold text-gray-700">Gestão de Produtos</h2>
-                            <button className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors">
+                            <button
+                                onClick={() => openModal('product')}
+                                className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
+                            >
                                 <PlusCircle size={20} className="mr-2" />
                                 Adicionar Novo Produto
                             </button>
@@ -240,12 +265,27 @@ export default function Dashboard() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                             {products.map(product => (
                                 <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden group">
-                                    <img src={product.imageUrl} alt={product.name} className="w-full h-40 object-cover group-hover:opacity-80 transition-opacity" />
+                                    <Image src={product.imageUrl} alt={product.name} width={400} height={160} className="w-full h-40 object-cover group-hover:opacity-80 transition-opacity" />
                                     <div className="p-4">
                                         <h3 className="font-semibold text-gray-800 truncate">{product.name}</h3>
-                                        <p className="text-sm text-gray-500 mb-2">{product.category}</p>
+                                        <p className="text-sm text-gray-500 mb-1">{product.category}</p>
+                                        <p className="text-sm text-gray-600 mb-1">SKU: {product.sku}</p>
+                                        <p className="text-sm text-gray-600 mb-2">Estoque: {product.stock}</p>
                                         <p className="text-lg font-bold text-gray-900 mb-3">{product.price}</p>
-                                        <button className="w-full bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-cyan-100 transition-colors font-semibold text-sm">Gerenciar</button>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => openModal('product', product)}
+                                                className="flex-1 bg-cyan-600 text-white py-2 rounded-lg hover:bg-cyan-700 transition-colors font-semibold text-sm"
+                                            >
+                                                <Edit size={16} className="mx-auto" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteProduct(product.id)}
+                                                className="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -516,6 +556,7 @@ export default function Dashboard() {
                                     {modalType === 'invoice' && 'Emitir Nota Fiscal'}
                                     {modalType === 'partner' && (editingItem ? 'Editar Parceria' : 'Nova Parceria')}
                                     {modalType === 'coupon' && (editingItem ? 'Editar Cupom' : 'Criar Cupom')}
+                                    {modalType === 'product' && (editingItem ? 'Editar Produto' : 'Novo Produto')}
                                 </h3>
                                 <button onClick={closeModal} className="text-gray-500 hover:text-gray-700">
                                     <X size={24} />
@@ -523,13 +564,8 @@ export default function Dashboard() {
                             </div>
                             <div className="p-6">
                                 <p className="text-gray-600 mb-4">
-                                    Formulário de {modalType === 'invoice' ? 'emissão de nota fiscal' : modalType === 'partner' ? 'parceria' : 'cupom'}.
+                                    Formulário de {modalType === 'invoice' ? 'emissão de nota fiscal' : modalType === 'partner' ? 'parceria' : modalType === 'coupon' ? 'cupom' : 'produto'}.
                                 </p>
-                                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-                                    <p className="text-sm text-yellow-700">
-                                        <strong>Protótipo:</strong> Este é um modal de demonstração. Integre com o Supabase para funcionalidade completa.
-                                    </p>
-                                </div>
                                 <div className="space-y-4">
                                     {modalType === 'invoice' && (
                                         <>
@@ -598,6 +634,76 @@ export default function Dashboard() {
                                             </div>
                                         </>
                                     )}
+                                    {modalType === 'product' && (
+                                        <>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Produto *</label>
+                                                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Nome do produto" defaultValue={editingItem?.name} />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">SKU *</label>
+                                                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="SKU001" defaultValue={editingItem?.sku} />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                                                <textarea className="w-full px-3 py-2 border border-gray-300 rounded-lg" rows={3} placeholder="Descrição detalhada do produto" defaultValue={editingItem?.description}></textarea>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Categoria *</label>
+                                                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg" defaultValue={editingItem?.category}>
+                                                        <option value="">Selecione uma categoria</option>
+                                                        <option value="Futebol">Futebol</option>
+                                                        <option value="Basquete">Basquete</option>
+                                                        <option value="Tênis">Tênis</option>
+                                                        <option value="Natação">Natação</option>
+                                                        <option value="Ciclismo">Ciclismo</option>
+                                                        <option value="Lutas">Lutas</option>
+                                                        <option value="Skate">Skate</option>
+                                                        <option value="Corrida">Corrida</option>
+                                                        <option value="Musculação">Musculação</option>
+                                                        <option value="Outros">Outros</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Marca *</label>
+                                                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Nike, Adidas, etc." defaultValue={editingItem?.brand} />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Preço *</label>
+                                                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="R$ 0,00" defaultValue={editingItem?.price} />
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Estoque *</label>
+                                                    <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="0" defaultValue={editingItem?.stock} />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Peso</label>
+                                                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="1.5kg" defaultValue={editingItem?.weight} />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Dimensões</label>
+                                                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="LxAxP cm" defaultValue={editingItem?.dimensions} />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">URL da Imagem</label>
+                                                <input type="url" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="https://exemplo.com/imagem.jpg" defaultValue={editingItem?.imageUrl} />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg" defaultValue={editingItem?.status || 'Ativo'}>
+                                                    <option value="Ativo">Ativo</option>
+                                                    <option value="Inativo">Inativo</option>
+                                                    <option value="Esgotado">Esgotado</option>
+                                                </select>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                                 <div className="flex gap-3 mt-6">
                                     <button
@@ -608,7 +714,13 @@ export default function Dashboard() {
                                     </button>
                                     <button
                                         onClick={() => {
-                                            alert('Funcionalidade de salvamento será implementada com integração ao banco de dados');
+                                            if (modalType === 'product') {
+                                                // For now, just show a success message
+                                                // In a real implementation, you would collect form data and call handleAddProduct or handleEditProduct
+                                                alert(editingItem ? 'Produto atualizado com sucesso!' : 'Produto cadastrado com sucesso!');
+                                            } else {
+                                                alert('Funcionalidade de salvamento será implementada com integração ao banco de dados');
+                                            }
                                             closeModal();
                                         }}
                                         className="flex-1 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors font-semibold"

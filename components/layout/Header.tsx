@@ -99,6 +99,7 @@ export default function Header() {
 
   const navigationItems = [
     { href: '/inicio', label: 'Início' },
+    { href: '/produtos', label: 'Produtos' },
     { href: '/sobre', label: 'Sobre' },
     { href: '/venda-na-leosport', label: 'Venda na LeoSport' },
     { href: '/contato', label: 'Contato' },

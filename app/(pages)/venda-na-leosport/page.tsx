@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { CheckCircle, Store, TrendingUp, Users, Shield } from 'lucide-react';
 
 export default function VendaNaLeoSportPage() {
+  const [activeForm, setActiveForm] = useState<'individual' | 'business'>('individual');
   const [formData, setFormData] = useState({
     businessName: '',
     contactName: '',
@@ -45,8 +46,11 @@ export default function VendaNaLeoSportPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // TODO: Implement partner application submission
-    console.log('Partner application submitted:', formData);
-    alert('Solicitação enviada com sucesso! Entraremos em contato em breve.');
+    console.log('Partner application submitted:', {
+      formType: activeForm,
+      data: formData
+    });
+    alert(`Solicitação de ${activeForm === 'individual' ? 'Fornecedor' : 'Representante'} enviada com sucesso! Entraremos em contato em breve.`);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -108,91 +112,184 @@ export default function VendaNaLeoSportPage() {
             <p className="text-gray-600 text-center">
               Preencha o formulário abaixo e nossa equipe entrará em contato
             </p>
+
+            {/* Choice Chips */}
+            <div className="flex justify-center mt-6">
+              <div className="bg-gray-100 p-1 rounded-lg flex">
+                <button
+                  onClick={() => setActiveForm('individual')}
+                  className={`px-6 py-2 rounded-md font-medium transition-colors ${activeForm === 'individual'
+                    ? 'bg-white text-blue-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                >
+                  Fornecedor
+                </button>
+                <button
+                  onClick={() => setActiveForm('business')}
+                  className={`px-6 py-2 rounded-md font-medium transition-colors ${activeForm === 'business'
+                    ? 'bg-white text-blue-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                >
+                  Representante
+                </button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="businessName">Nome da Empresa *</Label>
-                  <Input
-                    id="businessName"
-                    value={formData.businessName}
-                    onChange={(e) => handleInputChange('businessName', e.target.value)}
-                    placeholder="Ex: SportShop Pro"
-                    required
-                  />
-                </div>
+              {activeForm === 'individual' ? (
+                // Individual Form (Pessoa Física)
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="contactName">Nome Completo *</Label>
+                      <Input
+                        id="contactName"
+                        value={formData.contactName}
+                        onChange={(e) => handleInputChange('contactName', e.target.value)}
+                        placeholder="Seu nome completo"
+                        required
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="contactName">Nome do Responsável *</Label>
-                  <Input
-                    id="contactName"
-                    value={formData.contactName}
-                    onChange={(e) => handleInputChange('contactName', e.target.value)}
-                    placeholder="Seu nome completo"
-                    required
-                  />
-                </div>
-              </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">E-mail *</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        placeholder="seu@email.com"
+                        required
+                      />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="email">E-mail *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
-                    placeholder="contato@empresa.com"
-                    required
-                  />
-                </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Telefone *</Label>
+                      <Input
+                        id="phone"
+                        value={formData.phone}
+                        onChange={(e) => handleInputChange('phone', e.target.value)}
+                        placeholder="(11) 99999-9999"
+                        required
+                      />
+                    </div>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone *</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
-                    placeholder="(11) 99999-9999"
-                    required
-                  />
-                </div>
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="businessDescription">Descrição dos Produtos *</Label>
+                    <Textarea
+                      id="businessDescription"
+                      value={formData.businessDescription}
+                      onChange={(e) => handleInputChange('businessDescription', e.target.value)}
+                      placeholder="Conte-nos sobre os produtos que você vende, marcas, especialidades..."
+                      rows={4}
+                      required
+                    />
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="businessDescription">Descrição do Negócio *</Label>
-                <Textarea
-                  id="businessDescription"
-                  value={formData.businessDescription}
-                  onChange={(e) => handleInputChange('businessDescription', e.target.value)}
-                  placeholder="Conte-nos sobre sua empresa, produtos que vende, tempo de mercado..."
-                  rows={4}
-                  required
-                />
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="experience">Experiência no Setor Esportivo</Label>
+                    <Textarea
+                      id="experience"
+                      value={formData.experience}
+                      onChange={(e) => handleInputChange('experience', e.target.value)}
+                      placeholder="Descreva sua experiência vendendo produtos esportivos..."
+                      rows={3}
+                    />
+                  </div>
+                </>
+              ) : (
+                // Business Form (Pessoa Jurídica)
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="businessName">Nome da Empresa *</Label>
+                      <Input
+                        id="businessName"
+                        value={formData.businessName}
+                        onChange={(e) => handleInputChange('businessName', e.target.value)}
+                        placeholder="Ex: SportShop Pro"
+                        required
+                      />
+                    </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="experience">Experiência no Setor Esportivo</Label>
-                <Textarea
-                  id="experience"
-                  value={formData.experience}
-                  onChange={(e) => handleInputChange('experience', e.target.value)}
-                  placeholder="Descreva sua experiência vendendo produtos esportivos..."
-                  rows={3}
-                />
-              </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="contactName">Nome do Responsável *</Label>
+                      <Input
+                        id="contactName"
+                        value={formData.contactName}
+                        onChange={(e) => handleInputChange('contactName', e.target.value)}
+                        placeholder="Nome do responsável"
+                        required
+                      />
+                    </div>
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="productCategories">Categorias de Produtos *</Label>
-                <Input
-                  id="productCategories"
-                  value={formData.productCategories}
-                  onChange={(e) => handleInputChange('productCategories', e.target.value)}
-                  placeholder="Ex: Futebol, Basquete, Tênis de Corrida"
-                  required
-                />
-              </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="email">E-mail *</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        placeholder="contato@empresa.com"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Telefone *</Label>
+                      <Input
+                        id="phone"
+                        value={formData.phone}
+                        onChange={(e) => handleInputChange('phone', e.target.value)}
+                        placeholder="(11) 99999-9999"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="businessDescription">Descrição do Negócio *</Label>
+                    <Textarea
+                      id="businessDescription"
+                      value={formData.businessDescription}
+                      onChange={(e) => handleInputChange('businessDescription', e.target.value)}
+                      placeholder="Conte-nos sobre sua empresa, produtos que vende, tempo de mercado..."
+                      rows={4}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="experience">Experiência no Setor Esportivo</Label>
+                    <Textarea
+                      id="experience"
+                      value={formData.experience}
+                      onChange={(e) => handleInputChange('experience', e.target.value)}
+                      placeholder="Descreva sua experiência vendendo produtos esportivos..."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="productCategories">Categorias de Produtos *</Label>
+                    <Input
+                      id="productCategories"
+                      value={formData.productCategories}
+                      onChange={(e) => handleInputChange('productCategories', e.target.value)}
+                      placeholder="Ex: Futebol, Basquete, Tênis de Corrida"
+                      required
+                    />
+                  </div>
+                </>
+              )}
 
               <Button type="submit" className="w-full bg-blue-900 hover:bg-blue-950" size="lg">
                 Enviar Solicitação de Parceria

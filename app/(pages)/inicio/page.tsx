@@ -5,8 +5,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Trophy, Users, ShoppingBag, Star } from 'lucide-react';
 import { Metadata } from 'next';
 import Ondas from '@/components/onda/ondas';
-import Header from '@/components/layout/Header';
-import Footer from '@/components/layout/Footer';
 
 export const metadata: Metadata = {
   title: 'LeoSport',
@@ -127,7 +125,7 @@ export default function InicioPage() {
         </div>
       </section>
 
-    
+
     </div>
   );
 }
