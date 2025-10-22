@@ -31,9 +31,6 @@ export default function InicioPage() {
 
   return (
     <div className="space-y-16">
-      {/* Header */}
-      <Header />
-
       {/* Hero Section */}
       <section className="relative text-white overflow-hidden">
         {/* Background Image */}
@@ -130,8 +127,7 @@ export default function InicioPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <Footer />
+    
     </div>
   );
 }
