@@ -180,29 +180,41 @@ export default function PerfilPage() {
             </div>
 
             <div>
-              <Label htmlFor="description">Descrição</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Conte um pouco sobre você..."
-                className="mt-1 resize-none h-32"
+              <Label htmlFor="currentPassword">Senha Atual</Label>
+              <Input
+                id="currentPassword"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Digite sua senha atual"
+                className="mt-1"
               />
             </div>
 
             <div>
-              <Label htmlFor="userType">Tipo de Usuário</Label>
-              <Select value={userType} onValueChange={(value: any) => setUserType(value)}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="comprador">Comprador</SelectItem>
-                  <SelectItem value="vendedor">Vendedor</SelectItem>
-                  <SelectItem value="admin">Administrador</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="newPassword">Nova Senha</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Digite sua nova senha"
+                className="mt-1"
+              />
             </div>
+
+            <div>
+              <Label htmlFor="confirmNewPassword">Confirmar Nova Senha</Label>
+              <Input
+                id="confirmNewPassword"
+                type="password"
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                placeholder="Confirme sua nova senha"
+                className="mt-1"
+              />
+            </div>
+
 
             <Button
               onClick={handleSaveProfile}
@@ -271,62 +283,9 @@ export default function PerfilPage() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Change Password */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Alterar Senha</CardTitle>
-            <CardDescription>Mantenha sua conta segura com uma senha forte</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="currentPassword">Senha Atual</Label>
-              <Input
-                id="currentPassword"
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Digite sua senha atual"
-                className="mt-1"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="newPassword">Nova Senha</Label>
-              <Input
-                id="newPassword"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Digite sua nova senha"
-                className="mt-1"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="confirmNewPassword">Confirmar Nova Senha</Label>
-              <Input
-                id="confirmNewPassword"
-                type="password"
-                value={confirmNewPassword}
-                onChange={(e) => setConfirmNewPassword(e.target.value)}
-                placeholder="Confirme sua nova senha"
-                className="mt-1"
-              />
-            </div>
-
-            <Button
-              onClick={handleChangePassword}
-              disabled={changingPassword || !newPassword || !confirmNewPassword}
-              className="w-full bg-blue-900 hover:bg-blue-950"
-            >
-              <Lock className="w-4 h-4 mr-2" />
-              {changingPassword ? 'Alterando...' : 'Alterar Senha'}
-            </Button>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
 }
+
 
