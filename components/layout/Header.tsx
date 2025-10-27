@@ -2,15 +2,17 @@
 'use client';
 
 import Link from 'next/link';
-import { Menu, User, X, LogOut, UserCircle } from 'lucide-react';
+import { Menu, User, X, LogOut, UserCircle, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCart } from '@/contexts/CartContext';
 
 export default function Header() {
   const { user, profile, signIn, signUp, signOut } = useAuth();
+  const { cartCount } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
@@ -135,6 +137,22 @@ export default function Header() {
 
           {/* Actions */}
           <div className="flex items-center space-x-4 relative">
+            {/* Cart Icon */}
+            <Link href="/carrinho" className="relative">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="relative hover:bg-gray-100"
+              >
+                <ShoppingCart className="w-6 h-6 text-gray-700" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                    {cartCount > 9 ? '9+' : cartCount}
+                  </span>
+                )}
+              </Button>
+            </Link>
+
             {/* Login/Profile Button */}
             <Button
               onClick={handleAuthToggle}
@@ -311,6 +329,14 @@ export default function Header() {
                   {item.label}
                 </Link>
               ))}
+              <Link
+                href="/carrinho"
+                className="flex items-center text-gray-600 hover:text-blue-900 py-2 transition-colors duration-200"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <ShoppingCart className="w-5 h-5 mr-2" />
+                Carrinho {cartCount > 0 && `(${cartCount})`}
+              </Link>
               <button
                 onClick={() => {
                   handleAuthToggle();

@@ -20,7 +20,7 @@ export default function DemoPage() {
           <p className="text-xl text-gray-600">
             Tudo funcionando sem precisar configurar Supabase
           </p>
-          
+
           {/* Status de Login */}
           <Card className="max-w-md mx-auto">
             <CardHeader>
@@ -54,7 +54,7 @@ export default function DemoPage() {
                     <span>Você não está logado</span>
                   </div>
                   <p className="text-sm text-gray-500 text-center">
-                    Clique no botão "Entrar" no header para fazer login (use qualquer email/senha)
+                    Clique no botão &quot;Entrar&quot; no header para fazer login (use qualquer email/senha)
                   </p>
                 </div>
               )}
@@ -67,7 +67,7 @@ export default function DemoPage() {
           <h2 className="text-3xl font-bold text-center text-gray-900">
             ✨ Funcionalidades Disponíveis
           </h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Autenticação */}
             <Card className="hover:shadow-lg transition-shadow">
@@ -330,7 +330,7 @@ export default function DemoPage() {
             <div>
               <h3 className="font-bold text-lg mb-2">1. Testar Autenticação</h3>
               <ol className="list-decimal list-inside space-y-1 text-gray-700">
-                <li>Clique em "Entrar" no header</li>
+                <li>Clique em Entrar; no header</li>
                 <li>Digite qualquer email e senha</li>
                 <li>Veja o header mudar com seu nome</li>
                 <li>Clique no avatar para ver opções</li>
@@ -340,9 +340,9 @@ export default function DemoPage() {
             <div>
               <h3 className="font-bold text-lg mb-2">2. Acessar Perfil</h3>
               <ol className="list-decimal list-inside space-y-1 text-gray-700">
-                <li>Após login, clique em "Meu Perfil"</li>
+                <li>Após login, clique em &quot;Meu Perfil&quot;</li>
                 <li>Edite seu nome, descrição, etc</li>
-                <li>Clique em "Salvar Alterações"</li>
+                <li>Clique em &quot;Salvar Alterações&quot;</li>
                 <li>Veja as mudanças persistirem</li>
               </ol>
             </div>
@@ -360,8 +360,8 @@ export default function DemoPage() {
             <div>
               <h3 className="font-bold text-lg mb-2">4. Testar CRUD</h3>
               <ol className="list-decimal list-inside space-y-1 text-gray-700">
-                <li>Vá na aba "Cupons"</li>
-                <li>Clique em "Criar Cupom"</li>
+                <li>Vá na aba &quot;Cupons&quot;</li>
+                <li>Clique em &quot;Criar Cupom&quot;</li>
                 <li>Preencha o modal</li>
                 <li>Teste editar e deletar</li>
               </ol>

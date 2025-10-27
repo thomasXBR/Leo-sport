@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { productsData, getCategories } from '@/lib/products-data';
 import ProductCard from '@/components/products/ProductCard';
 import { Search, Filter } from 'lucide-react';
+import Image from 'next/image';
 
 export const metadata: Metadata = {
     title: 'Produtos - LeoSport',
@@ -15,8 +16,20 @@ export default function ProductsPage() {
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Hero Section */}
-            <section className="bg-gradient-to-r from-blue-900 to-blue-700 text-white py-16">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <section className="relative text-white py-16 overflow-hidden">
+                {/* Background Image */}
+                <div className="absolute inset-0">
+                    <Image
+                        src="/images/1920x1080-hd-sports-61oi85jh19u3ptld.jpg"
+                        alt="Sports Background"
+                        fill
+                        className="object-cover"
+                        priority
+                    />
+                    <div className="absolute inset-0 bg-black/50" />
+                </div>
+                {/* Content */}
+                <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center">
                         <h1 className="text-4xl md:text-5xl font-bold mb-4">
                             Nossos Produtos
@@ -28,11 +41,11 @@ export default function ProductsPage() {
                         {/* Search and Filter Bar */}
                         <div className="max-w-2xl mx-auto">
                             <div className="relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white w-5 h-5" />
                                 <input
                                     type="text"
                                     placeholder="Buscar produtos..."
-                                    className="w-full pl-10 pr-4 py-3 rounded-lg border-0 text-gray-900 focus:ring-2 focus:ring-blue-300"
+                                    className="w-full pl-10 pr-4 py-3 rounded-lg border-0 bg-white/90 text-gray-900 focus:ring-2 focus:ring-blue-300 focus:bg-white"
                                 />
                             </div>
                         </div>

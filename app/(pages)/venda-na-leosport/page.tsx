@@ -7,17 +7,26 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { CheckCircle, Store, TrendingUp, Users, Shield } from 'lucide-react';
+import Image from 'next/image';
 
 export default function VendaNaLeoSportPage() {
-  const [activeForm, setActiveForm] = useState<'individual' | 'business'>('individual');
+  const [activeForm, setActiveForm] = useState<'fornecedor' | 'representante'>('fornecedor');
   const [formData, setFormData] = useState({
-    businessName: '',
-    contactName: '',
+    // Campos comuns
+    nome: '',
     email: '',
-    phone: '',
-    businessDescription: '',
-    experience: '',
-    productCategories: ''
+    telefone: '',
+
+    // Campos específicos para Fornecedor
+    nomeEmpresa: '',
+    anosMercado: '',
+    oQueFabrica: '',
+    canaisVendaAtuais: '',
+
+    // Campos específicos para Representante
+    localAtuacao: '',
+    produtoRevender: '',
+    estrategiasVenda: ''
   });
 
   const benefits = [
@@ -50,18 +59,66 @@ export default function VendaNaLeoSportPage() {
       formType: activeForm,
       data: formData
     });
-    alert(`Solicitação de ${activeForm === 'individual' ? 'Fornecedor' : 'Representante'} enviada com sucesso! Entraremos em contato em breve.`);
+    alert(`Solicitação de ${activeForm === 'fornecedor' ? 'Fornecedor' : 'Representante'} enviada com sucesso! Entraremos em contato em breve.`);
+
+    // Limpar formulário
+    setFormData({
+      nome: '',
+      email: '',
+      telefone: '',
+      nomeEmpresa: '',
+      anosMercado: '',
+      oQueFabrica: '',
+      canaisVendaAtuais: '',
+      localAtuacao: '',
+      produtoRevender: '',
+      estrategiasVenda: ''
+    });
   };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleFormTypeChange = (type: 'fornecedor' | 'representante') => {
+    setActiveForm(type);
+
+    // Limpar campos específicos quando mudar de tipo
+    if (type === 'fornecedor') {
+      setFormData(prev => ({
+        ...prev,
+        localAtuacao: '',
+        produtoRevender: '',
+        estrategiasVenda: ''
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        nomeEmpresa: '',
+        anosMercado: '',
+        oQueFabrica: '',
+        canaisVendaAtuais: ''
+      }));
+    }
+  };
+
   return (
     <div className="space-y-16">
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-blue-900 to-blue-950 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+      <section className="relative text-white py-24 overflow-hidden">
+        {/* Background Image */}
+        <div className="absolute inset-0">
+          <Image
+            src="/images/1920x1080-hd-sports-61oi85jh19u3ptld.jpg"
+            alt="Sports Background"
+            fill
+            className="object-cover"
+            priority
+          />
+          <div className="absolute inset-0 bg-black/50" />
+        </div>
+        {/* Content */}
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-6">
               Venda na LeoSport
@@ -117,8 +174,8 @@ export default function VendaNaLeoSportPage() {
             <div className="flex justify-center mt-6">
               <div className="bg-gray-100 p-1 rounded-lg flex">
                 <button
-                  onClick={() => setActiveForm('individual')}
-                  className={`px-6 py-2 rounded-md font-medium transition-colors ${activeForm === 'individual'
+                  onClick={() => handleFormTypeChange('fornecedor')}
+                  className={`px-6 py-2 rounded-md font-medium transition-colors ${activeForm === 'fornecedor'
                     ? 'bg-white text-blue-900 shadow-sm'
                     : 'text-gray-600 hover:text-gray-900'
                     }`}
@@ -126,8 +183,8 @@ export default function VendaNaLeoSportPage() {
                   Fornecedor
                 </button>
                 <button
-                  onClick={() => setActiveForm('business')}
-                  className={`px-6 py-2 rounded-md font-medium transition-colors ${activeForm === 'business'
+                  onClick={() => handleFormTypeChange('representante')}
+                  className={`px-6 py-2 rounded-md font-medium transition-colors ${activeForm === 'representante'
                     ? 'bg-white text-blue-900 shadow-sm'
                     : 'text-gray-600 hover:text-gray-900'
                     }`}
@@ -139,152 +196,137 @@ export default function VendaNaLeoSportPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {activeForm === 'individual' ? (
-                // Individual Form (Pessoa Física)
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="contactName">Nome Completo *</Label>
-                      <Input
-                        id="contactName"
-                        value={formData.contactName}
-                        onChange={(e) => handleInputChange('contactName', e.target.value)}
-                        placeholder="Seu nome completo"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="email">E-mail *</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => handleInputChange('email', e.target.value)}
-                        placeholder="seu@email.com"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Telefone *</Label>
-                      <Input
-                        id="phone"
-                        value={formData.phone}
-                        onChange={(e) => handleInputChange('phone', e.target.value)}
-                        placeholder="(11) 99999-9999"
-                        required
-                      />
-                    </div>
+              {/* Campos comuns para ambos os tipos */}
+              <div className="border-b pb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Dados de Contato</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="nome">Nome *</Label>
+                    <Input
+                      id="nome"
+                      value={formData.nome}
+                      onChange={(e) => handleInputChange('nome', e.target.value)}
+                      placeholder="Seu nome completo"
+                      required
+                    />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="businessDescription">Descrição dos Produtos *</Label>
+                    <Label htmlFor="email">E-mail *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      placeholder="seu@email.com"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="telefone">Telefone *</Label>
+                    <Input
+                      id="telefone"
+                      value={formData.telefone}
+                      onChange={(e) => handleInputChange('telefone', e.target.value)}
+                      placeholder="(11) 99999-9999"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {activeForm === 'fornecedor' ? (
+                <>
+                  <div className="border-b pb-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Informações da Empresa</h3>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="nomeEmpresa">Nome da empresa *</Label>
+                    <Input
+                      id="nomeEmpresa"
+                      value={formData.nomeEmpresa}
+                      onChange={(e) => handleInputChange('nomeEmpresa', e.target.value)}
+                      placeholder="Nome da sua empresa"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="anosMercado">Quantos anos está no mercado? *</Label>
+                    <Input
+                      id="anosMercado"
+                      type="number"
+                      value={formData.anosMercado}
+                      onChange={(e) => handleInputChange('anosMercado', e.target.value)}
+                      placeholder="Ex: 5"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="oQueFabrica">O que fabrica? *</Label>
                     <Textarea
-                      id="businessDescription"
-                      value={formData.businessDescription}
-                      onChange={(e) => handleInputChange('businessDescription', e.target.value)}
-                      placeholder="Conte-nos sobre os produtos que você vende, marcas, especialidades..."
+                      id="oQueFabrica"
+                      value={formData.oQueFabrica}
+                      onChange={(e) => handleInputChange('oQueFabrica', e.target.value)}
+                      placeholder="Descreva os produtos que sua empresa fabrica..."
                       rows={4}
                       required
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="experience">Experiência no Setor Esportivo</Label>
+                    <Label htmlFor="canaisVendaAtuais">Como já vende o item (canais de venda atuais) *</Label>
                     <Textarea
-                      id="experience"
-                      value={formData.experience}
-                      onChange={(e) => handleInputChange('experience', e.target.value)}
-                      placeholder="Descreva sua experiência vendendo produtos esportivos..."
-                      rows={3}
+                      id="canaisVendaAtuais"
+                      value={formData.canaisVendaAtuais}
+                      onChange={(e) => handleInputChange('canaisVendaAtuais', e.target.value)}
+                      placeholder="Ex: Loja física, e-commerce próprio, revendedores, marketplaces..."
+                      rows={4}
+                      required
                     />
                   </div>
                 </>
               ) : (
-                // Business Form (Pessoa Jurídica)
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="businessName">Nome da Empresa *</Label>
-                      <Input
-                        id="businessName"
-                        value={formData.businessName}
-                        onChange={(e) => handleInputChange('businessName', e.target.value)}
-                        placeholder="Ex: SportShop Pro"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="contactName">Nome do Responsável *</Label>
-                      <Input
-                        id="contactName"
-                        value={formData.contactName}
-                        onChange={(e) => handleInputChange('contactName', e.target.value)}
-                        placeholder="Nome do responsável"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">E-mail *</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => handleInputChange('email', e.target.value)}
-                        placeholder="contato@empresa.com"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Telefone *</Label>
-                      <Input
-                        id="phone"
-                        value={formData.phone}
-                        onChange={(e) => handleInputChange('phone', e.target.value)}
-                        placeholder="(11) 99999-9999"
-                        required
-                      />
-                    </div>
+                  <div className="border-b pb-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Informações sobre a Atuação</h3>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="businessDescription">Descrição do Negócio *</Label>
+                    <Label htmlFor="localAtuacao">De que local é (área de atuação)? *</Label>
                     <Textarea
-                      id="businessDescription"
-                      value={formData.businessDescription}
-                      onChange={(e) => handleInputChange('businessDescription', e.target.value)}
-                      placeholder="Conte-nos sobre sua empresa, produtos que vende, tempo de mercado..."
+                      id="localAtuacao"
+                      value={formData.localAtuacao}
+                      onChange={(e) => handleInputChange('localAtuacao', e.target.value)}
+                      placeholder="Ex: São Paulo, SP - Região Metropolitana"
+                      rows={3}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="produtoRevender">Qual produto quer revender? *</Label>
+                    <Textarea
+                      id="produtoRevender"
+                      value={formData.produtoRevender}
+                      onChange={(e) => handleInputChange('produtoRevender', e.target.value)}
+                      placeholder="Descreva os produtos que deseja revender..."
                       rows={4}
                       required
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="experience">Experiência no Setor Esportivo</Label>
+                    <Label htmlFor="estrategiasVenda">Como pretende vender? (canais e estratégias que planeja usar para vender os produtos) *</Label>
                     <Textarea
-                      id="experience"
-                      value={formData.experience}
-                      onChange={(e) => handleInputChange('experience', e.target.value)}
-                      placeholder="Descreva sua experiência vendendo produtos esportivos..."
-                      rows={3}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="productCategories">Categorias de Produtos *</Label>
-                    <Input
-                      id="productCategories"
-                      value={formData.productCategories}
-                      onChange={(e) => handleInputChange('productCategories', e.target.value)}
-                      placeholder="Ex: Futebol, Basquete, Tênis de Corrida"
+                      id="estrategiasVenda"
+                      value={formData.estrategiasVenda}
+                      onChange={(e) => handleInputChange('estrategiasVenda', e.target.value)}
+                      placeholder="Ex: Redes sociais, loja física, venda direta, nicho específico, eventos esportivos..."
+                      rows={4}
                       required
                     />
                   </div>

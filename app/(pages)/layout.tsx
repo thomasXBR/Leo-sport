@@ -3,6 +3,7 @@
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { CartProvider } from '@/contexts/CartContext';
 
 export default function PublicLayout({
   children,
@@ -11,13 +12,15 @@ export default function PublicLayout({
 }) {
   return (
     <AuthProvider>
-      <div className="min-h-screen flex flex-col overflow-x-hidden">
-        <Header />
-        <main className="flex-1 overflow-x-hidden">
-          {children}
-        </main>
-        <Footer />
-      </div>
+      <CartProvider>
+        <div className="min-h-screen flex flex-col overflow-x-hidden">
+          <Header />
+          <main className="flex-1 overflow-x-hidden">
+            {children}
+          </main>
+          <Footer />
+        </div>
+      </CartProvider>
     </AuthProvider>
   );
 }

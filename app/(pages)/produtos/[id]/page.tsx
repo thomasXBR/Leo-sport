@@ -4,9 +4,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, ShoppingCart, Heart, Share2, Star, Truck, Shield, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Heart, Share2, Star, Truck, Shield, RotateCcw } from 'lucide-react';
 import { getProductById, productsData } from '@/lib/products-data';
 import ProductCard from '@/components/products/ProductCard';
+import AddToCartButton from '@/components/products/AddToCartButton';
 
 interface ProductPageProps {
     params: Promise<{
@@ -181,14 +182,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                         {/* Action Buttons */}
                         <div className="space-y-4">
                             <div className="flex gap-4">
-                                <Button
-                                    size="lg"
-                                    className="flex-1 bg-blue-900 hover:bg-blue-800"
-                                    disabled={product.status === 'Esgotado'}
-                                >
-                                    <ShoppingCart size={20} className="mr-2" />
-                                    {product.status === 'Esgotado' ? 'Esgotado' : 'Adicionar ao Carrinho'}
-                                </Button>
+                                <AddToCartButton product={product} />
                                 <Button size="lg" variant="outline">
                                     <Heart size={20} />
                                 </Button>

@@ -1,6 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Target, Heart, Users, Award } from 'lucide-react';
 import { Metadata } from 'next';
+import Image from 'next/image';
 
 export const metadata: Metadata = {
   title: 'Sobre a LeoSport',
@@ -37,8 +38,20 @@ export default function SobrePage() {
   return (
     <div className="space-y-16">
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-blue-900 to-blue-950 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+      <section className="relative text-white py-24 overflow-hidden">
+        {/* Background Image */}
+        <div className="absolute inset-0">
+          <Image
+            src="/images/1920x1080-hd-sports-61oi85jh19u3ptld.jpg"
+            alt="Sports Background"
+            fill
+            className="object-cover"
+            priority
+          />
+          <div className="absolute inset-0 bg-black/50" />
+        </div>
+        {/* Content */}
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-6">
               Sobre a LeoSport
@@ -76,9 +89,11 @@ export default function SobrePage() {
             </div>
           </div>
           <div className="relative">
-            <img
+            <Image
               src="https://images.pexels.com/photos/1552242/pexels-photo-1552242.jpeg?auto=compress&cs=tinysrgb&w=600"
               alt="Equipe LeoSport"
+              width={600}
+              height={400}
               className="rounded-lg shadow-lg"
             />
           </div>
