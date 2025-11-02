@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Bar } from 'react-chartjs-2'
 import {
     Chart as ChartJS,
@@ -11,11 +11,35 @@ import {
     Tooltip,
     Legend,
 } from 'chart.js'
-import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload } from 'lucide-react'
+import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload, Loader2 } from 'lucide-react'
 import Image from 'next/image'
-import Header from '@/components/layout/Header'
-import Footer from '@/components/layout/Footer'
-import { defaultSiteContent, SiteContent } from '@/lib/site-content'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from '@/components/ui/dialog'
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
+    getProducts, createProduct, updateProduct, deleteProduct,
+    getInventoryItems, createInventoryMovement, deleteInventoryMovement,
+    getSales, getSalesDataForChart,
+    getInvoices, createInvoice, updateInvoice, deleteInvoice,
+    getPartnerships, createPartnership, updatePartnership, deletePartnership,
+    getCoupons, createCoupon, updateCoupon, deleteCoupon,
+    getSiteContent, updateSiteContent,
+    type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent
+} from '@/lib/supabase'
 
 ChartJS.register(
     CategoryScale,
@@ -28,24 +52,32 @@ ChartJS.register(
 
 export default function Dashboard() {
     const [activeTab, setActiveTab] = useState('sales')
-    const [siteContent, setSiteContent] = useState<SiteContent[]>(defaultSiteContent)
-
-    // Modals state
-    const [isModalOpen, setIsModalOpen] = useState(false)
-    const [modalType, setModalType] = useState<'invoice' | 'partner' | 'coupon' | 'content' | 'product' | null>(null)
-    const [editingItem, setEditingItem] = useState<any>(null)
-
-    //vamo ter q por os dados do database depois em
-
-    const salesData = {
+    const [loading, setLoading] = useState(true)
+    
+    // Estados dos dados
+    const [products, setProducts] = useState<Product[]>([])
+    const [inventoryItems, setInventoryItems] = useState<any[]>([])
+    const [sales, setSales] = useState<any[]>([])
+    const [invoices, setInvoices] = useState<Invoice[]>([])
+    const [partnersList, setPartnersList] = useState<Partnership[]>([])
+    const [coupons, setCoupons] = useState<Coupon[]>([])
+    const [siteContent, setSiteContent] = useState<SupabaseSiteContent[]>([])
+    const [salesData, setSalesData] = useState({
         labels: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho'],
         datasets: [{
             label: 'Vendas Mensais (R$)',
-            data: [12000, 19000, 15000, 25000, 22000, 30000],
+            data: [0, 0, 0, 0, 0, 0],
             backgroundColor: '#0891b2',
             borderRadius: 5,
         }],
-    }
+    })
+
+    // Estados dos modais
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [modalType, setModalType] = useState<'invoice' | 'partner' | 'coupon' | 'product' | 'inventory' | null>(null)
+    const [editingItem, setEditingItem] = useState<any>(null)
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    const [itemToDelete, setItemToDelete] = useState<{ type: string; id: string; name: string } | null>(null)
 
     const chartOptions = {
         responsive: true,
@@ -56,50 +88,67 @@ export default function Dashboard() {
         },
     }
 
-    const inventoryItems = [
-        { id: 'P001', name: 'Chuteira Nike Phantom', quantity: 75, status: 'Em Estoque' },
-        { id: 'P002', name: 'Bola de Basquete Spalding', quantity: 120, status: 'Em Estoque' },
-        { id: 'P003', name: 'Tênis de Corrida Adidas', quantity: 0, status: 'Esgotado' },
-        { id: 'P004', name: 'Óculos de Natação Speedo', quantity: 15, status: 'Estoque Baixo' },
-        { id: 'P005', name: 'Camisa Oficial do Brasil', quantity: 200, status: 'Em Estoque' },
-    ]
+    // Carregar dados do Supabase
+    useEffect(() => {
+        loadAllData()
+    }, [])
 
-    const users = [
-        { id: 'U01', name: 'Carlos Silva', email: 'carlos.s@example.com', role: 'Cliente' },
-        { id: 'U02', name: 'Ana Pereira', email: 'ana.p@example.com', role: 'Cliente' },
-        { id: 'U03', name: 'José Oliveira', email: 'jose.o@leosport.com', role: 'Vendedor' },
-    ];
+    async function loadAllData() {
+        try {
+            setLoading(true)
+            const [productsData, inventoryData, salesData, invoicesData, partnersData, couponsData, contentData] = await Promise.all([
+                getProducts().catch(() => []),
+                getInventoryItems().catch(() => []),
+                getSales().catch(() => []),
+                getInvoices().catch(() => []),
+                getPartnerships().catch(() => []),
+                getCoupons().catch(() => []),
+                getSiteContent().catch(() => [])
+            ])
 
-    const partners = [
-        { id: 'PAR01', companyName: 'Esporte Total Ltda.', contact: 'contato@esportetotal.com', status: 'Ativo' },
-        { id: 'PAR02', companyName: 'Aventura & Cia', contact: 'parceria@aventura.com', status: 'Inativo' },
-    ];
+            setProducts(productsData || [])
+            setInventoryItems(inventoryData || [])
+            setSales(salesData || [])
+            setInvoices(invoicesData || [])
+            setPartnersList(partnersData || [])
+            setCoupons(couponsData || [])
+            setSiteContent(contentData || [])
 
-    const [products, setProducts] = useState([
-        { id: 1, name: 'Bicicleta Caloi Aro 29', category: 'Ciclismo', price: 'R$ 1.899,90', imageUrl: 'https://placehold.co/400x400/e2e8f0/334155?text=Bicicleta', description: 'Bicicleta de alta qualidade para trilhas e passeios', stock: 15, sku: 'BIC001', brand: 'Caloi', weight: '15.5kg', dimensions: '180x70x100cm', status: 'Ativo' },
-        { id: 2, name: 'Raquete de Tênis Wilson', category: 'Tênis', price: 'R$ 799,90', imageUrl: 'https://placehold.co/400x400/e2e8f0/334155?text=Raquete', description: 'Raquete profissional para competições', stock: 8, sku: 'RAQ001', brand: 'Wilson', weight: '300g', dimensions: '68x32x2cm', status: 'Ativo' },
-        { id: 3, name: 'Luva de Boxe Everlast', category: 'Lutas', price: 'R$ 249,90', imageUrl: 'https://placehold.co/400x400/e2e8f0/334155?text=Luva+de+Boxe', description: 'Luva de boxe profissional para treinos', stock: 25, sku: 'LUV001', brand: 'Everlast', weight: '450g', dimensions: '30x15x10cm', status: 'Ativo' },
-        { id: 4, name: 'Skate Completo Profissional', category: 'Skate', price: 'R$ 499,90', imageUrl: 'https://placehold.co/400x400/e2e8f0/334155?text=Skate', description: 'Skate completo para iniciantes e profissionais', stock: 12, sku: 'SKT001', brand: 'Element', weight: '2.5kg', dimensions: '80x20x10cm', status: 'Ativo' },
-    ]);
+            // Carregar dados do gráfico
+            const chartSalesData = await getSalesDataForChart().catch(() => [])
+            if (chartSalesData && chartSalesData.length > 0) {
+                // Processar dados para o gráfico (agrupar por mês)
+                const monthlyData = processSalesDataForChart(chartSalesData)
+                setSalesData(prev => ({
+                    ...prev,
+                    datasets: [{
+                        ...prev.datasets[0],
+                        data: monthlyData
+                    }]
+                }))
+            }
+        } catch (error) {
+            console.error('Erro ao carregar dados:', error)
+        } finally {
+            setLoading(false)
+        }
+    }
 
-    const [invoices, setInvoices] = useState([
-        { id: 'NF001', orderId: 'PED123', customer: 'Carlos Silva', date: '2025-01-15', value: 'R$ 1.299,90', status: 'Emitida' },
-        { id: 'NF002', orderId: 'PED124', customer: 'Ana Pereira', date: '2025-01-16', value: 'R$ 549,90', status: 'Pendente' },
-        { id: 'NF003', orderId: 'PED125', customer: 'José Oliveira', date: '2025-01-17', value: 'R$ 899,90', status: 'Emitida' },
-    ]);
-
-    const [partnersList, setPartnersList] = useState([
-        { id: 'PAR01', companyName: 'Esporte Total Ltda.', contact: 'contato@esportetotal.com', phone: '(11) 98765-4321', status: 'Ativo', since: '2024-01-15' },
-        { id: 'PAR02', companyName: 'Aventura & Cia', contact: 'parceria@aventura.com', phone: '(21) 97654-3210', status: 'Inativo', since: '2024-06-20' },
-        { id: 'PAR03', companyName: 'Sport World', contact: 'contato@sportworld.com', phone: '(31) 96543-2109', status: 'Ativo', since: '2024-03-10' },
-    ]);
-
-    const [coupons, setCoupons] = useState([
-        { id: 'CUP001', code: 'VERAO2025', discount: '15%', type: 'Percentual', validUntil: '2025-03-31', status: 'Ativo', usageLimit: 100, usageCount: 23 },
-        { id: 'CUP002', code: 'PRIMEIRACOMPRA', discount: 'R$ 50,00', type: 'Fixo', validUntil: '2025-12-31', status: 'Ativo', usageLimit: 1000, usageCount: 456 },
-        { id: 'CUP003', code: 'BLACKFRIDAY', discount: '30%', type: 'Percentual', validUntil: '2024-11-30', status: 'Expirado', usageLimit: 500, usageCount: 500 },
-        { id: 'CUP004', code: 'FRETEGRATIS', discount: 'Frete Grátis', type: 'Especial', validUntil: '2025-06-30', status: 'Ativo', usageLimit: 200, usageCount: 87 },
-    ]);
+    function processSalesDataForChart(data: any[]) {
+        // Agrupar vendas por mês
+        const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho']
+        const monthlyTotals = [0, 0, 0, 0, 0, 0]
+        
+        data.forEach(sale => {
+            const date = new Date(sale.created_at)
+            const monthIndex = date.getMonth()
+            if (monthIndex >= 0 && monthIndex < 6) {
+                monthlyTotals[monthIndex] += parseFloat(sale.total_amount) || 0
+            }
+        })
+        
+        return monthlyTotals
+    }
 
     const getStatusClass = (status: string) => {
         switch (status) {
@@ -111,6 +160,7 @@ export default function Dashboard() {
             case 'Emitida': return 'bg-green-100 text-green-800';
             case 'Pendente': return 'bg-yellow-100 text-yellow-800';
             case 'Cancelada': return 'bg-red-100 text-red-800';
+            case 'Rejeitada': return 'bg-red-100 text-red-800';
             case 'Expirado': return 'bg-red-100 text-red-800';
             default: return 'bg-gray-100 text-gray-800';
         }
@@ -128,46 +178,192 @@ export default function Dashboard() {
         setEditingItem(null)
     }
 
-    const handleDeleteCoupon = (id: string) => {
-        if (confirm('Tem certeza que deseja deletar este cupom?')) {
-            setCoupons(coupons.filter(c => c.id !== id))
+    const openDeleteDialog = (type: string, id: string, name: string) => {
+        setItemToDelete({ type, id, name })
+        setDeleteDialogOpen(true)
+    }
+
+    const handleDelete = async () => {
+        if (!itemToDelete) return
+
+        try {
+            switch (itemToDelete.type) {
+                case 'invoice':
+                    await deleteInvoice(itemToDelete.id)
+                    setInvoices(invoices.filter(i => i.id !== itemToDelete.id))
+                    break
+                case 'coupon':
+                    await deleteCoupon(itemToDelete.id)
+                    setCoupons(coupons.filter(c => c.id !== itemToDelete.id))
+                    break
+                case 'inventory':
+                    await deleteInventoryMovement(itemToDelete.id)
+                    loadAllData() // Recarregar para atualizar estoque
+                    break
+                case 'product':
+                    await deleteProduct(itemToDelete.id)
+                    setProducts(products.filter(p => p.id !== itemToDelete.id))
+                    break
+                case 'partnership':
+                    await deletePartnership(itemToDelete.id)
+                    setPartnersList(partnersList.filter(p => p.id !== itemToDelete.id))
+                    break
+            }
+            setDeleteDialogOpen(false)
+            setItemToDelete(null)
+        } catch (error) {
+            console.error('Erro ao deletar:', error)
+            alert('Erro ao deletar item. Tente novamente.')
         }
     }
 
-    const handleDeletePartner = (id: string) => {
-        if (confirm('Tem certeza que deseja remover esta parceria?')) {
-            setPartnersList(partnersList.filter(p => p.id !== id))
+    const handleSaveInvoice = async (formData: any) => {
+        try {
+            if (editingItem) {
+                await updateInvoice(editingItem.id, formData)
+                setInvoices(invoices.map(i => i.id === editingItem.id ? { ...i, ...formData } : i))
+            } else {
+                const invoiceNumber = `NF${Date.now().toString().slice(-6)}`
+                const newInvoice = await createInvoice({
+                    invoice_number: invoiceNumber,
+                    order_id: formData.order_id || '',
+                    customer_name: formData.customer_name,
+                    customer_email: formData.customer_email || '',
+                    total_amount: parseFloat(formData.total_amount.toString().replace(/[^\d.,]/g, '').replace(',', '.')) || 0,
+                    status: formData.status || 'Pendente',
+                    issue_date: formData.issue_date || new Date().toISOString().split('T')[0],
+                })
+                setInvoices([newInvoice, ...invoices])
+            }
+            closeModal()
+            loadAllData()
+        } catch (error) {
+            console.error('Erro ao salvar nota fiscal:', error)
+            alert('Erro ao salvar. Tente novamente.')
         }
     }
 
-    const handleSaveContent = (id: string, newValue: string) => {
-        setSiteContent(siteContent.map(c =>
-            c.id === id ? { ...c, value: newValue } : c
-        ))
-    }
-
-    const handleDeleteProduct = (id: number) => {
-        if (confirm('Tem certeza que deseja deletar este produto?')) {
-            setProducts(products.filter(p => p.id !== id))
+    const handleSaveCoupon = async (formData: any) => {
+        try {
+            if (editingItem) {
+                await updateCoupon(editingItem.id, formData)
+                setCoupons(coupons.map(c => c.id === editingItem.id ? { ...c, ...formData } : c))
+            } else {
+                const newCoupon = await createCoupon({
+                    code: formData.code,
+                    discount_type: formData.discount_type,
+                    discount_value: formData.discount_value,
+                    valid_from: formData.valid_from || new Date().toISOString().split('T')[0],
+                    valid_until: formData.valid_until,
+                    usage_limit: formData.usage_limit ? parseInt(formData.usage_limit) : undefined,
+                    usage_count: 0,
+                    min_purchase_amount: formData.min_purchase_amount ? parseFloat(formData.min_purchase_amount) : undefined,
+                    status: 'Ativo',
+                })
+                setCoupons([newCoupon, ...coupons])
+            }
+            closeModal()
+        } catch (error) {
+            console.error('Erro ao salvar cupom:', error)
+            alert('Erro ao salvar. Tente novamente.')
         }
     }
 
-    const handleAddProduct = (productData: any) => {
-        const newProduct = {
-            id: Math.max(...products.map(p => p.id)) + 1,
-            ...productData,
-            status: 'Ativo'
+    const handleSaveInventory = async (formData: any) => {
+        try {
+            await createInventoryMovement({
+                product_id: formData.product_id,
+                product_name: '',
+                movement_type: formData.movement_type,
+                quantity: parseInt(formData.quantity),
+                previous_quantity: 0,
+                new_quantity: 0,
+                reason: formData.reason || '',
+            })
+            closeModal()
+            loadAllData()
+        } catch (error) {
+            console.error('Erro ao salvar movimento de estoque:', error)
+            alert('Erro ao salvar. Tente novamente.')
         }
-        setProducts([...products, newProduct])
     }
 
-    const handleEditProduct = (id: number, productData: any) => {
-        setProducts(products.map(p =>
-            p.id === id ? { ...p, ...productData } : p
-        ))
+    const handleSaveContent = async (id: string, value: string) => {
+        try {
+            await updateSiteContent(id, value)
+            setSiteContent(siteContent.map(c => c.id === id ? { ...c, value } : c))
+        } catch (error) {
+            console.error('Erro ao salvar conteúdo:', error)
+            alert('Erro ao salvar. Tente novamente.')
+        }
     }
 
-    const renderTabContent = () => {
+    const handleSaveAllContent = async () => {
+        try {
+            const updates = siteContent.map(content => 
+                updateSiteContent(content.id, content.value)
+            )
+            await Promise.all(updates)
+            alert('Todas as alterações foram salvas!')
+        } catch (error) {
+            console.error('Erro ao salvar conteúdo:', error)
+            alert('Erro ao salvar. Tente novamente.')
+        }
+    }
+
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center min-h-screen">
+                <Loader2 className="animate-spin text-cyan-600" size={48} />
+            </div>
+        )
+    }
+
+    return (
+        <div className="flex flex-col min-h-screen bg-gray-100">
+            <main className="flex-grow p-4 sm:p-6">
+                <h1 className="text-3xl font-bold text-gray-800 mb-8">Painel Administrativo</h1>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-6">
+                    <button onClick={() => setActiveTab('sales')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'sales' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Vendas</button>
+                    <button onClick={() => setActiveTab('inventory')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'inventory' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Estoque</button>
+                    <button onClick={() => setActiveTab('users')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'users' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Usuários</button>
+                    <button onClick={() => setActiveTab('products')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'products' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Produtos</button>
+                    <button onClick={() => setActiveTab('invoices')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'invoices' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Notas Fiscais</button>
+                    <button onClick={() => setActiveTab('partnerships')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'partnerships' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Parcerias</button>
+                    <button onClick={() => setActiveTab('coupons')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'coupons' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Cupons</button>
+                    <button onClick={() => setActiveTab('content')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'content' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Textos do Site</button>
+                </div>
+
+                <div className="bg-white rounded-lg p-6 shadow-lg min-h-[500px]">
+                    {renderTabContent()}
+                </div>
+
+                {/* Modais de Edição */}
+                {renderModals()}
+
+                {/* Dialog de Confirmação de Exclusão */}
+                <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Tem certeza que deseja deletar {itemToDelete?.name}? Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+                                Deletar
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </main>
+        </div>
+    )
+
+    function renderTabContent() {
         switch (activeTab) {
             case 'sales':
                 return (
@@ -181,7 +377,16 @@ export default function Dashboard() {
             case 'inventory':
                 return (
                     <div>
-                        <h2 className="text-2xl font-semibold mb-4 text-gray-700">Gestão de Estoque</h2>
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-2xl font-semibold text-gray-700">Gestão de Estoque</h2>
+                            <button
+                                onClick={() => openModal('inventory')}
+                                className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
+                            >
+                                <PlusCircle size={20} className="mr-2" />
+                                Nova Movimentação
+                            </button>
+                        </div>
                         <div className="overflow-x-auto">
                             <table className="min-w-full bg-white">
                                 <thead className="bg-gray-50">
@@ -193,21 +398,39 @@ export default function Dashboard() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
-                                    {inventoryItems.map((item) => (
-                                        <tr key={item.id}>
-                                            <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">{item.name}</td>
-                                            <td className="py-4 px-4 whitespace-nowrap text-gray-500">{item.quantity}</td>
-                                            <td className="py-4 px-4 whitespace-nowrap">
-                                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(item.status)}`}>
-                                                    {item.status}
-                                                </span>
-                                            </td>
-                                            <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
-                                                <button className="text-cyan-600 hover:text-cyan-900 mr-3"><Edit size={18} /></button>
-                                                <button className="text-red-600 hover:text-red-900"><Trash2 size={18} /></button>
+                                    {inventoryItems.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={4} className="py-8 text-center text-gray-500">
+                                                Nenhum item em estoque
                                             </td>
                                         </tr>
-                                    ))}
+                                    ) : (
+                                        inventoryItems.map((item) => (
+                                            <tr key={item.id}>
+                                                <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">{item.name}</td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-gray-500">{item.quantity}</td>
+                                                <td className="py-4 px-4 whitespace-nowrap">
+                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(item.status)}`}>
+                                                        {item.status}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
+                                                    <button 
+                                                        onClick={() => openModal('inventory', item)}
+                                                        className="text-cyan-600 hover:text-cyan-900 mr-3"
+                                                    >
+                                                        <Edit size={18} />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => openDeleteDialog('inventory', item.id, item.name)}
+                                                        className="text-red-600 hover:text-red-900"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -217,36 +440,7 @@ export default function Dashboard() {
                 return (
                     <div>
                         <h2 className="text-2xl font-semibold mb-6 text-gray-700">Usuários e Parcerias</h2>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            <div>
-                                <h3 className="text-xl font-semibold mb-4 text-gray-600 flex items-center"><User className="mr-2" size={20} /> Clientes e Vendedores</h3>
-                                <ul className="divide-y divide-gray-200 bg-white p-4 rounded-lg shadow-sm">
-                                    {users.map(user => (
-                                        <li key={user.id} className="py-3 flex justify-between items-center">
-                                            <div>
-                                                <p className="font-semibold text-gray-800">{user.name}</p>
-                                                <p className="text-sm text-gray-500">{user.email}</p>
-                                            </div>
-                                            <span className="text-sm font-medium text-cyan-700">{user.role}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-semibold mb-4 text-gray-600 flex items-center"><Building className="mr-2" size={20} /> Parceiros</h3>
-                                <ul className="divide-y divide-gray-200 bg-white p-4 rounded-lg shadow-sm">
-                                    {partners.map(partner => (
-                                        <li key={partner.id} className="py-3 flex justify-between items-center">
-                                            <div>
-                                                <p className="font-semibold text-gray-800">{partner.companyName}</p>
-                                                <p className="text-sm text-gray-500">{partner.contact}</p>
-                                            </div>
-                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(partner.status)}`}>{partner.status}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </div>
+                        <p className="text-gray-600">Gestão de usuários através da tabela profiles no Supabase.</p>
                     </div>
                 );
             case 'products':
@@ -263,32 +457,43 @@ export default function Dashboard() {
                             </button>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {products.map(product => (
-                                <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden group">
-                                    <Image src={product.imageUrl} alt={product.name} width={400} height={160} className="w-full h-40 object-cover group-hover:opacity-80 transition-opacity" />
-                                    <div className="p-4">
-                                        <h3 className="font-semibold text-gray-800 truncate">{product.name}</h3>
-                                        <p className="text-sm text-gray-500 mb-1">{product.category}</p>
-                                        <p className="text-sm text-gray-600 mb-1">SKU: {product.sku}</p>
-                                        <p className="text-sm text-gray-600 mb-2">Estoque: {product.stock}</p>
-                                        <p className="text-lg font-bold text-gray-900 mb-3">{product.price}</p>
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => openModal('product', product)}
-                                                className="flex-1 bg-cyan-600 text-white py-2 rounded-lg hover:bg-cyan-700 transition-colors font-semibold text-sm"
-                                            >
-                                                <Edit size={16} className="mx-auto" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteProduct(product.id)}
-                                                className="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
+                            {products.length === 0 ? (
+                                <div className="col-span-full text-center py-8 text-gray-500">
+                                    Nenhum produto cadastrado
+                                </div>
+                            ) : (
+                                products.map(product => (
+                                    <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden group">
+                                        <Image 
+                                            src={product.image_url || 'https://placehold.co/400x400/e2e8f0/334155?text=Produto'} 
+                                            alt={product.name} 
+                                            width={400} 
+                                            height={160} 
+                                            className="w-full h-40 object-cover group-hover:opacity-80 transition-opacity" 
+                                        />
+                                        <div className="p-4">
+                                            <h3 className="font-semibold text-gray-800 truncate">{product.name}</h3>
+                                            <p className="text-sm text-gray-600 mb-1">SKU: {product.sku}</p>
+                                            <p className="text-sm text-gray-600 mb-2">Estoque: {product.stock_quantity}</p>
+                                            <p className="text-lg font-bold text-gray-900 mb-3">R$ {product.price.toFixed(2).replace('.', ',')}</p>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => openModal('product', product)}
+                                                    className="flex-1 bg-cyan-600 text-white py-2 rounded-lg hover:bg-cyan-700 transition-colors font-semibold text-sm"
+                                                >
+                                                    <Edit size={16} className="mx-auto" />
+                                                </button>
+                                                <button
+                                                    onClick={() => openDeleteDialog('product', product.id, product.name)}
+                                                    className="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))
+                            )}
                         </div>
                     </div>
                 );
@@ -322,24 +527,42 @@ export default function Dashboard() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
-                                    {invoices.map((invoice) => (
-                                        <tr key={invoice.id}>
-                                            <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">{invoice.id}</td>
-                                            <td className="py-4 px-4 whitespace-nowrap text-gray-500">{invoice.orderId}</td>
-                                            <td className="py-4 px-4 whitespace-nowrap text-gray-500">{invoice.customer}</td>
-                                            <td className="py-4 px-4 whitespace-nowrap text-gray-500">{new Date(invoice.date).toLocaleDateString('pt-BR')}</td>
-                                            <td className="py-4 px-4 whitespace-nowrap text-gray-900 font-semibold">{invoice.value}</td>
-                                            <td className="py-4 px-4 whitespace-nowrap">
-                                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(invoice.status)}`}>
-                                                    {invoice.status}
-                                                </span>
-                                            </td>
-                                            <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
-                                                <button className="text-cyan-600 hover:text-cyan-900 mr-3"><Edit size={18} /></button>
-                                                <button className="text-green-600 hover:text-green-900"><Upload size={18} /></button>
+                                    {invoices.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={7} className="py-8 text-center text-gray-500">
+                                                Nenhuma nota fiscal cadastrada
                                             </td>
                                         </tr>
-                                    ))}
+                                    ) : (
+                                        invoices.map((invoice) => (
+                                            <tr key={invoice.id}>
+                                                <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">{invoice.invoice_number}</td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-gray-500">{invoice.order_id || '-'}</td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-gray-500">{invoice.customer_name}</td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-gray-500">{new Date(invoice.issue_date).toLocaleDateString('pt-BR')}</td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-gray-900 font-semibold">R$ {invoice.total_amount.toFixed(2).replace('.', ',')}</td>
+                                                <td className="py-4 px-4 whitespace-nowrap">
+                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(invoice.status)}`}>
+                                                        {invoice.status}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
+                                                    <button 
+                                                        onClick={() => openModal('invoice', invoice)}
+                                                        className="text-cyan-600 hover:text-cyan-900 mr-3"
+                                                    >
+                                                        <Edit size={18} />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => openDeleteDialog('invoice', invoice.id, `NF ${invoice.invoice_number}`)}
+                                                        className="text-red-600 hover:text-red-900"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -362,45 +585,53 @@ export default function Dashboard() {
                             </button>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {partnersList.map(partner => (
-                                <div key={partner.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="flex items-center">
-                                            <Building className="text-cyan-600 mr-2" size={20} />
-                                            <h3 className="font-bold text-gray-800">{partner.companyName}</h3>
-                                        </div>
-                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(partner.status)}`}>
-                                            {partner.status}
-                                        </span>
-                                    </div>
-                                    <div className="space-y-2 mb-4">
-                                        <p className="text-sm text-gray-600">
-                                            <span className="font-medium">Email:</span> {partner.contact}
-                                        </p>
-                                        <p className="text-sm text-gray-600">
-                                            <span className="font-medium">Telefone:</span> {partner.phone}
-                                        </p>
-                                        <p className="text-sm text-gray-600">
-                                            <span className="font-medium">Desde:</span> {new Date(partner.since).toLocaleDateString('pt-BR')}
-                                        </p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => openModal('partner', partner)}
-                                            className="flex-1 flex items-center justify-center bg-cyan-600 text-white px-3 py-2 rounded-lg hover:bg-cyan-700 transition-colors text-sm"
-                                        >
-                                            <Edit size={16} className="mr-1" />
-                                            Editar
-                                        </button>
-                                        <button
-                                            onClick={() => handleDeletePartner(partner.id)}
-                                            className="flex items-center justify-center bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
+                            {partnersList.length === 0 ? (
+                                <div className="col-span-full text-center py-8 text-gray-500">
+                                    Nenhuma parceria cadastrada
                                 </div>
-                            ))}
+                            ) : (
+                                partnersList.map(partner => (
+                                    <div key={partner.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className="flex items-center">
+                                                <Building className="text-cyan-600 mr-2" size={20} />
+                                                <h3 className="font-bold text-gray-800">{partner.company_name}</h3>
+                                            </div>
+                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(partner.status)}`}>
+                                                {partner.status}
+                                            </span>
+                                        </div>
+                                        <div className="space-y-2 mb-4">
+                                            <p className="text-sm text-gray-600">
+                                                <span className="font-medium">Email:</span> {partner.contact_email}
+                                            </p>
+                                            {partner.contact_phone && (
+                                                <p className="text-sm text-gray-600">
+                                                    <span className="font-medium">Telefone:</span> {partner.contact_phone}
+                                                </p>
+                                            )}
+                                            <p className="text-sm text-gray-600">
+                                                <span className="font-medium">Desde:</span> {new Date(partner.partnership_date).toLocaleDateString('pt-BR')}
+                                            </p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => openModal('partner', partner)}
+                                                className="flex-1 flex items-center justify-center bg-cyan-600 text-white px-3 py-2 rounded-lg hover:bg-cyan-700 transition-colors text-sm"
+                                            >
+                                                <Edit size={16} className="mr-1" />
+                                                Editar
+                                            </button>
+                                            <button
+                                                onClick={() => openDeleteDialog('partnership', partner.id, partner.company_name)}
+                                                className="flex items-center justify-center bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
                 );
@@ -434,38 +665,46 @@ export default function Dashboard() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
-                                    {coupons.map((coupon) => (
-                                        <tr key={coupon.id}>
-                                            <td className="py-4 px-4 whitespace-nowrap">
-                                                <span className="font-mono font-bold text-cyan-700 bg-cyan-50 px-2 py-1 rounded">{coupon.code}</span>
-                                            </td>
-                                            <td className="py-4 px-4 whitespace-nowrap text-gray-900 font-semibold">{coupon.discount}</td>
-                                            <td className="py-4 px-4 whitespace-nowrap text-gray-500">{coupon.type}</td>
-                                            <td className="py-4 px-4 whitespace-nowrap text-gray-500">{new Date(coupon.validUntil).toLocaleDateString('pt-BR')}</td>
-                                            <td className="py-4 px-4 whitespace-nowrap text-gray-500">
-                                                {coupon.usageCount} / {coupon.usageLimit}
-                                            </td>
-                                            <td className="py-4 px-4 whitespace-nowrap">
-                                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(coupon.status)}`}>
-                                                    {coupon.status}
-                                                </span>
-                                            </td>
-                                            <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
-                                                <button
-                                                    onClick={() => openModal('coupon', coupon)}
-                                                    className="text-cyan-600 hover:text-cyan-900 mr-3"
-                                                >
-                                                    <Edit size={18} />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteCoupon(coupon.id)}
-                                                    className="text-red-600 hover:text-red-900"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
+                                    {coupons.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={7} className="py-8 text-center text-gray-500">
+                                                Nenhum cupom cadastrado
                                             </td>
                                         </tr>
-                                    ))}
+                                    ) : (
+                                        coupons.map((coupon) => (
+                                            <tr key={coupon.id}>
+                                                <td className="py-4 px-4 whitespace-nowrap">
+                                                    <span className="font-mono font-bold text-cyan-700 bg-cyan-50 px-2 py-1 rounded">{coupon.code}</span>
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-gray-900 font-semibold">{coupon.discount_value}</td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-gray-500">{coupon.discount_type}</td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-gray-500">{new Date(coupon.valid_until).toLocaleDateString('pt-BR')}</td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-gray-500">
+                                                    {coupon.usage_count} / {coupon.usage_limit || '∞'}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap">
+                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(coupon.status)}`}>
+                                                        {coupon.status}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
+                                                    <button
+                                                        onClick={() => openModal('coupon', coupon)}
+                                                        className="text-cyan-600 hover:text-cyan-900 mr-3"
+                                                    >
+                                                        <Edit size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openDeleteDialog('coupon', coupon.id, coupon.code)}
+                                                        className="text-red-600 hover:text-red-900"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -480,7 +719,7 @@ export default function Dashboard() {
                                 Edição de Textos do Site
                             </h2>
                             <button
-                                onClick={() => alert('Alterações salvas no estado local. Integre com o banco de dados para persistir.')}
+                                onClick={handleSaveAllContent}
                                 className="flex items-center bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors"
                             >
                                 <Save size={20} className="mr-2" />
@@ -488,7 +727,6 @@ export default function Dashboard() {
                             </button>
                         </div>
                         <div className="space-y-6">
-                            {/* Group by section */}
                             {Array.from(new Set(siteContent.map(c => c.section))).map(section => (
                                 <div key={section} className="bg-white rounded-lg shadow-md p-6">
                                     <h3 className="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">{section}</h3>
@@ -498,10 +736,14 @@ export default function Dashboard() {
                                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                                     {content.label}
                                                 </label>
-                                                {content.type === 'textarea' ? (
+                                                {content.content_type === 'textarea' ? (
                                                     <textarea
                                                         value={content.value}
-                                                        onChange={(e) => handleSaveContent(content.id, e.target.value)}
+                                                        onChange={(e) => {
+                                                            setSiteContent(siteContent.map(c =>
+                                                                c.id === content.id ? { ...c, value: e.target.value } : c
+                                                            ))
+                                                        }}
                                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
                                                         rows={3}
                                                     />
@@ -509,11 +751,15 @@ export default function Dashboard() {
                                                     <input
                                                         type="text"
                                                         value={content.value}
-                                                        onChange={(e) => handleSaveContent(content.id, e.target.value)}
+                                                        onChange={(e) => {
+                                                            setSiteContent(siteContent.map(c =>
+                                                                c.id === content.id ? { ...c, value: e.target.value } : c
+                                                            ))
+                                                        }}
                                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                                                     />
                                                 )}
-                                                <p className="text-xs text-gray-500 mt-1">Chave: <code className="bg-gray-100 px-1 rounded">{content.key}</code></p>
+                                                <p className="text-xs text-gray-500 mt-1">Chave: <code className="bg-gray-100 px-1 rounded">{content.content_key}</code></p>
                                             </div>
                                         ))}
                                     </div>
@@ -527,213 +773,578 @@ export default function Dashboard() {
         }
     }
 
+    function renderModals() {
+        return (
+            <>
+                {/* Modal de Nota Fiscal */}
+                <Dialog open={isModalOpen && modalType === 'invoice'} onOpenChange={closeModal}>
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>
+                                {editingItem ? 'Editar Nota Fiscal' : 'Emitir Nota Fiscal'}
+                            </DialogTitle>
+                        </DialogHeader>
+                        <InvoiceForm invoice={editingItem} onSave={handleSaveInvoice} onCancel={closeModal} />
+                    </DialogContent>
+                </Dialog>
+
+                {/* Modal de Cupom */}
+                <Dialog open={isModalOpen && modalType === 'coupon'} onOpenChange={closeModal}>
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>
+                                {editingItem ? 'Editar Cupom' : 'Criar Cupom'}
+                            </DialogTitle>
+                        </DialogHeader>
+                        <CouponForm coupon={editingItem} onSave={handleSaveCoupon} onCancel={closeModal} />
+                    </DialogContent>
+                </Dialog>
+
+                {/* Modal de Estoque */}
+                <Dialog open={isModalOpen && modalType === 'inventory'} onOpenChange={closeModal}>
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>
+                                Nova Movimentação de Estoque
+                            </DialogTitle>
+                        </DialogHeader>
+                        <InventoryForm item={editingItem} products={products} onSave={handleSaveInventory} onCancel={closeModal} />
+                    </DialogContent>
+                </Dialog>
+
+                {/* Modal de Produto */}
+                <Dialog open={isModalOpen && modalType === 'product'} onOpenChange={closeModal}>
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>
+                                {editingItem ? 'Editar Produto' : 'Novo Produto'}
+                            </DialogTitle>
+                        </DialogHeader>
+                        <ProductForm product={editingItem} onSave={async (data: any) => {
+                            try {
+                                if (editingItem) {
+                                    await updateProduct(editingItem.id, data)
+                                    setProducts(products.map(p => p.id === editingItem.id ? { ...p, ...data } : p))
+                                } else {
+                                    const newProduct = await createProduct(data as any)
+                                    setProducts([newProduct, ...products])
+                                }
+                                closeModal()
+                                loadAllData()
+                            } catch (error) {
+                                console.error('Erro ao salvar produto:', error)
+                                alert('Erro ao salvar. Tente novamente.')
+                            }
+                        }} onCancel={closeModal} />
+                    </DialogContent>
+                </Dialog>
+
+                {/* Modal de Parceria */}
+                <Dialog open={isModalOpen && modalType === 'partner'} onOpenChange={closeModal}>
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>
+                                {editingItem ? 'Editar Parceria' : 'Nova Parceria'}
+                            </DialogTitle>
+                        </DialogHeader>
+                        <PartnershipForm partnership={editingItem} onSave={async (data: any) => {
+                            try {
+                                if (editingItem) {
+                                    await updatePartnership(editingItem.id, data)
+                                    setPartnersList(partnersList.map(p => p.id === editingItem.id ? { ...p, ...data } : p))
+                                } else {
+                                    const newPartnership = await createPartnership(data as any)
+                                    setPartnersList([newPartnership, ...partnersList])
+                                }
+                                closeModal()
+                                loadAllData()
+                            } catch (error) {
+                                console.error('Erro ao salvar parceria:', error)
+                                alert('Erro ao salvar. Tente novamente.')
+                            }
+                        }} onCancel={closeModal} />
+                    </DialogContent>
+                </Dialog>
+            </>
+        )
+    }
+}
+
+// Componentes de Formulário
+function InvoiceForm({ invoice, onSave, onCancel }: any) {
+    const [formData, setFormData] = useState({
+        order_id: invoice?.order_id || '',
+        customer_name: invoice?.customer_name || '',
+        customer_email: invoice?.customer_email || '',
+        total_amount: invoice?.total_amount || 0,
+        status: invoice?.status || 'Pendente',
+        issue_date: invoice?.issue_date || new Date().toISOString().split('T')[0],
+    })
+
     return (
-        <div className="flex flex-col min-h-screen bg-gray-100">
-            <main className="flex-grow p-4 sm:p-6">
-                <h1 className="text-3xl font-bold text-gray-800 mb-8">Painel Administrativo</h1>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-6">
-                    <button onClick={() => setActiveTab('sales')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'sales' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Vendas</button>
-                    <button onClick={() => setActiveTab('inventory')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'inventory' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Estoque</button>
-                    <button onClick={() => setActiveTab('users')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'users' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Usuários</button>
-                    <button onClick={() => setActiveTab('products')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'products' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Produtos</button>
-                    <button onClick={() => setActiveTab('invoices')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'invoices' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Notas Fiscais</button>
-                    <button onClick={() => setActiveTab('partnerships')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'partnerships' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Parcerias</button>
-                    <button onClick={() => setActiveTab('coupons')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'coupons' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Cupons</button>
-                    <button onClick={() => setActiveTab('content')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'content' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Textos do Site</button>
+        <form onSubmit={(e) => { e.preventDefault(); onSave(formData); }}>
+            <div className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Número do Pedido</label>
+                    <input 
+                        type="text" 
+                        value={formData.order_id}
+                        onChange={(e) => setFormData({ ...formData, order_id: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                        placeholder="PED123" 
+                    />
                 </div>
-
-                <div className="bg-white rounded-lg p-6 shadow-lg min-h-[500px]">
-                    {renderTabContent()}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+                    <input 
+                        type="text" 
+                        value={formData.customer_name}
+                        onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                        placeholder="Nome do Cliente" 
+                        required
+                    />
                 </div>
-
-                {/* Modal Placeholder */}
-                {isModalOpen && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                            <div className="p-6 border-b flex justify-between items-center">
-                                <h3 className="text-2xl font-bold text-gray-800">
-                                    {modalType === 'invoice' && 'Emitir Nota Fiscal'}
-                                    {modalType === 'partner' && (editingItem ? 'Editar Parceria' : 'Nova Parceria')}
-                                    {modalType === 'coupon' && (editingItem ? 'Editar Cupom' : 'Criar Cupom')}
-                                    {modalType === 'product' && (editingItem ? 'Editar Produto' : 'Novo Produto')}
-                                </h3>
-                                <button onClick={closeModal} className="text-gray-500 hover:text-gray-700">
-                                    <X size={24} />
-                                </button>
-                            </div>
-                            <div className="p-6">
-                                <p className="text-gray-600 mb-4">
-                                    Formulário de {modalType === 'invoice' ? 'emissão de nota fiscal' : modalType === 'partner' ? 'parceria' : modalType === 'coupon' ? 'cupom' : 'produto'}.
-                                </p>
-                                <div className="space-y-4">
-                                    {modalType === 'invoice' && (
-                                        <>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Número do Pedido</label>
-                                                <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="PED123" />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
-                                                <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Nome do Cliente" />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Valor</label>
-                                                <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="R$ 0,00" />
-                                            </div>
-                                        </>
-                                    )}
-                                    {modalType === 'partner' && (
-                                        <>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Nome da Empresa</label>
-                                                <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Nome da Empresa" defaultValue={editingItem?.companyName} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Email de Contato</label>
-                                                <input type="email" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="contato@empresa.com" defaultValue={editingItem?.contact} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
-                                                <input type="tel" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="(00) 00000-0000" defaultValue={editingItem?.phone} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                                                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg" defaultValue={editingItem?.status}>
-                                                    <option value="Ativo">Ativo</option>
-                                                    <option value="Inativo">Inativo</option>
-                                                </select>
-                                            </div>
-                                        </>
-                                    )}
-                                    {modalType === 'coupon' && (
-                                        <>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Código do Cupom</label>
-                                                <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono" placeholder="CUPOM2025" defaultValue={editingItem?.code} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Desconto</label>
-                                                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg" defaultValue={editingItem?.type}>
-                                                    <option value="Percentual">Percentual</option>
-                                                    <option value="Fixo">Valor Fixo</option>
-                                                    <option value="Especial">Especial</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Desconto</label>
-                                                <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="15% ou R$ 50,00" defaultValue={editingItem?.discount} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Válido Até</label>
-                                                <input type="date" className="w-full px-3 py-2 border border-gray-300 rounded-lg" defaultValue={editingItem?.validUntil} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Limite de Uso</label>
-                                                <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="100" defaultValue={editingItem?.usageLimit} />
-                                            </div>
-                                        </>
-                                    )}
-                                    {modalType === 'product' && (
-                                        <>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Produto *</label>
-                                                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Nome do produto" defaultValue={editingItem?.name} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">SKU *</label>
-                                                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="SKU001" defaultValue={editingItem?.sku} />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-                                                <textarea className="w-full px-3 py-2 border border-gray-300 rounded-lg" rows={3} placeholder="Descrição detalhada do produto" defaultValue={editingItem?.description}></textarea>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Categoria *</label>
-                                                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg" defaultValue={editingItem?.category}>
-                                                        <option value="">Selecione uma categoria</option>
-                                                        <option value="Futebol">Futebol</option>
-                                                        <option value="Basquete">Basquete</option>
-                                                        <option value="Tênis">Tênis</option>
-                                                        <option value="Natação">Natação</option>
-                                                        <option value="Ciclismo">Ciclismo</option>
-                                                        <option value="Lutas">Lutas</option>
-                                                        <option value="Skate">Skate</option>
-                                                        <option value="Corrida">Corrida</option>
-                                                        <option value="Musculação">Musculação</option>
-                                                        <option value="Outros">Outros</option>
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Marca *</label>
-                                                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Nike, Adidas, etc." defaultValue={editingItem?.brand} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Preço *</label>
-                                                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="R$ 0,00" defaultValue={editingItem?.price} />
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Estoque *</label>
-                                                    <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="0" defaultValue={editingItem?.stock} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Peso</label>
-                                                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="1.5kg" defaultValue={editingItem?.weight} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Dimensões</label>
-                                                    <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="LxAxP cm" defaultValue={editingItem?.dimensions} />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">URL da Imagem</label>
-                                                <input type="url" className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="https://exemplo.com/imagem.jpg" defaultValue={editingItem?.imageUrl} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                                                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg" defaultValue={editingItem?.status || 'Ativo'}>
-                                                    <option value="Ativo">Ativo</option>
-                                                    <option value="Inativo">Inativo</option>
-                                                    <option value="Esgotado">Esgotado</option>
-                                                </select>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                                <div className="flex gap-3 mt-6">
-                                    <button
-                                        onClick={closeModal}
-                                        className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            if (modalType === 'product') {
-                                                // For now, just show a success message
-                                                // In a real implementation, you would collect form data and call handleAddProduct or handleEditProduct
-                                                alert(editingItem ? 'Produto atualizado com sucesso!' : 'Produto cadastrado com sucesso!');
-                                            } else {
-                                                alert('Funcionalidade de salvamento será implementada com integração ao banco de dados');
-                                            }
-                                            closeModal();
-                                        }}
-                                        className="flex-1 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors font-semibold"
-                                    >
-                                        Salvar
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </main>
-        </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email do Cliente</label>
+                    <input 
+                        type="email" 
+                        value={formData.customer_email}
+                        onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                        placeholder="cliente@email.com" 
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Valor</label>
+                    <input 
+                        type="number" 
+                        step="0.01"
+                        value={formData.total_amount}
+                        onChange={(e) => setFormData({ ...formData, total_amount: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                        placeholder="0.00" 
+                        required
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select 
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    >
+                        <option value="Pendente">Pendente</option>
+                        <option value="Emitida">Emitida</option>
+                        <option value="Cancelada">Cancelada</option>
+                        <option value="Rejeitada">Rejeitada</option>
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Data de Emissão</label>
+                    <input 
+                        type="date" 
+                        value={formData.issue_date}
+                        onChange={(e) => setFormData({ ...formData, issue_date: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                        required
+                    />
+                </div>
+            </div>
+            <DialogFooter className="mt-6">
+                <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
+                    Cancelar
+                </button>
+                <button type="submit" className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700">
+                    Salvar
+                </button>
+            </DialogFooter>
+        </form>
     )
 }
 
+function CouponForm({ coupon, onSave, onCancel }: any) {
+    const [formData, setFormData] = useState({
+        code: coupon?.code || '',
+        discount_type: coupon?.discount_type || 'Percentual',
+        discount_value: coupon?.discount_value || '',
+        valid_from: coupon?.valid_from || new Date().toISOString().split('T')[0],
+        valid_until: coupon?.valid_until || '',
+        usage_limit: coupon?.usage_limit || '',
+        min_purchase_amount: coupon?.min_purchase_amount || '',
+    })
+
+    return (
+        <form onSubmit={(e) => { e.preventDefault(); onSave(formData); }}>
+            <div className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Código do Cupom *</label>
+                    <input 
+                        type="text" 
+                        value={formData.code}
+                        onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono" 
+                        placeholder="CUPOM2025" 
+                        required
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Desconto *</label>
+                    <select 
+                        value={formData.discount_type}
+                        onChange={(e) => setFormData({ ...formData, discount_type: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    >
+                        <option value="Percentual">Percentual</option>
+                        <option value="Fixo">Valor Fixo</option>
+                        <option value="Especial">Especial</option>
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Desconto *</label>
+                    <input 
+                        type="text" 
+                        value={formData.discount_value}
+                        onChange={(e) => setFormData({ ...formData, discount_value: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                        placeholder="15% ou R$ 50,00 ou Frete Grátis" 
+                        required
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Válido De</label>
+                    <input 
+                        type="date" 
+                        value={formData.valid_from}
+                        onChange={(e) => setFormData({ ...formData, valid_from: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Válido Até *</label>
+                    <input 
+                        type="date" 
+                        value={formData.valid_until}
+                        onChange={(e) => setFormData({ ...formData, valid_until: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                        required
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Limite de Uso</label>
+                    <input 
+                        type="number" 
+                        value={formData.usage_limit}
+                        onChange={(e) => setFormData({ ...formData, usage_limit: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                        placeholder="100" 
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Valor Mínimo de Compra (R$)</label>
+                    <input 
+                        type="number" 
+                        step="0.01"
+                        value={formData.min_purchase_amount}
+                        onChange={(e) => setFormData({ ...formData, min_purchase_amount: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                        placeholder="0.00" 
+                    />
+                </div>
+            </div>
+            <DialogFooter className="mt-6">
+                <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
+                    Cancelar
+                </button>
+                <button type="submit" className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700">
+                    Salvar
+                </button>
+            </DialogFooter>
+        </form>
+    )
+}
+
+function InventoryForm({ item, products, onSave, onCancel }: any) {
+    const [formData, setFormData] = useState({
+        product_id: item?.id || '',
+        movement_type: 'Entrada',
+        quantity: '',
+        reason: '',
+    })
+
+    return (
+        <form onSubmit={(e) => { e.preventDefault(); onSave(formData); }}>
+            <div className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Produto *</label>
+                    <select 
+                        value={formData.product_id}
+                        onChange={(e) => setFormData({ ...formData, product_id: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                        required
+                    >
+                        <option value="">Selecione um produto</option>
+                        {products.map((p: Product) => (
+                            <option key={p.id} value={p.id}>{p.name} (Estoque: {p.stock_quantity})</option>
+                        ))}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Movimentação *</label>
+                    <select 
+                        value={formData.movement_type}
+                        onChange={(e) => setFormData({ ...formData, movement_type: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    >
+                        <option value="Entrada">Entrada</option>
+                        <option value="Saída">Saída</option>
+                        <option value="Ajuste">Ajuste</option>
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Quantidade *</label>
+                    <input 
+                        type="number" 
+                        value={formData.quantity}
+                        onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                        placeholder="0" 
+                        min="1"
+                        required
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Motivo</label>
+                    <textarea 
+                        value={formData.reason}
+                        onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                        rows={3}
+                        placeholder="Motivo da movimentação..."
+                    />
+                </div>
+            </div>
+            <DialogFooter className="mt-6">
+                <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
+                    Cancelar
+                </button>
+                <button type="submit" className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700">
+                    Salvar
+                </button>
+            </DialogFooter>
+        </form>
+    )
+}
+
+function ProductForm({ product, onSave, onCancel }: any) {
+    const [formData, setFormData] = useState({
+        name: product?.name || '',
+        description: product?.description || '',
+        sku: product?.sku || '',
+        category_id: product?.category_id || '',
+        brand: product?.brand || '',
+        price: product?.price || 0,
+        stock_quantity: product?.stock_quantity || 0,
+        weight: product?.weight || '',
+        dimensions: product?.dimensions || '',
+        image_url: product?.image_url || '',
+        status: product?.status || 'Ativo',
+    })
+
+    return (
+        <form onSubmit={(e) => { e.preventDefault(); onSave(formData); }}>
+            <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Produto *</label>
+                        <input 
+                            type="text" 
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                            placeholder="Nome do produto" 
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">SKU *</label>
+                        <input 
+                            type="text" 
+                            value={formData.sku}
+                            onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                            placeholder="SKU001" 
+                            required
+                        />
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                    <textarea 
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                        rows={3} 
+                        placeholder="Descrição detalhada do produto"
+                    />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>
+                        <input 
+                            type="text" 
+                            value={formData.brand}
+                            onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                            placeholder="Nike, Adidas, etc." 
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Preço *</label>
+                        <input 
+                            type="number" 
+                            step="0.01"
+                            value={formData.price}
+                            onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                            placeholder="0.00" 
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Estoque *</label>
+                        <input 
+                            type="number" 
+                            value={formData.stock_quantity}
+                            onChange={(e) => setFormData({ ...formData, stock_quantity: parseInt(e.target.value) || 0 })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                            placeholder="0" 
+                            min="0"
+                            required
+                        />
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Peso</label>
+                        <input 
+                            type="text" 
+                            value={formData.weight}
+                            onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                            placeholder="1.5kg" 
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Dimensões</label>
+                        <input 
+                            type="text" 
+                            value={formData.dimensions}
+                            onChange={(e) => setFormData({ ...formData, dimensions: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                            placeholder="LxAxP cm" 
+                        />
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">URL da Imagem</label>
+                    <input 
+                        type="url" 
+                        value={formData.image_url}
+                        onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                        placeholder="https://exemplo.com/imagem.jpg" 
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select 
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    >
+                        <option value="Ativo">Ativo</option>
+                        <option value="Inativo">Inativo</option>
+                        <option value="Esgotado">Esgotado</option>
+                    </select>
+                </div>
+            </div>
+            <DialogFooter className="mt-6">
+                <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
+                    Cancelar
+                </button>
+                <button type="submit" className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700">
+                    Salvar
+                </button>
+            </DialogFooter>
+        </form>
+    )
+}
+
+function PartnershipForm({ partnership, onSave, onCancel }: any) {
+    const [formData, setFormData] = useState({
+        company_name: partnership?.company_name || '',
+        contact_email: partnership?.contact_email || '',
+        contact_phone: partnership?.contact_phone || '',
+        status: partnership?.status || 'Ativo',
+    })
+
+    return (
+        <form onSubmit={(e) => { e.preventDefault(); onSave(formData); }}>
+            <div className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome da Empresa *</label>
+                    <input 
+                        type="text" 
+                        value={formData.company_name}
+                        onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                        placeholder="Nome da Empresa" 
+                        required
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email de Contato *</label>
+                    <input 
+                        type="email" 
+                        value={formData.contact_email}
+                        onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                        placeholder="contato@empresa.com" 
+                        required
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+                    <input 
+                        type="tel" 
+                        value={formData.contact_phone}
+                        onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                        placeholder="(00) 00000-0000" 
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select 
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    >
+                        <option value="Ativo">Ativo</option>
+                        <option value="Inativo">Inativo</option>
+                        <option value="Pendente">Pendente</option>
+                    </select>
+                </div>
+            </div>
+            <DialogFooter className="mt-6">
+                <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
+                    Cancelar
+                </button>
+                <button type="submit" className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700">
+                    Salvar
+                </button>
+            </DialogFooter>
+        </form>
+    )
+}
