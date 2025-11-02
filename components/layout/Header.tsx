@@ -2,6 +2,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Menu, User, X, LogOut, UserCircle, ShoppingCart, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,8 +13,9 @@ import { validateEmail } from '@/lib/email-validation';
 import { useCart } from '@/contexts/CartContext';
 
 export default function Header() {
+  const router = useRouter();
   const { user, profile, signIn, signUp, signOut } = useAuth();
-  const { cartCount } = useCart();
+  const { cartCount, clearCart } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
@@ -96,7 +98,9 @@ export default function Header() {
   const handleLogout = async () => {
     try {
       await signOut();
+      clearCart(); // Limpar carrinho ao fazer logout
       setIsAuthOpen(false);
+      router.push('/inicio'); // Redirecionar para a página inicial
     } catch (err) {
       console.error('Error logging out:', err);
     }
