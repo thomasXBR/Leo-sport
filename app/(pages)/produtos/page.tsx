@@ -1,17 +1,22 @@
-import { Metadata } from 'next';
+'use client';
+
 import { productsData, getCategories } from '@/lib/products-data';
 import ProductCard from '@/components/products/ProductCard';
 import { Search, Filter } from 'lucide-react';
 import Image from 'next/image';
-
-export const metadata: Metadata = {
-    title: 'Produtos - LeoSport',
-    description: 'Descubra nossa ampla variedade de produtos esportivos de alta qualidade.',
-    keywords: ['produtos esportivos', 'equipamentos esportivos', 'LeoSport produtos'],
-};
+import { useSiteContent } from '@/hooks/use-site-content';
 
 export default function ProductsPage() {
+    const { getContent, loading } = useSiteContent();
     const categories = getCategories();
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -32,10 +37,10 @@ export default function ProductsPage() {
                 <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center">
                         <h1 className="text-4xl md:text-5xl font-bold mb-4">
-                            Nossos Produtos
+                            {getContent('products_title', 'Nossos Produtos')}
                         </h1>
                         <p className="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
-                            Descubra nossa ampla variedade de produtos esportivos de alta qualidade
+                            {getContent('products_subtitle', 'Descubra nossa ampla variedade de produtos esportivos de alta qualidade')}
                         </p>
 
                         {/* Search and Filter Bar */}
@@ -44,7 +49,7 @@ export default function ProductsPage() {
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white w-5 h-5" />
                                 <input
                                     type="text"
-                                    placeholder="Buscar produtos..."
+                                    placeholder={getContent('products_search_placeholder', 'Buscar produtos...')}
                                     className="w-full pl-10 pr-4 py-3 rounded-lg border-0 bg-white/90 text-gray-900 focus:ring-2 focus:ring-blue-300 focus:bg-white"
                                 />
                             </div>
@@ -58,11 +63,11 @@ export default function ProductsPage() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center gap-4 mb-6">
                         <Filter className="w-5 h-5 text-gray-600" />
-                        <h2 className="text-lg font-semibold text-gray-800">Filtrar por categoria:</h2>
+                        <h2 className="text-lg font-semibold text-gray-800">{getContent('products_filter_title', 'Filtrar por categoria:')}</h2>
                     </div>
                     <div className="flex flex-wrap gap-3">
                         <button className="px-4 py-2 bg-blue-900 text-white rounded-full hover:bg-blue-800 transition-colors">
-                            Todos
+                            {getContent('products_filter_all', 'Todos')}
                         </button>
                         {categories.map((category) => (
                             <button
@@ -81,7 +86,7 @@ export default function ProductsPage() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center mb-8">
                         <h2 className="text-2xl font-bold text-gray-900">
-                            Todos os Produtos ({productsData.length})
+                            {getContent('products_list_title', 'Todos os Produtos')} ({productsData.length})
                         </h2>
                         <div className="flex items-center gap-4">
                             <select className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
@@ -103,7 +108,7 @@ export default function ProductsPage() {
                     {/* Load More Button */}
                     <div className="text-center mt-12">
                         <button className="px-8 py-3 bg-blue-900 text-white rounded-lg hover:bg-blue-800 transition-colors font-semibold">
-                            Carregar Mais Produtos
+                            {getContent('products_load_more', 'Carregar Mais Produtos')}
                         </button>
                     </div>
                 </div>
@@ -113,17 +118,17 @@ export default function ProductsPage() {
             <section className="bg-gray-900 text-white py-16">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                     <h2 className="text-3xl font-bold mb-4">
-                        Não encontrou o que procura?
+                        {getContent('products_cta_title', 'Não encontrou o que procura?')}
                     </h2>
                     <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-                        Entre em contato conosco e vamos ajudar você a encontrar o produto ideal para sua prática esportiva.
+                        {getContent('products_cta_description', 'Entre em contato conosco e vamos ajudar você a encontrar o produto ideal para sua prática esportiva.')}
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
                         <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold">
-                            Fale Conosco
+                            {getContent('products_cta_button_1', 'Fale Conosco')}
                         </button>
                         <button className="px-6 py-3 border border-gray-600 text-white rounded-lg hover:bg-gray-800 transition-colors font-semibold">
-                            Seja um Parceiro
+                            {getContent('products_cta_button_2', 'Seja um Parceiro')}
                         </button>
                     </div>
                 </div>

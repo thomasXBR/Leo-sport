@@ -1,39 +1,43 @@
+'use client';
+
 import { Card, CardContent } from '@/components/ui/card';
 import { Target, Heart, Users, Award } from 'lucide-react';
-import { Metadata } from 'next';
 import Image from 'next/image';
-
-export const metadata: Metadata = {
-  title: 'Sobre a LeoSport',
-  description: 'Conheça a LeoSport e nosso compromisso com o esporte.',
-  keywords: ['LeoSport', 'Sobre a LeoSport', 'Compromisso com o esporte'],
-};
+import { useSiteContent } from '@/hooks/use-site-content';
 
 export default function SobrePage() {
-
+  const { getContent, loading } = useSiteContent();
 
   const values = [
     {
       icon: Target,
-      title: 'Foco no Cliente',
-      description: 'Priorizamos sempre a satisfação e experiência do nosso cliente.'
+      title: getContent('value_focus_title', 'Foco no Cliente'),
+      description: getContent('value_focus_description', 'Priorizamos sempre a satisfação e experiência do nosso cliente.')
     },
     {
       icon: Heart,
-      title: 'Paixão pelo Esporte',
-      description: 'Vivemos e respiramos esporte, entendemos as necessidades dos atletas.'
+      title: getContent('value_passion_title', 'Paixão pelo Esporte'),
+      description: getContent('value_passion_description', 'Vivemos e respiramos esporte, entendemos as necessidades dos atletas.')
     },
     {
       icon: Users,
-      title: 'Comunidade',
-      description: 'Construímos uma comunidade forte de atletas e parceiros.'
+      title: getContent('value_community_title', 'Comunidade'),
+      description: getContent('value_community_description', 'Construímos uma comunidade forte de atletas e parceiros.')
     },
     {
       icon: Award,
-      title: 'Qualidade',
-      description: 'Oferecemos apenas produtos de alta qualidade e parceiros confiáveis.'
+      title: getContent('value_quality_title', 'Qualidade'),
+      description: getContent('value_quality_description', 'Oferecemos apenas produtos de alta qualidade e parceiros confiáveis.')
     }
   ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-16">
@@ -54,11 +58,10 @@ export default function SobrePage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-6">
-              Sobre a LeoSport
+              {getContent('about_title', 'Sobre a LeoSport')}
             </h1>
             <p className="text-xl text-blue-100 max-w-3xl mx-auto">
-              Nascemos da paixão pelo esporte e do desejo de conectar atletas
-              aos melhores produtos e parceiros do mercado brasileiro.
+              {getContent('about_hero_description', 'Nascemos da paixão pelo esporte e do desejo de conectar atletas aos melhores produtos e parceiros do mercado brasileiro.')}
             </p>
           </div>
         </div>
@@ -68,23 +71,16 @@ export default function SobrePage() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">Nossa História</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-6">{getContent('about_story_title', 'Nossa História')}</h2>
             <div className="space-y-4 text-gray-600">
               <p>
-                A LeoSport nasceu em 2024 com uma missão clara: democratizar o acesso
-                a produtos esportivos de qualidade em todo o Brasil. Fundada por Leo,
-                um apaixonado por esportes e tecnologia, a plataforma surgiu da necessidade
-                de conectar pequenos e médios vendedores especializados com atletas de todo o país.
+                {getContent('about_story_paragraph_1', 'A LeoSport nasceu em 2024 com uma missão clara: democratizar o acesso a produtos esportivos de qualidade em todo o Brasil.')}
               </p>
               <p>
-                Começamos como uma pequena iniciativa local e rapidamente crescemos para
-                nos tornar uma das principais plataformas de marketplace esportivo do Brasil,
-                sempre mantendo nosso compromisso com a qualidade e o atendimento personalizado.
+                {getContent('about_story_paragraph_2', 'Começamos como uma pequena iniciativa local e rapidamente crescemos para nos tornar uma das principais plataformas de marketplace esportivo do Brasil.')}
               </p>
               <p>
-                Hoje, orgulhosamente conectamos centenas de parceiros vendedores com
-                milhares de clientes, oferecendo desde equipamentos básicos até produtos
-                profissionais para atletas de alto rendimento.
+                {getContent('about_story_paragraph_3', 'Hoje, orgulhosamente conectamos centenas de parceiros vendedores com milhares de clientes, oferecendo desde equipamentos básicos até produtos profissionais para atletas de alto rendimento.')}
               </p>
             </div>
           </div>
@@ -104,9 +100,9 @@ export default function SobrePage() {
       <section className="bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Nossos Valores</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">{getContent('about_values_title', 'Nossos Valores')}</h2>
             <p className="text-lg text-gray-600">
-              Os princípios que guiam cada decisão na LeoSport
+              {getContent('about_values_subtitle', 'Os princípios que guiam cada decisão na LeoSport')}
             </p>
           </div>
 
@@ -129,12 +125,9 @@ export default function SobrePage() {
       {/* Mission Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Nossa Missão</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">{getContent('about_mission_title', 'Nossa Missão')}</h2>
           <p className="text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed pb-10">
-            Facilitar o acesso a produtos esportivos de qualidade, conectando atletas
-            e entusiastas do esporte com os melhores parceiros vendedores do Brasil,
-            promovendo um ecossistema saudável e sustentável para o crescimento do
-            esporte nacional.
+            {getContent('about_mission_description', 'Facilitar o acesso a produtos esportivos de qualidade, conectando atletas e entusiastas do esporte com os melhores parceiros vendedores do Brasil, promovendo um ecossistema saudável e sustentável para o crescimento do esporte nacional.')}
           </p>
         </div>
       </section>

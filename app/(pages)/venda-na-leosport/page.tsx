@@ -8,8 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { CheckCircle, Store, TrendingUp, Users, Shield } from 'lucide-react';
 import Image from 'next/image';
+import { useSiteContent } from '@/hooks/use-site-content';
 
 export default function VendaNaLeoSportPage() {
+  const { getContent, loading } = useSiteContent();
   const [activeForm, setActiveForm] = useState<'fornecedor' | 'representante'>('fornecedor');
   const [formData, setFormData] = useState({
     // Campos comuns
@@ -32,25 +34,33 @@ export default function VendaNaLeoSportPage() {
   const benefits = [
     {
       icon: Store,
-      title: 'Vitrine Digital',
-      description: 'Tenha sua própria vitrine em uma plataforma consolidada'
+      title: getContent('benefit_vitrine_title', 'Vitrine Digital'),
+      description: getContent('benefit_vitrine_description', 'Tenha sua própria vitrine em uma plataforma consolidada')
     },
     {
       icon: TrendingUp,
-      title: 'Aumento de Vendas',
-      description: 'Acesse milhares de clientes em potencial'
+      title: getContent('benefit_vendas_title', 'Aumento de Vendas'),
+      description: getContent('benefit_vendas_description', 'Acesse milhares de clientes em potencial')
     },
     {
       icon: Users,
-      title: 'Suporte Dedicado',
-      description: 'Equipe especializada para ajudar no seu crescimento'
+      title: getContent('benefit_suporte_title', 'Suporte Dedicado'),
+      description: getContent('benefit_suporte_description', 'Equipe especializada para ajudar no seu crescimento')
     },
     {
       icon: Shield,
-      title: 'Segurança',
-      description: 'Transações seguras e proteção contra fraudes'
+      title: getContent('benefit_seguranca_title', 'Segurança'),
+      description: getContent('benefit_seguranca_description', 'Transações seguras e proteção contra fraudes')
     }
   ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
+      </div>
+    );
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,15 +131,14 @@ export default function VendaNaLeoSportPage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-6">
-              Venda na LeoSport
+              {getContent('seller_title', 'Venda na LeoSport')}
             </h1>
             <p className="text-xl text-blue-100 max-w-3xl mx-auto mb-8">
-              Junte-se aos nossos parceiros e expanda seu negócio no maior
-              marketplace esportivo do Brasil.
+              {getContent('seller_hero_description', 'Junte-se aos nossos parceiros e expanda seu negócio no maior marketplace esportivo do Brasil.')}
             </p>
             <div className="flex items-center justify-center space-x-2">
               <CheckCircle className="w-5 h-5 text-blue-300" />
-              <span className="text-blue-100">Cadastro gratuito</span>
+              <span className="text-blue-100">{getContent('seller_free_signup', 'Cadastro gratuito')}</span>
             </div>
           </div>
         </div>
@@ -139,10 +148,10 @@ export default function VendaNaLeoSportPage() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            Por que vender na LeoSport?
+            {getContent('seller_benefits_title', 'Por que vender na LeoSport?')}
           </h2>
           <p className="text-lg text-gray-600">
-            Oferecemos tudo que você precisa para fazer seu negócio crescer
+            {getContent('seller_benefits_subtitle', 'Oferecemos tudo que você precisa para fazer seu negócio crescer')}
           </p>
         </div>
 
@@ -165,9 +174,9 @@ export default function VendaNaLeoSportPage() {
       <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl text-center">Solicitar Parceria</CardTitle>
+            <CardTitle className="text-2xl text-center">{getContent('seller_form_title', 'Solicitar Parceria')}</CardTitle>
             <p className="text-gray-600 text-center">
-              Preencha o formulário abaixo e nossa equipe entrará em contato
+              {getContent('seller_form_subtitle', 'Preencha o formulário abaixo e nossa equipe entrará em contato')}
             </p>
 
             {/* Choice Chips */}
@@ -345,16 +354,16 @@ export default function VendaNaLeoSportPage() {
       <section className="bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Como Funciona</h2>
-            <p className="text-lg text-gray-600">Processo simples em 4 etapas</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">{getContent('seller_process_title', 'Como Funciona')}</h2>
+            <p className="text-lg text-gray-600">{getContent('seller_process_subtitle', 'Processo simples em 4 etapas')}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {[
-              { step: '1', title: 'Cadastro', description: 'Preencha o formulário com suas informações' },
-              { step: '2', title: 'Análise', description: 'Nossa equipe avalia sua solicitação' },
-              { step: '3', title: 'Aprovação', description: 'Você recebe a confirmação por e-mail' },
-              { step: '4', title: 'Vendas', description: 'Comece a vender seus produtos' }
+              { step: '1', title: getContent('process_step_1_title', 'Cadastro'), description: getContent('process_step_1_description', 'Preencha o formulário com suas informações') },
+              { step: '2', title: getContent('process_step_2_title', 'Análise'), description: getContent('process_step_2_description', 'Nossa equipe avalia sua solicitação') },
+              { step: '3', title: getContent('process_step_3_title', 'Aprovação'), description: getContent('process_step_3_description', 'Você recebe a confirmação por e-mail') },
+              { step: '4', title: getContent('process_step_4_title', 'Vendas'), description: getContent('process_step_4_description', 'Comece a vender seus produtos') }
             ].map((item, index) => (
               <div key={index} className="text-center">
                 <div className="w-12 h-12 bg-blue-900 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">

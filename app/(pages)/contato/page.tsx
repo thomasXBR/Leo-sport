@@ -8,8 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { MapPin, Phone, Mail, Clock } from 'lucide-react';
 import Image from 'next/image';
+import { useSiteContent } from '@/hooks/use-site-content';
 
 export default function ContatoPage() {
+  const { getContent, loading } = useSiteContent();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -20,25 +22,33 @@ export default function ContatoPage() {
   const contactInfo = [
     {
       icon: MapPin,
-      title: 'Endereço',
-      content: 'Rua dos Esportes, 123\nSão Paulo - SP, 01234-567'
+      title: getContent('contact_address_title', 'Endereço'),
+      content: getContent('contact_address_content', 'Rua dos Esportes, 123\nSão Paulo - SP, 01234-567')
     },
     {
       icon: Phone,
-      title: 'Telefone',
-      content: '(11) 3456-7890\n(11) 99999-9999'
+      title: getContent('contact_phone_title', 'Telefone'),
+      content: getContent('contact_phone_content', '(11) 3456-7890\n(11) 99999-9999')
     },
     {
       icon: Mail,
-      title: 'E-mail',
-      content: 'contato@leosport.com.br\nsuporte@leosport.com.br'
+      title: getContent('contact_email_title', 'E-mail'),
+      content: getContent('contact_email_content', 'contato@leosport.com.br\nsuporte@leosport.com.br')
     },
     {
       icon: Clock,
-      title: 'Horário de Atendimento',
-      content: 'Segunda a Sexta: 8h às 18h\nSábado: 8h às 14h'
+      title: getContent('contact_hours_title', 'Horário de Atendimento'),
+      content: getContent('contact_hours_content', 'Segunda a Sexta: 8h às 18h\nSábado: 8h às 14h')
     }
   ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
+      </div>
+    );
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,11 +81,10 @@ export default function ContatoPage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-6">
-              Entre em Contato
+              {getContent('contact_title', 'Entre em Contato')}
             </h1>
             <p className="text-xl text-blue-100 max-w-3xl mx-auto">
-              Estamos aqui para ajudar! Entre em contato conosco para
-              dúvidas, sugestões ou suporte.
+              {getContent('contact_hero_description', 'Estamos aqui para ajudar! Entre em contato conosco para dúvidas, sugestões ou suporte.')}
             </p>
           </div>
         </div>
@@ -87,7 +96,7 @@ export default function ContatoPage() {
           {/* Contact Information */}
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-8">
-              Informações de Contato
+              {getContent('contact_info_title', 'Informações de Contato')}
             </h2>
 
             <div className="space-y-6">
@@ -113,17 +122,16 @@ export default function ContatoPage() {
             {/* FAQ Section */}
             <div className="mt-12 pb-4">
               <h3 className="text-xl font-bold text-gray-900 mb-6">
-                Perguntas Frequentes
+                {getContent('contact_faq_title', 'Perguntas Frequentes')}
               </h3>
               <div className="space-y-4">
                 <Card>
                   <CardContent className="p-4">
                     <h4 className="font-semibold text-gray-900 mb-2">
-                      Como funciona o processo de venda?
+                      {getContent('contact_faq_1_question', 'Como funciona o processo de venda?')}
                     </h4>
                     <p className="text-gray-600">
-                      Após aprovação como parceiro, você pode enviar propostas de produtos
-                      que serão analisadas pela nossa equipe antes de serem publicadas.
+                      {getContent('contact_faq_1_answer', 'Após aprovação como parceiro, você pode enviar propostas de produtos que serão analisadas pela nossa equipe antes de serem publicadas.')}
                     </p>
                   </CardContent>
                 </Card>
@@ -131,11 +139,10 @@ export default function ContatoPage() {
                 <Card>
                   <CardContent className="p-4">
                     <h4 className="font-semibold text-gray-900 mb-2">
-                      Qual é a taxa de comissão?
+                      {getContent('contact_faq_2_question', 'Qual é a taxa de comissão?')}
                     </h4>
                     <p className="text-gray-600">
-                      Nossa taxa é competitiva e varia conforme o volume de vendas.
-                      Entre em contato para conhecer nossos planos.
+                      {getContent('contact_faq_2_answer', 'Nossa taxa é competitiva e varia conforme o volume de vendas. Entre em contato para conhecer nossos planos.')}
                     </p>
                   </CardContent>
                 </Card>
@@ -147,9 +154,9 @@ export default function ContatoPage() {
           <div>
             <Card>
               <CardHeader>
-                <CardTitle className="text-2xl">Envie sua Mensagem</CardTitle>
+                <CardTitle className="text-2xl">{getContent('contact_form_title', 'Envie sua Mensagem')}</CardTitle>
                 <p className="text-gray-600">
-                  Preencha o formulário e retornaremos em até 24 horas
+                  {getContent('contact_form_subtitle', 'Preencha o formulário e retornaremos em até 24 horas')}
                 </p>
               </CardHeader>
               <CardContent>

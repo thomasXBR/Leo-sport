@@ -6,12 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Camera, Mail, Calendar, User as UserIcon, Shield, Lock, Save } from 'lucide-react';
+import { Mail, Calendar, User as UserIcon, Shield, Save } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function PerfilPage() {
@@ -20,7 +19,6 @@ export default function PerfilPage() {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState('');
   const [userType, setUserType] = useState<'comprador' | 'vendedor' | 'admin'>('comprador');
 
   // Password change
@@ -39,7 +37,6 @@ export default function PerfilPage() {
     if (profile) {
       setName(profile.name || '');
       setDescription(profile.description || '');
-      setAvatarUrl(profile.avatar_url || '');
       setUserType(profile.user_type || 'comprador');
     }
   }, [user, profile, loading, router]);
@@ -50,7 +47,6 @@ export default function PerfilPage() {
       const result = await updateProfile({
         name,
         description,
-        avatar_url: avatarUrl,
         user_type: userType,
       });
 
@@ -130,37 +126,6 @@ export default function PerfilPage() {
           <p className="mt-2 text-gray-600">Gerencie suas informações pessoais e configurações</p>
         </div>
 
-        {/* Profile Avatar Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Foto de Perfil</CardTitle>
-            <CardDescription>Adicione uma foto para personalizar seu perfil</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center space-y-4">
-            <Avatar className="w-32 h-32">
-              <AvatarImage src={avatarUrl} alt={name} />
-              <AvatarFallback className="text-4xl bg-blue-900 text-white">
-                {name?.charAt(0).toUpperCase() || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="w-full max-w-md">
-              <Label htmlFor="avatarUrl">URL da Foto</Label>
-              <div className="flex gap-2 mt-1">
-                <Input
-                  id="avatarUrl"
-                  type="url"
-                  value={avatarUrl}
-                  onChange={(e) => setAvatarUrl(e.target.value)}
-                  placeholder="https://exemplo.com/minha-foto.jpg"
-                />
-                <Button variant="outline" size="icon">
-                  <Camera className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Personal Information */}
         <Card>
           <CardHeader>
@@ -215,15 +180,37 @@ export default function PerfilPage() {
               />
             </div>
 
+            <div>
+              <Label htmlFor="description">Descrição</Label>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Sobre você..."
+                className="mt-1"
+                rows={3}
+              />
+            </div>
 
-            <Button
-              onClick={handleSaveProfile}
-              disabled={saving}
-              className="w-full bg-blue-900 hover:bg-blue-950"
-            >
-              <Save className="w-4 h-4 mr-2" />
-              {saving ? 'Salvando...' : 'Salvar Alterações'}
-            </Button>
+            <div className="flex gap-4">
+              <Button
+                onClick={handleSaveProfile}
+                disabled={saving}
+                className="flex-1 bg-blue-900 hover:bg-blue-950"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {saving ? 'Salvando...' : 'Salvar Alterações'}
+              </Button>
+              
+              <Button
+                onClick={handleChangePassword}
+                disabled={changingPassword || !newPassword || !confirmNewPassword}
+                variant="outline"
+                className="flex-1"
+              >
+                {changingPassword ? 'Alterando...' : 'Alterar Senha'}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -235,16 +222,6 @@ export default function PerfilPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center space-x-3 py-3">
-              <Mail className="w-5 h-5 text-gray-500" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-700">Email</p>
-                <p className="text-sm text-gray-900">{user.email}</p>
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="flex items-center space-x-3 py-3">
               <UserIcon className="w-5 h-5 text-gray-500" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-700">ID do Usuário</p>
@@ -255,10 +232,22 @@ export default function PerfilPage() {
             <Separator />
 
             <div className="flex items-center space-x-3 py-3">
+              <Mail className="w-5 h-5 text-gray-500" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-700">Email</p>
+                <p className="text-sm text-gray-900">{user.email || profile.email}</p>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center space-x-3 py-3">
               <Shield className="w-5 h-5 text-gray-500" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-gray-700">Tipo de Conta</p>
-                <p className="text-sm text-gray-900 capitalize">{userType}</p>
+                <p className="text-sm font-medium text-gray-700">Tipo de Comprador</p>
+                <p className="text-sm text-gray-900 capitalize">
+                  {userType === 'comprador' ? 'Comprador' : userType === 'vendedor' ? 'Vendedor' : 'Administrador'}
+                </p>
               </div>
             </div>
 
@@ -277,7 +266,7 @@ export default function PerfilPage() {
             <div className="flex items-center space-x-3 py-3">
               <Calendar className="w-5 h-5 text-gray-500" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-gray-700">Última atualização</p>
+                <p className="text-sm font-medium text-gray-700">Última alteração da conta</p>
                 <p className="text-sm text-gray-900">{formatDate(profile.updated_at)}</p>
               </div>
             </div>

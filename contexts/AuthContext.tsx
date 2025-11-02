@@ -1,19 +1,14 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { UserProfile } from '@/lib/supabase';
-
-// Mock User type (sem dependência do Supabase)
-interface MockUser {
-  id: string;
-  email: string;
-  created_at: string;
-}
+import { supabase, UserProfile } from '@/lib/supabase';
+import { validateEmail } from '@/lib/email-validation';
+import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
-  user: MockUser | null;
+  user: User | null;
   profile: UserProfile | null;
-  session: any;
+  session: Session | null;
   loading: boolean;
   signUp: (email: string, password: string, name: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
@@ -24,138 +19,290 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Usuário mockado para demonstração visual
-const MOCK_USER: MockUser = {
-  id: 'mock-user-123',
-  email: 'usuario@leosport.com',
-  created_at: new Date().toISOString(),
-};
-
-const MOCK_PROFILE: UserProfile = {
-  id: 'mock-user-123',
-  email: 'usuario@leosport.com',
-  name: 'Usuário Demonstração',
-  avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Demo',
-  description: 'Este é um usuário de demonstração para visualização do sistema.',
-  user_type: 'comprador',
-  created_at: '2024-01-01T00:00:00.000Z',
-  updated_at: new Date().toISOString(),
-};
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // Estado inicial: usuário NÃO logado (null)
-  // Para testar logado, mude para MOCK_USER e MOCK_PROFILE
-  const [user, setUser] = useState<MockUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [session, setSession] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
 
+  // Carregar sessão e perfil ao inicializar
   useEffect(() => {
-    // Verificar se há sessão salva no localStorage
-    const savedSession = localStorage.getItem('mock_session');
-    if (savedSession) {
-      const sessionData = JSON.parse(savedSession);
-      setUser(sessionData.user);
-      setProfile(sessionData.profile);
-      setSession(sessionData);
-    }
-    setLoading(false);
+    // Verificar sessão atual
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        loadProfile(session.user.id);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    // Escutar mudanças de autenticação
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        await loadProfile(session.user.id);
+      } else {
+        setProfile(null);
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  // Carregar perfil do usuário
+  async function loadProfile(userId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 = nenhuma linha encontrada (primeira vez)
+        console.error('Erro ao carregar perfil:', error);
+      }
+
+      if (data) {
+        setProfile(data);
+      } else {
+        // Se não existe perfil, criar um básico
+        const userData = await supabase.auth.getUser();
+        if (userData.data.user) {
+          const newProfile: UserProfile = {
+            id: userData.data.user.id,
+            email: userData.data.user.email || '',
+            name: userData.data.user.user_metadata?.full_name || userData.data.user.email?.split('@')[0] || 'Usuário',
+            avatar_url: userData.data.user.user_metadata?.avatar_url,
+            description: '',
+            user_type: 'comprador',
+            created_at: userData.data.user.created_at,
+            updated_at: new Date().toISOString(),
+          };
+          
+          // Tentar criar o perfil
+          const { data: createdProfile } = await supabase
+            .from('profiles')
+            .insert([newProfile])
+            .select()
+            .single();
+
+          if (createdProfile) {
+            setProfile(createdProfile);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar perfil:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
-      // Simular delay de rede
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Validar email antes de qualquer coisa
+      const emailValidation = validateEmail(email);
+      if (!emailValidation.valid) {
+        return { error: { message: emailValidation.error || 'Email inválido ou não permitido' } };
+      }
 
-      const newUser: MockUser = {
-        id: `user-${Date.now()}`,
-        email,
-        created_at: new Date().toISOString(),
-      };
+      // Verificar se é email de demonstração
+      const emailLower = email.toLowerCase().trim();
+      if (emailLower.includes('demo') || emailLower.includes('demonstracao') || emailLower.includes('demonstration') || 
+          emailLower.includes('usuario@') || emailLower.includes('test@') || emailLower.includes('teste@')) {
+        return { error: { message: 'Este email não pode ser usado. Por favor, use um email pessoal válido.' } };
+      }
 
-      const newProfile: UserProfile = {
-        id: newUser.id,
-        email,
-        name,
-        avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
+      // Validar senha
+      if (!password || password.length < 6) {
+        return { error: { message: 'A senha deve ter no mínimo 6 caracteres' } };
+      }
+
+      // Validar nome
+      if (!name || name.trim().length < 2) {
+        return { error: { message: 'O nome deve ter no mínimo 2 caracteres' } };
+      }
+
+      // Criar usuário no Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            full_name: name.trim(),
+          },
+        },
+      });
+
+      if (authError) {
+        return { error: authError };
+      }
+
+      if (!authData.user) {
+        return { error: { message: 'Erro ao criar usuário' } };
+      }
+
+      // Criar perfil na tabela profiles
+      const newProfile: Omit<UserProfile, 'id' | 'created_at' | 'updated_at'> = {
+        email: email.trim(),
+        name: name.trim(),
+        avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name.trim()}`,
         description: '',
         user_type: 'comprador',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       };
 
-      const sessionData = { user: newUser, profile: newProfile };
-      localStorage.setItem('mock_session', JSON.stringify(sessionData));
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .insert([{
+          id: authData.user.id,
+          ...newProfile,
+        }])
+        .select()
+        .single();
 
-      setUser(newUser);
-      setProfile(newProfile);
-      setSession(sessionData);
+      if (profileError) {
+        console.error('Erro ao criar perfil:', profileError);
+        // Se falhar ao criar perfil, ainda assim o usuário foi criado
+        // O perfil será criado automaticamente na próxima vez que fizer login
+      }
+
+      if (profileData) {
+        setProfile(profileData);
+      }
+
+      // Aguardar um pouco para garantir que tudo foi salvo
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       return { error: null };
-    } catch (error) {
-      return { error };
+    } catch (error: any) {
+      console.error('Erro no signUp:', error);
+      return { error: { message: error.message || 'Erro ao criar conta. Tente novamente.' } };
     }
   };
 
   const signIn = async (email: string, password: string) => {
     try {
-      // Simular delay de rede
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Validar email antes de qualquer coisa
+      const emailValidation = validateEmail(email);
+      if (!emailValidation.valid) {
+        return { error: { message: emailValidation.error || 'Email inválido ou não permitido' } };
+      }
 
-      // Usar usuário mockado
-      const sessionData = { user: MOCK_USER, profile: MOCK_PROFILE };
-      localStorage.setItem('mock_session', JSON.stringify(sessionData));
+      // Verificar se é email de demonstração
+      const emailLower = email.toLowerCase().trim();
+      if (emailLower.includes('demo') || emailLower.includes('demonstracao') || emailLower.includes('demonstration') || 
+          emailLower.includes('usuario@') || emailLower.includes('test@') || emailLower.includes('teste@')) {
+        return { error: { message: 'Este email não pode ser usado. Por favor, use um email pessoal válido.' } };
+      }
 
-      setUser(MOCK_USER);
-      setProfile(MOCK_PROFILE);
-      setSession(sessionData);
+      // Validar senha
+      if (!password || password.length < 6) {
+        return { error: { message: 'Senha inválida' } };
+      }
+
+      // Fazer login no Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) {
+        return { error };
+      }
+
+      if (data.user) {
+        await loadProfile(data.user.id);
+      }
 
       return { error: null };
-    } catch (error) {
-      return { error };
+    } catch (error: any) {
+      console.error('Erro no signIn:', error);
+      return { error: { message: error.message || 'Erro ao fazer login. Tente novamente.' } };
     }
   };
 
   const signOut = async () => {
-    localStorage.removeItem('mock_session');
-    setUser(null);
-    setProfile(null);
-    setSession(null);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Erro ao fazer logout:', error);
+      }
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+    } catch (error) {
+      console.error('Erro no signOut:', error);
+    }
   };
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
     try {
-      if (!user) throw new Error('Usuário não autenticado');
+      if (!user) {
+        return { error: { message: 'Usuário não autenticado' } };
+      }
 
-      // Simular delay de rede
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Validar email se foi alterado
+      if (updates.email) {
+        const emailValidation = validateEmail(updates.email);
+        if (!emailValidation.valid) {
+          return { error: { message: emailValidation.error } };
+        }
+      }
 
-      const updatedProfile = {
-        ...profile!,
-        ...updates,
-        updated_at: new Date().toISOString(),
-      };
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id)
+        .select()
+        .single();
 
-      const sessionData = { user, profile: updatedProfile };
-      localStorage.setItem('mock_session', JSON.stringify(sessionData));
+      if (error) {
+        return { error };
+      }
 
-      setProfile(updatedProfile);
+      if (data) {
+        setProfile(data);
+      }
+
       return { error: null };
-    } catch (error) {
-      return { error };
+    } catch (error: any) {
+      console.error('Erro no updateProfile:', error);
+      return { error: { message: error.message || 'Erro ao atualizar perfil' } };
     }
   };
 
   const updatePassword = async (newPassword: string) => {
     try {
-      // Simular delay de rede
-      await new Promise(resolve => setTimeout(resolve, 500));
+      if (!user) {
+        return { error: { message: 'Usuário não autenticado' } };
+      }
 
-      // Em um sistema real, isso mudaria a senha
-      console.log('Password would be updated to:', newPassword);
+      if (!newPassword || newPassword.length < 6) {
+        return { error: { message: 'A senha deve ter no mínimo 6 caracteres' } };
+      }
+
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        return { error };
+      }
+
       return { error: null };
-    } catch (error) {
-      return { error };
+    } catch (error: any) {
+      console.error('Erro no updatePassword:', error);
+      return { error: { message: error.message || 'Erro ao alterar senha' } };
     }
   };
 
@@ -181,5 +328,3 @@ export function useAuth() {
   }
   return context;
 }
-
-

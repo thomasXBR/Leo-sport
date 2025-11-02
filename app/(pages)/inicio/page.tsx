@@ -1,18 +1,16 @@
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Trophy, Users, ShoppingBag, Star } from 'lucide-react';
-import { Metadata } from 'next';
 import Ondas from '@/components/onda/ondas';
-
-export const metadata: Metadata = {
-  title: 'LeoSport',
-  description: 'O maior marketplace de produtos esportivos do Brasil.',
-  keywords: ['LeoSport', 'Produtos Esportivos', 'Marketplace de Produtos Esportivos'],
-};
+import { useSiteContent } from '@/hooks/use-site-content';
 
 export default function InicioPage() {
+  const { getContent, loading } = useSiteContent();
+  
   const featuredCategories = [
     { name: 'Futebol', image: 'https://images.pexels.com/photos/274506/pexels-photo-274506.jpeg?auto=compress&cs=tinysrgb&w=400', products: 150 },
     { name: 'Basquete', image: 'https://images.pexels.com/photos/358042/pexels-photo-358042.jpeg?auto=compress&cs=tinysrgb&w=400', products: 89 },
@@ -21,11 +19,19 @@ export default function InicioPage() {
   ];
 
   const stats = [
-    { icon: Trophy, label: 'Produtos Disponíveis', value: '500+' },
-    { icon: Users, label: 'Parceiros Ativos', value: '50+' },
-    { icon: ShoppingBag, label: 'Pedidos Entregues', value: '1000+' },
-    { icon: Star, label: 'Avaliação Média', value: '4.8' },
+    { icon: Trophy, label: getContent('stats_products_label', 'Produtos Disponíveis'), value: getContent('stats_products_value', '500+') },
+    { icon: Users, label: getContent('stats_partners_label', 'Parceiros Ativos'), value: getContent('stats_partners_value', '50+') },
+    { icon: ShoppingBag, label: getContent('stats_orders_label', 'Pedidos Entregues'), value: getContent('stats_orders_value', '1000+') },
+    { icon: Star, label: getContent('stats_rating_label', 'Avaliação Média'), value: getContent('stats_rating_value', '4.8') },
   ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-16">
@@ -46,18 +52,19 @@ export default function InicioPage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              Bem-vindo à <span className="text-blue-900 [text-shadow:_0_0_10px_#fff,_0_0_20px_#fff,_0_0_30px_#fff]">LeoSport</span>
+              {getContent('hero_title', 'Bem-vindo à')} <span className="text-blue-900 [text-shadow:_0_0_10px_#fff,_0_0_20px_#fff,_0_0_30px_#fff]">{getContent('hero_title_accent', 'LeoSport')}</span>
             </h1>
             <p className="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
-              O maior marketplace de produtos esportivos do Brasil.
-              Encontre tudo o que você precisa para sua prática esportiva.
+              {getContent('hero_subtitle', 'O maior marketplace de produtos esportivos do Brasil.')}
+              <br />
+              {getContent('hero_description', 'Encontre tudo o que você precisa para sua prática esportiva.')}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button asChild size="lg" className="bg-blue-900 hover:bg-blue-950 text-white">
-                <Link href="/sobre">Conheça a LeoSport</Link>
+                <Link href={getContent('hero_button_1_link', '/sobre')}>{getContent('hero_button_1_text', 'Conheça a LeoSport')}</Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="text-black bg-white hover:bg-zinc-400">
-                <Link href="/venda-na-leosport">Seja um Parceiro</Link>
+                <Link href={getContent('hero_button_2_link', '/venda-na-leosport')}>{getContent('hero_button_2_text', 'Seja um Parceiro')}</Link>
               </Button>
             </div>
           </div>
@@ -82,8 +89,8 @@ export default function InicioPage() {
       {/* Featured Categories */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Categorias em Destaque</h2>
-          <p className="text-lg text-gray-600">Descubra produtos para seu esporte favorito</p>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">{getContent('categories_title', 'Categorias em Destaque')}</h2>
+          <p className="text-lg text-gray-600">{getContent('categories_subtitle', 'Descubra produtos para seu esporte favorito')}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -113,13 +120,13 @@ export default function InicioPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Pronto para começar sua jornada esportiva?
+              {getContent('cta_title', 'Pronto para começar sua jornada esportiva?')}
             </h2>
             <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
-              Junte-se a milhares de atletas que já encontraram seus produtos ideais na LeoSport.
+              {getContent('cta_description', 'Junte-se a milhares de atletas que já encontraram seus produtos ideais na LeoSport.')}
             </p>
             <Button asChild size="lg" className="bg-blue-900 hover:bg-blue-950">
-              <Link href="/contato">Entre em Contato</Link>
+              <Link href={getContent('cta_button_link', '/contato')}>{getContent('cta_button_text', 'Entre em Contato')}</Link>
             </Button>
           </div>
         </div>

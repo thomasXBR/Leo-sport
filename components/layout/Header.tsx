@@ -2,12 +2,13 @@
 'use client';
 
 import Link from 'next/link';
-import { Menu, User, X, LogOut, UserCircle, ShoppingCart } from 'lucide-react';
+import { Menu, User, X, LogOut, UserCircle, ShoppingCart, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { validateEmail } from '@/lib/email-validation';
 import { useCart } from '@/contexts/CartContext';
 
 export default function Header() {
@@ -34,11 +35,41 @@ export default function Header() {
     setSuccess("");
 
     try {
+      // Validar email antes de enviar
+      const emailValidation = validateEmail(email);
+      if (!emailValidation.valid) {
+        setError(emailValidation.error || "Email inválido");
+        setLoading(false);
+        return;
+      }
+
+      // Validação de senha
+      if (!password || password.length < 6) {
+        setError("A senha deve ter no mínimo 6 caracteres");
+        setLoading(false);
+        return;
+      }
+
+      // Validação de confirmação de senha (apenas no cadastro)
+      if (isSignUp) {
+        if (!name || name.trim().length < 2) {
+          setError("O nome deve ter no mínimo 2 caracteres");
+          setLoading(false);
+          return;
+        }
+
+        if (password !== confirmPassword) {
+          setError("As senhas não coincidem");
+          setLoading(false);
+          return;
+        }
+      }
+
       let result;
       if (isSignUp) {
-        result = await signUp(email, password, name);
+        result = await signUp(email.trim(), password, name.trim());
       } else {
-        result = await signIn(email, password);
+        result = await signIn(email.trim(), password);
       }
 
       if (result.error) {
@@ -298,6 +329,22 @@ export default function Header() {
                       Meu Perfil
                     </Button>
                   </Link>
+
+                  {profile?.user_type === 'admin' && (
+                    <>
+                      <div className="border-t my-2"></div>
+                      <Link href="/admindash">
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-left hover:bg-cyan-50 text-cyan-600 hover:text-cyan-700"
+                          onClick={() => setIsAuthOpen(false)}
+                        >
+                          <Shield className="w-5 h-5 mr-3" />
+                          Dashboard Admin
+                        </Button>
+                      </Link>
+                    </>
+                  )}
 
                   <div className="border-t my-2"></div>
 
