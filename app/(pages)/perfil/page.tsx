@@ -201,7 +201,7 @@ export default function PerfilPage() {
                 <Save className="w-4 h-4 mr-2" />
                 {saving ? 'Salvando...' : 'Salvar Alterações'}
               </Button>
-              
+
               <Button
                 onClick={handleChangePassword}
                 disabled={changingPassword || !newPassword || !confirmNewPassword}
@@ -244,7 +244,7 @@ export default function PerfilPage() {
             <div className="flex items-center space-x-3 py-3">
               <Shield className="w-5 h-5 text-gray-500" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-gray-700">Tipo de Comprador</p>
+                <p className="text-sm font-medium text-gray-700">Tipo de usuário</p>
                 <p className="text-sm text-gray-900 capitalize">
                   {userType === 'comprador' ? 'Comprador' : userType === 'vendedor' ? 'Vendedor' : 'Administrador'}
                 </p>

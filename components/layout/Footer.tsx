@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Facebook, Instagram, Twitter } from 'lucide-react';
 
 export default function Footer() {
@@ -9,9 +10,13 @@ export default function Footer() {
           {/* Logo and Description */}
           <div className="col-span-1 md:col-span-2">
             <Link href="/inicio" className="flex items-center space-x-2 mb-4">
-              <div className="w-8 h-8 bg-blue-900 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">L</span>
-              </div>
+              <Image
+                src="/images/LeoSports_Logo_png.png"
+                alt="LeoSport Logo PNG"
+                width={40}
+                height={40}
+                className="w-8 h-8"
+              />
               <span className="text-xl font-bold">LeoSport</span>
             </Link>
             <p className="text-gray-400 mb-4 max-w-md">

@@ -2,6 +2,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Menu, User, X, LogOut, UserCircle, ShoppingCart, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -151,9 +152,13 @@ export default function Header() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link href="/inicio" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-900 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">L</span>
-            </div>
+            <Image
+              src="/favicon.ico"
+              alt="LeoSport Logo"
+              width={40}
+              height={40}
+              className="w-8 h-8"
+            />
             <span className="text-xl font-bold text-gray-900">LeoSport</span>
           </Link>
 
