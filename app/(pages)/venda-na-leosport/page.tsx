@@ -205,50 +205,10 @@ export default function VendaNaLeoSportPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Campos comuns para ambos os tipos */}
-              <div className="border-b pb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Dados de Contato</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="nome">Nome *</Label>
-                    <Input
-                      id="nome"
-                      value={formData.nome}
-                      onChange={(e) => handleInputChange('nome', e.target.value)}
-                      placeholder="Seu nome completo"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="email">E-mail *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => handleInputChange('email', e.target.value)}
-                      placeholder="seu@email.com"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="telefone">Telefone *</Label>
-                    <Input
-                      id="telefone"
-                      value={formData.telefone}
-                      onChange={(e) => handleInputChange('telefone', e.target.value)}
-                      placeholder="(11) 99999-9999"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
               {activeForm === 'fornecedor' ? (
                 <>
                   <div className="border-b pb-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Informações da Empresa</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">Informações da Empresa</h3>
                   </div>
 
                   <div className="space-y-2">
@@ -301,7 +261,7 @@ export default function VendaNaLeoSportPage() {
               ) : (
                 <>
                   <div className="border-b pb-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Informações sobre a Atuação</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">Informações sobre a Atuação</h3>
                   </div>
 
                   <div className="space-y-2">

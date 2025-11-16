@@ -53,7 +53,7 @@ ChartJS.register(
 export default function Dashboard() {
     const [activeTab, setActiveTab] = useState('sales')
     const [loading, setLoading] = useState(true)
-    
+
     // Estados dos dados
     const [products, setProducts] = useState<Product[]>([])
     const [inventoryItems, setInventoryItems] = useState<any[]>([])
@@ -138,7 +138,7 @@ export default function Dashboard() {
         // Agrupar vendas por mês
         const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho']
         const monthlyTotals = [0, 0, 0, 0, 0, 0]
-        
+
         data.forEach(sale => {
             const date = new Date(sale.created_at)
             const monthIndex = date.getMonth()
@@ -146,7 +146,7 @@ export default function Dashboard() {
                 monthlyTotals[monthIndex] += parseFloat(sale.total_amount) || 0
             }
         })
-        
+
         return monthlyTotals
     }
 
@@ -190,11 +190,15 @@ export default function Dashboard() {
             switch (itemToDelete.type) {
                 case 'invoice':
                     await deleteInvoice(itemToDelete.id)
-                    setInvoices(invoices.filter(i => i.id !== itemToDelete.id))
+                    // Recarregar dados do Supabase
+                    const updatedInvoices = await getInvoices()
+                    setInvoices(updatedInvoices || [])
                     break
                 case 'coupon':
                     await deleteCoupon(itemToDelete.id)
-                    setCoupons(coupons.filter(c => c.id !== itemToDelete.id))
+                    // Recarregar dados do Supabase para garantir sincronização
+                    const updatedCoupons = await getCoupons()
+                    setCoupons(updatedCoupons || [])
                     break
                 case 'inventory':
                     await deleteInventoryMovement(itemToDelete.id)
@@ -202,11 +206,15 @@ export default function Dashboard() {
                     break
                 case 'product':
                     await deleteProduct(itemToDelete.id)
-                    setProducts(products.filter(p => p.id !== itemToDelete.id))
+                    // Recarregar dados do Supabase
+                    const updatedProducts = await getProducts()
+                    setProducts(updatedProducts || [])
                     break
                 case 'partnership':
                     await deletePartnership(itemToDelete.id)
-                    setPartnersList(partnersList.filter(p => p.id !== itemToDelete.id))
+                    // Recarregar dados do Supabase
+                    const updatedPartners = await getPartnerships()
+                    setPartnersList(updatedPartners || [])
                     break
             }
             setDeleteDialogOpen(false)
@@ -245,27 +253,85 @@ export default function Dashboard() {
 
     const handleSaveCoupon = async (formData: any) => {
         try {
+            // Formatar dados para envio ao Supabase
+            const couponData: any = {
+                code: formData.code,
+                description: formData.description || undefined,
+                discount_type: formData.discount_type,
+                discount_value: formData.discount_value,
+                valid_from: formData.valid_from || new Date().toISOString().split('T')[0],
+                valid_until: formData.valid_until,
+                usage_limit: formData.usage_limit ? parseInt(formData.usage_limit.toString()) : undefined,
+                min_purchase_amount: formData.min_purchase_amount ? parseFloat(formData.min_purchase_amount.toString()) : undefined,
+            }
+
             if (editingItem) {
-                await updateCoupon(editingItem.id, formData)
-                setCoupons(coupons.map(c => c.id === editingItem.id ? { ...c, ...formData } : c))
+                // Atualizar cupom existente
+                if (formData.status) {
+                    couponData.status = formData.status
+                }
+                // Só adiciona show_in_navbar se a coluna existir (não causa erro se não existir)
+                if (formData.show_in_navbar !== undefined) {
+                    couponData.show_in_navbar = formData.show_in_navbar
+                }
+                const updatedCoupon = await updateCoupon(editingItem.id, couponData)
+                // Recarregar dados do Supabase para garantir sincronização
+                const updatedCoupons = await getCoupons()
+                setCoupons(updatedCoupons || [])
             } else {
-                const newCoupon = await createCoupon({
-                    code: formData.code,
-                    discount_type: formData.discount_type,
-                    discount_value: formData.discount_value,
-                    valid_from: formData.valid_from || new Date().toISOString().split('T')[0],
-                    valid_until: formData.valid_until,
-                    usage_limit: formData.usage_limit ? parseInt(formData.usage_limit) : undefined,
+                // Criar novo cupom - remover show_in_navbar se a coluna não existir
+                const newCouponData: any = {
+                    ...couponData,
                     usage_count: 0,
-                    min_purchase_amount: formData.min_purchase_amount ? parseFloat(formData.min_purchase_amount) : undefined,
-                    status: 'Ativo',
-                })
-                setCoupons([newCoupon, ...coupons])
+                    status: formData.status || 'Ativo',
+                }
+                // Só adiciona show_in_navbar se estiver definido (evita erro se coluna não existir)
+                if (formData.show_in_navbar !== undefined) {
+                    newCouponData.show_in_navbar = formData.show_in_navbar
+                }
+                const newCoupon = await createCoupon(newCouponData)
+                // Recarregar dados do Supabase para garantir sincronização
+                const updatedCoupons = await getCoupons()
+                setCoupons(updatedCoupons || [])
             }
             closeModal()
-        } catch (error) {
+        } catch (error: any) {
+            // Capturar todas as propriedades do erro do Supabase
+            const errorInfo: any = {}
+
+            if (error) {
+                if (typeof error === 'string') {
+                    errorInfo.message = error
+                } else if (typeof error === 'object') {
+                    errorInfo.message = error.message || error.msg || 'Erro desconhecido'
+                    errorInfo.details = error.details || error.hint || null
+                    errorInfo.code = error.code || null
+                    errorInfo.hint = error.hint || null
+
+                    // Se for erro do Supabase, pode ter mais propriedades
+                    if (error.error_description) errorInfo.error_description = error.error_description
+                    if (error.status) errorInfo.status = error.status
+                }
+            }
+
+            // Log completo do erro
             console.error('Erro ao salvar cupom:', error)
-            alert('Erro ao salvar. Tente novamente.')
+            console.error('Detalhes do erro:', errorInfo)
+
+            // Mensagem para o usuário
+            const errorMessage = errorInfo.message || errorInfo.details || errorInfo.hint || 'Erro desconhecido ao salvar cupom'
+
+            // Verificar se é erro de coluna não encontrada
+            const isColumnError = errorMessage.includes('column') ||
+                errorMessage.includes('show_in_navbar') ||
+                errorInfo.code === 'PGRST116' ||
+                errorInfo.details?.includes('column')
+
+            if (isColumnError) {
+                alert('A coluna "show_in_navbar" não existe no banco de dados.\n\nPor favor, adicione-a no Supabase:\n1. Vá para Table Editor → coupons\n2. Adicione coluna: show_in_navbar (boolean, nullable)')
+            } else {
+                alert(`Erro ao salvar cupom: ${errorMessage}`)
+            }
         }
     }
 
@@ -300,7 +366,7 @@ export default function Dashboard() {
 
     const handleSaveAllContent = async () => {
         try {
-            const updates = siteContent.map(content => 
+            const updates = siteContent.map(content =>
                 updateSiteContent(content.id, content.value)
             )
             await Promise.all(updates)
@@ -415,13 +481,13 @@ export default function Dashboard() {
                                                     </span>
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
-                                                    <button 
+                                                    <button
                                                         onClick={() => openModal('inventory', item)}
                                                         className="text-cyan-600 hover:text-cyan-900 mr-3"
                                                     >
                                                         <Edit size={18} />
                                                     </button>
-                                                    <button 
+                                                    <button
                                                         onClick={() => openDeleteDialog('inventory', item.id, item.name)}
                                                         className="text-red-600 hover:text-red-900"
                                                     >
@@ -464,12 +530,12 @@ export default function Dashboard() {
                             ) : (
                                 products.map(product => (
                                     <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden group">
-                                        <Image 
-                                            src={product.image_url || 'https://placehold.co/400x400/e2e8f0/334155?text=Produto'} 
-                                            alt={product.name} 
-                                            width={400} 
-                                            height={160} 
-                                            className="w-full h-40 object-cover group-hover:opacity-80 transition-opacity" 
+                                        <Image
+                                            src={product.image_url || 'https://placehold.co/400x400/e2e8f0/334155?text=Produto'}
+                                            alt={product.name}
+                                            width={400}
+                                            height={160}
+                                            className="w-full h-40 object-cover group-hover:opacity-80 transition-opacity"
                                         />
                                         <div className="p-4">
                                             <h3 className="font-semibold text-gray-800 truncate">{product.name}</h3>
@@ -547,13 +613,13 @@ export default function Dashboard() {
                                                     </span>
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
-                                                    <button 
+                                                    <button
                                                         onClick={() => openModal('invoice', invoice)}
                                                         className="text-cyan-600 hover:text-cyan-900 mr-3"
                                                     >
                                                         <Edit size={18} />
                                                     </button>
-                                                    <button 
+                                                    <button
                                                         onClick={() => openDeleteDialog('invoice', invoice.id, `NF ${invoice.invoice_number}`)}
                                                         className="text-red-600 hover:text-red-900"
                                                     >
@@ -655,6 +721,7 @@ export default function Dashboard() {
                             <table className="min-w-full bg-white">
                                 <thead className="bg-gray-50">
                                     <tr>
+                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mostrar na Navbar</th>
                                         <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
                                         <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Desconto</th>
                                         <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
@@ -667,13 +734,40 @@ export default function Dashboard() {
                                 <tbody className="divide-y divide-gray-200">
                                     {coupons.length === 0 ? (
                                         <tr>
-                                            <td colSpan={7} className="py-8 text-center text-gray-500">
+                                            <td colSpan={8} className="py-8 text-center text-gray-500">
                                                 Nenhum cupom cadastrado
                                             </td>
                                         </tr>
                                     ) : (
                                         coupons.map((coupon) => (
                                             <tr key={coupon.id}>
+                                                <td className="py-4 px-4 whitespace-nowrap">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={coupon.show_in_navbar || false}
+                                                        onChange={async (e) => {
+                                                            try {
+                                                                await updateCoupon(coupon.id, { show_in_navbar: e.target.checked })
+                                                                const updatedCoupons = await getCoupons()
+                                                                setCoupons(updatedCoupons || [])
+                                                            } catch (error: any) {
+                                                                console.error('Erro ao atualizar cupom:', {
+                                                                    message: error?.message || 'Erro desconhecido',
+                                                                    details: error?.details || error,
+                                                                    code: error?.code
+                                                                })
+                                                                const errorMsg = error?.message || error?.details || 'Erro desconhecido'
+                                                                if (errorMsg.includes('column') || errorMsg.includes('show_in_navbar')) {
+                                                                    alert('A coluna show_in_navbar não existe no banco de dados. Por favor, adicione-a primeiro no Supabase.')
+                                                                } else {
+                                                                    alert(`Erro ao atualizar: ${errorMsg}`)
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
+                                                        title="Mostrar este cupom na navbar do site"
+                                                    />
+                                                </td>
                                                 <td className="py-4 px-4 whitespace-nowrap">
                                                     <span className="font-mono font-bold text-cyan-700 bg-cyan-50 px-2 py-1 rounded">{coupon.code}</span>
                                                 </td>
@@ -886,50 +980,50 @@ function InvoiceForm({ invoice, onSave, onCancel }: any) {
             <div className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Número do Pedido</label>
-                    <input 
-                        type="text" 
+                    <input
+                        type="text"
                         value={formData.order_id}
                         onChange={(e) => setFormData({ ...formData, order_id: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
-                        placeholder="PED123" 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder="PED123"
                     />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
-                    <input 
-                        type="text" 
+                    <input
+                        type="text"
                         value={formData.customer_name}
                         onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
-                        placeholder="Nome do Cliente" 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder="Nome do Cliente"
                         required
                     />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Email do Cliente</label>
-                    <input 
-                        type="email" 
+                    <input
+                        type="email"
                         value={formData.customer_email}
                         onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
-                        placeholder="cliente@email.com" 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder="cliente@email.com"
                     />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Valor</label>
-                    <input 
-                        type="number" 
+                    <input
+                        type="number"
                         step="0.01"
                         value={formData.total_amount}
                         onChange={(e) => setFormData({ ...formData, total_amount: parseFloat(e.target.value) || 0 })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
-                        placeholder="0.00" 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder="0.00"
                         required
                     />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <select 
+                    <select
                         value={formData.status}
                         onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg"
@@ -942,11 +1036,11 @@ function InvoiceForm({ invoice, onSave, onCancel }: any) {
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Data de Emissão</label>
-                    <input 
-                        type="date" 
+                    <input
+                        type="date"
                         value={formData.issue_date}
                         onChange={(e) => setFormData({ ...formData, issue_date: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                         required
                     />
                 </div>
@@ -964,14 +1058,29 @@ function InvoiceForm({ invoice, onSave, onCancel }: any) {
 }
 
 function CouponForm({ coupon, onSave, onCancel }: any) {
+    // Converter valid_from de timestamp para date string se necessário
+    const formatDate = (dateValue: any) => {
+        if (!dateValue) return new Date().toISOString().split('T')[0]
+        if (typeof dateValue === 'string' && dateValue.includes('T')) {
+            return dateValue.split('T')[0]
+        }
+        if (typeof dateValue === 'string') {
+            return dateValue
+        }
+        return new Date(dateValue).toISOString().split('T')[0]
+    }
+
     const [formData, setFormData] = useState({
         code: coupon?.code || '',
+        description: coupon?.description || '',
         discount_type: coupon?.discount_type || 'Percentual',
         discount_value: coupon?.discount_value || '',
-        valid_from: coupon?.valid_from || new Date().toISOString().split('T')[0],
-        valid_until: coupon?.valid_until || '',
-        usage_limit: coupon?.usage_limit || '',
-        min_purchase_amount: coupon?.min_purchase_amount || '',
+        valid_from: formatDate(coupon?.valid_from),
+        valid_until: formatDate(coupon?.valid_until),
+        usage_limit: coupon?.usage_limit?.toString() || '',
+        min_purchase_amount: coupon?.min_purchase_amount?.toString() || '',
+        status: coupon?.status || 'Ativo',
+        show_in_navbar: coupon?.show_in_navbar || false,
     })
 
     return (
@@ -979,18 +1088,28 @@ function CouponForm({ coupon, onSave, onCancel }: any) {
             <div className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Código do Cupom *</label>
-                    <input 
-                        type="text" 
+                    <input
+                        type="text"
                         value={formData.code}
                         onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono" 
-                        placeholder="CUPOM2025" 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono"
+                        placeholder="CUPOM2025"
                         required
                     />
                 </div>
                 <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                    <textarea
+                        value={formData.description || ''}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder="Descrição do cupom (opcional)"
+                        rows={3}
+                    />
+                </div>
+                <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Desconto *</label>
-                    <select 
+                    <select
                         value={formData.discount_type}
                         onChange={(e) => setFormData({ ...formData, discount_type: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg"
@@ -1002,54 +1121,78 @@ function CouponForm({ coupon, onSave, onCancel }: any) {
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Desconto *</label>
-                    <input 
-                        type="text" 
+                    <input
+                        type="text"
                         value={formData.discount_value}
                         onChange={(e) => setFormData({ ...formData, discount_value: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
-                        placeholder="15% ou R$ 50,00 ou Frete Grátis" 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder="15% ou R$ 50,00 ou Frete Grátis"
                         required
                     />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Válido De</label>
-                    <input 
-                        type="date" 
+                    <input
+                        type="date"
                         value={formData.valid_from}
                         onChange={(e) => setFormData({ ...formData, valid_from: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                     />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Válido Até *</label>
-                    <input 
-                        type="date" 
+                    <input
+                        type="date"
                         value={formData.valid_until}
                         onChange={(e) => setFormData({ ...formData, valid_until: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                         required
                     />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Limite de Uso</label>
-                    <input 
-                        type="number" 
+                    <input
+                        type="number"
                         value={formData.usage_limit}
                         onChange={(e) => setFormData({ ...formData, usage_limit: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
-                        placeholder="100" 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder="100"
                     />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Valor Mínimo de Compra (R$)</label>
-                    <input 
-                        type="number" 
+                    <input
+                        type="number"
                         step="0.01"
                         value={formData.min_purchase_amount}
                         onChange={(e) => setFormData({ ...formData, min_purchase_amount: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
-                        placeholder="0.00" 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder="0.00"
                     />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Status *</label>
+                    <select
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    >
+                        <option value="Ativo">Ativo</option>
+                        <option value="Inativo">Inativo</option>
+                        <option value="Expirado">Expirado</option>
+                    </select>
+                </div>
+                <div className="flex items-center">
+                    <input
+                        type="checkbox"
+                        id="show_in_navbar"
+                        checked={formData.show_in_navbar || false}
+                        onChange={(e) => setFormData({ ...formData, show_in_navbar: e.target.checked })}
+                        className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
+                    />
+                    <label htmlFor="show_in_navbar" className="ml-2 block text-sm font-medium text-gray-700">
+                        Mostrar na Navbar do Site
+                    </label>
                 </div>
             </div>
             <DialogFooter className="mt-6">
@@ -1077,10 +1220,10 @@ function InventoryForm({ item, products, onSave, onCancel }: any) {
             <div className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Produto *</label>
-                    <select 
+                    <select
                         value={formData.product_id}
                         onChange={(e) => setFormData({ ...formData, product_id: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                         required
                     >
                         <option value="">Selecione um produto</option>
@@ -1091,7 +1234,7 @@ function InventoryForm({ item, products, onSave, onCancel }: any) {
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Movimentação *</label>
-                    <select 
+                    <select
                         value={formData.movement_type}
                         onChange={(e) => setFormData({ ...formData, movement_type: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg"
@@ -1103,22 +1246,22 @@ function InventoryForm({ item, products, onSave, onCancel }: any) {
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Quantidade *</label>
-                    <input 
-                        type="number" 
+                    <input
+                        type="number"
                         value={formData.quantity}
                         onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
-                        placeholder="0" 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder="0"
                         min="1"
                         required
                     />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Motivo</label>
-                    <textarea 
+                    <textarea
                         value={formData.reason}
                         onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                         rows={3}
                         placeholder="Motivo da movimentação..."
                     />
@@ -1157,68 +1300,68 @@ function ProductForm({ product, onSave, onCancel }: any) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Produto *</label>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
-                            placeholder="Nome do produto" 
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            placeholder="Nome do produto"
                             required
                         />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">SKU *</label>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             value={formData.sku}
                             onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
-                            placeholder="SKU001" 
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            placeholder="SKU001"
                             required
                         />
                     </div>
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-                    <textarea 
+                    <textarea
                         value={formData.description}
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
-                        rows={3} 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        rows={3}
                         placeholder="Descrição detalhada do produto"
                     />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             value={formData.brand}
                             onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
-                            placeholder="Nike, Adidas, etc." 
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            placeholder="Nike, Adidas, etc."
                         />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Preço *</label>
-                        <input 
-                            type="number" 
+                        <input
+                            type="number"
                             step="0.01"
                             value={formData.price}
                             onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
-                            placeholder="0.00" 
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            placeholder="0.00"
                             required
                         />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Estoque *</label>
-                        <input 
-                            type="number" 
+                        <input
+                            type="number"
                             value={formData.stock_quantity}
                             onChange={(e) => setFormData({ ...formData, stock_quantity: parseInt(e.target.value) || 0 })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
-                            placeholder="0" 
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            placeholder="0"
                             min="0"
                             required
                         />
@@ -1227,38 +1370,38 @@ function ProductForm({ product, onSave, onCancel }: any) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Peso</label>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             value={formData.weight}
                             onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
-                            placeholder="1.5kg" 
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            placeholder="1.5kg"
                         />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Dimensões</label>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             value={formData.dimensions}
                             onChange={(e) => setFormData({ ...formData, dimensions: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
-                            placeholder="LxAxP cm" 
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                            placeholder="LxAxP cm"
                         />
                     </div>
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">URL da Imagem</label>
-                    <input 
-                        type="url" 
+                    <input
+                        type="url"
                         value={formData.image_url}
                         onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
-                        placeholder="https://exemplo.com/imagem.jpg" 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder="https://exemplo.com/imagem.jpg"
                     />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <select 
+                    <select
                         value={formData.status}
                         onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg"
@@ -1294,39 +1437,39 @@ function PartnershipForm({ partnership, onSave, onCancel }: any) {
             <div className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Nome da Empresa *</label>
-                    <input 
-                        type="text" 
+                    <input
+                        type="text"
                         value={formData.company_name}
                         onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
-                        placeholder="Nome da Empresa" 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder="Nome da Empresa"
                         required
                     />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Email de Contato *</label>
-                    <input 
-                        type="email" 
+                    <input
+                        type="email"
                         value={formData.contact_email}
                         onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
-                        placeholder="contato@empresa.com" 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder="contato@empresa.com"
                         required
                     />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
-                    <input 
-                        type="tel" 
+                    <input
+                        type="tel"
                         value={formData.contact_phone}
                         onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg" 
-                        placeholder="(00) 00000-0000" 
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder="(00) 00000-0000"
                     />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <select 
+                    <select
                         value={formData.status}
                         onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg"

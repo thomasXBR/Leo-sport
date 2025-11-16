@@ -2,23 +2,59 @@
 
 import { useState, useEffect } from 'react';
 import { Ticket } from 'lucide-react';
+import { getNavbarCoupons, type Coupon } from '@/lib/supabase';
 
 export default function CouponCarousel() {
     const [currentIndex, setCurrentIndex] = useState(0);
-
-    const messages = [
-        '🎉 Cupom especial: 25% de desconto em todos os produtos! Use o código: LEOSPORT25',
-        '💰 Desconto de 25% OFF! Aproveite agora com o cupom: LEOSPORT25',
-        '✨ 25% de desconto em toda a loja! Não perca essa oportunidade: LEOSPORT25',
-    ];
+    const [coupons, setCoupons] = useState<Coupon[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            setCurrentIndex((prev) => (prev + 1) % messages.length);
-        }, 4000); // Muda a mensagem a cada 4 segundos
+        loadCoupons();
+    }, []);
 
-        return () => clearInterval(interval);
-    }, [messages.length]);
+    const loadCoupons = async () => {
+        try {
+            const data = await getNavbarCoupons();
+            setCoupons(data || []);
+            setLoading(false);
+        } catch (error: any) {
+            // Log detalhado do erro
+            console.error('Erro ao carregar cupons:', {
+                message: error?.message || 'Erro desconhecido',
+                details: error?.details || error?.hint || error,
+                code: error?.code
+            });
+            // Não mostrar erro ao usuário, apenas não exibir o carrossel
+            setCoupons([]);
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (coupons.length > 1) {
+            const interval = setInterval(() => {
+                setCurrentIndex((prev) => (prev + 1) % coupons.length);
+            }, 4000); // Muda o cupom a cada 4 segundos
+
+            return () => clearInterval(interval);
+        }
+    }, [coupons.length]);
+
+    if (loading) {
+        return null;
+    }
+
+    if (coupons.length === 0) {
+        return null;
+    }
+
+    const formatCouponMessage = (coupon: Coupon) => {
+        const discount = coupon.discount_value;
+        const code = coupon.code;
+        const description = coupon.description ? ` - ${coupon.description}` : '';
+        return `🎉 Ganhe descontos especiais usando o cupom: ${code}`;
+    };
 
     return (
         <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white py-2 overflow-hidden relative">
@@ -30,27 +66,30 @@ export default function CouponCarousel() {
                             transform: `translateX(-${currentIndex * 100}%)`,
                         }}
                     >
-                        {messages.map((message, index) => (
+                        {coupons.map((coupon, index) => (
                             <div
-                                key={index}
-                                className="min-w-full text-center text-sm sm:text-base font-medium px-4"
+                                key={coupon.id}
+                                className="min-w-full text-center text-sm sm:text-base font-medium px-4 flex items-center justify-center gap-2"
                             >
-                                {message}
+                                <Ticket className="w-4 h-4 flex-shrink-0" />
+                                <span>{formatCouponMessage(coupon)}</span>
                             </div>
                         ))}
                     </div>
                 </div>
-                <div className="flex gap-1 px-4">
-                    {messages.map((_, index) => (
-                        <button
-                            key={index}
-                            onClick={() => setCurrentIndex(index)}
-                            className={`w-2 h-2 rounded-full transition-all ${index === currentIndex ? 'bg-white' : 'bg-white/50'
-                                }`}
-                            aria-label={`Ir para mensagem ${index + 1}`}
-                        />
-                    ))}
-                </div>
+                {coupons.length > 1 && (
+                    <div className="flex gap-1 px-4">
+                        {coupons.map((_, index) => (
+                            <button
+                                key={index}
+                                onClick={() => setCurrentIndex(index)}
+                                className={`w-2 h-2 rounded-full transition-all ${index === currentIndex ? 'bg-white' : 'bg-white/50'
+                                    }`}
+                                aria-label={`Ir para cupom ${index + 1}`}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );

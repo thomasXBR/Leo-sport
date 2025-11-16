@@ -121,6 +121,7 @@ export type Coupon = {
   min_purchase_amount?: number;
   status: 'Ativo' | 'Inativo' | 'Expirado';
   description?: string;
+  show_in_navbar?: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -365,6 +366,40 @@ export async function getCoupons() {
   return data;
 }
 
+export async function getNavbarCoupons() {
+  try {
+    const { data, error } = await supabase
+      .from('coupons')
+      .select('*')
+      .eq('status', 'Ativo')
+      .gte('valid_until', new Date().toISOString().split('T')[0])
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      // Se o erro for sobre coluna não encontrada, retorna array vazio
+      if (error.message?.includes('column') && error.message?.includes('show_in_navbar')) {
+        console.warn('Coluna show_in_navbar não existe ainda. Retornando array vazio.');
+        return [];
+      }
+      throw error;
+    }
+    
+    // Filtrar client-side se a coluna existe, caso contrário retornar vazio
+    if (data && data.length > 0 && 'show_in_navbar' in data[0]) {
+      return data.filter(coupon => coupon.show_in_navbar === true) || [];
+    }
+    
+    return [];
+  } catch (error: any) {
+    // Se for erro de coluna não encontrada, retorna array vazio silenciosamente
+    if (error?.message?.includes('column') || error?.code === 'PGRST116') {
+      console.warn('Coluna show_in_navbar não existe no banco de dados ainda.');
+      return [];
+    }
+    throw error;
+  }
+}
+
 export async function getCouponById(id: string) {
   const { data, error } = await supabase
     .from('coupons')
@@ -377,25 +412,41 @@ export async function getCouponById(id: string) {
 }
 
 export async function createCoupon(coupon: Omit<Coupon, 'id' | 'created_at' | 'updated_at'>) {
+  // Remover campos undefined para evitar erros no Supabase
+  const cleanCoupon = Object.fromEntries(
+    Object.entries(coupon).filter(([_, value]) => value !== undefined)
+  ) as Omit<Coupon, 'id' | 'created_at' | 'updated_at'>;
+  
   const { data, error } = await supabase
     .from('coupons')
-    .insert([coupon])
+    .insert([cleanCoupon])
     .select()
     .single();
   
-  if (error) throw error;
+  if (error) {
+    console.error('Erro ao criar cupom no Supabase:', error);
+    throw error;
+  }
   return data;
 }
 
 export async function updateCoupon(id: string, updates: Partial<Coupon>) {
+  // Remover campos undefined para evitar erros no Supabase
+  const cleanUpdates = Object.fromEntries(
+    Object.entries(updates).filter(([_, value]) => value !== undefined)
+  ) as Partial<Coupon>;
+  
   const { data, error } = await supabase
     .from('coupons')
-    .update(updates)
+    .update(cleanUpdates)
     .eq('id', id)
     .select()
     .single();
   
-  if (error) throw error;
+  if (error) {
+    console.error('Erro ao atualizar cupom no Supabase:', error);
+    throw error;
+  }
   return data;
 }
 
