@@ -509,7 +509,7 @@ export default function Dashboard() {
                         <p className="text-gray-600">Gestão de usuários através da tabela profiles no Supabase.</p>
                     </div>
                 );
-            case 'products':
+case 'products':
                 return (
                     <div>
                         <div className="flex justify-between items-center mb-6">
@@ -542,6 +542,23 @@ export default function Dashboard() {
                                             <p className="text-sm text-gray-600 mb-1">SKU: {product.sku}</p>
                                             <p className="text-sm text-gray-600 mb-2">Estoque: {product.stock_quantity}</p>
                                             <p className="text-lg font-bold text-gray-900 mb-3">R$ {product.price.toFixed(2).replace('.', ',')}</p>
+                                            <div className="mb-4">
+                                                <p className="text-sm text-gray-400 line-trough">
+                                                    R${
+                                                        (
+                                                            (Number(product.price) / 0.75)
+                                                            .toFixed(2)
+                                                            .replace('.', ',')
+                                                        )
+                                                    }
+                                                </p>
+                                                <p className="text-xl font-extrabold text-red-600">
+                                                    R${product.price.toFixed(2).replace('.', ',')}
+                                                </p>
+                                                <span className="inline-block mt-1 px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-800 rounded-full"> 
+                                                    25% OFF
+                                                </span>  
+                                            </div>
                                             <div className="flex gap-2">
                                                 <button
                                                     onClick={() => openModal('product', product)}
