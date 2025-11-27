@@ -156,17 +156,19 @@ export default async function ProductPage({ params }: ProductPageProps) {
                         </div>
 
                         {/* Specifications */}
-                        <div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-3">Especificações Técnicas</h3>
-                            <div className="grid grid-cols-2 gap-4">
-                                {Object.entries(product.specifications || {}).map(([key, value]) => (
-                                    <div key={key} className="flex justify-between py-2 border-b border-gray-200">
-                                        <span className="text-gray-600">{key}:</span>
-                                        <span className="text-gray-900 font-medium">{value}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        Especificações Técnicas
+                    </h3>
+                    <ul className="list-disc pl-5 space-y-2">
+                        {Object.entries(product.specifications || {}).map(([key, value]) => (
+                    <li key={key} className="text-gray-900">
+                        <span className="font-semibold text-gray-700">{key}:</span> {value}
+                    </li>
+                ))}
+            </ul>
+        </div>
+
 
                         {/* Stock Info */}
                         <div className="bg-blue-50 p-4 rounded-lg">
