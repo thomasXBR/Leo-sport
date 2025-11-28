@@ -7,10 +7,10 @@ import { trackShipping } from '@/lib/melhorEnvioClient';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const shippingId = params.id;
+    const { id: shippingId } = await params;
 
     if (!shippingId) {
       return NextResponse.json(
