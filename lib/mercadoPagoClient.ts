@@ -5,8 +5,8 @@ import { MercadoPagoConfig, Preference } from 'mercadopago';
  * Suporta credenciais de teste e produção
  */
 
-const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN || '';
-const isTestMode = process.env.MERCADOPAGO_TEST_MODE === 'true' || !accessToken;
+const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || '';
+const isTestMode = process.env.MERCADO_PAGO_TEST_MODE === 'true' || !accessToken;
 
 // Inicializar cliente Mercado Pago
 const client = new MercadoPagoConfig({ 
@@ -31,36 +31,75 @@ export interface MercadoPagoItem {
   picture_url?: string;
 }
 
+export interface MercadoPagoAddress {
+  zip_code?: string;
+  street_name?: string;
+  street_number?: string | number;
+  city_name?: string;
+  state_name?: string;
+}
+
+export interface MercadoPagoPayer {
+  name?: string;
+  surname?: string;
+  email: string;
+  phone?: {
+    area_code?: string;
+    number?: string;
+  };
+  identification?: {
+    type?: string;
+    number?: string;
+  };
+  address?: MercadoPagoAddress;
+}
+
+export interface MercadoPagoBackUrls {
+  success?: string;
+  failure?: string;
+  pending?: string;
+}
+
+export interface MercadoPagoShipment {
+  mode?: 'not_specified' | 'custom' | 'me2';
+  default_shipping_method?: number;
+  free_methods?: number[];
+  cost?: number;
+  free_shipping?: boolean;
+  receiver_address?: MercadoPagoAddress;
+}
+
+export interface MercadoPagoPaymentMethods {
+  excluded_payment_methods?: Array<{
+    id: string;
+  }>;
+  excluded_payment_types?: Array<{
+    id: string;
+  }>;
+  installments?: number;
+  default_installments?: number;
+  default_payment_method_id?: string;
+}
+
 export interface MercadoPagoPreference {
   items: MercadoPagoItem[];
-  payer?: {
-    name?: string;
-    surname?: string;
-    email: string;
-    phone?: {
-      area_code?: string;
-      number?: string;
-    };
-    identification?: {
-      type?: string;
-      number?: string;
-    };
-    address?: {
-      zip_code?: string;
-      street_name?: string;
-      street_number?: string | number; // Aceita ambos, será convertido para string
-    };
-  };
-  back_urls?: {
-    success?: string;
-    failure?: string;
-    pending?: string;
-  };
+  payer?: MercadoPagoPayer;
+  back_urls?: MercadoPagoBackUrls;
   auto_return?: 'approved' | 'all';
   external_reference?: string;
   notification_url?: string;
   statement_descriptor?: string;
   metadata?: Record<string, any>;
+  shipment?: MercadoPagoShipment;
+  payment_methods?: MercadoPagoPaymentMethods;
+  additional_info?: {
+    items?: MercadoPagoItem[];
+    payer?: MercadoPagoPayer;
+    shipments?: MercadoPagoShipment;
+  };
+  expires?: boolean;
+  expiration_date_from?: string;
+  expiration_date_to?: string;
 }
 
 export interface MercadoPagoPaymentNotification {
@@ -90,7 +129,15 @@ export async function createPaymentPreference(
 
     // Preparar dados convertendo tipos conforme necessário
     const body: any = {
-      items: preferenceData.items,
+      items: preferenceData.items.map(item => ({
+        id: item.id,
+        title: item.title,
+        description: item.description || '',
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        currency_id: item.currency_id || 'BRL',
+        picture_url: item.picture_url,
+      })),
       metadata: {
         ...preferenceData.metadata,
         test_mode: isTestMode,
@@ -129,6 +176,24 @@ export async function createPaymentPreference(
     if (preferenceData.statement_descriptor) {
       body.statement_descriptor = preferenceData.statement_descriptor;
     }
+    if (preferenceData.shipment) {
+      body.shipment = preferenceData.shipment;
+    }
+    if (preferenceData.payment_methods) {
+      body.payment_methods = preferenceData.payment_methods;
+    }
+    if (preferenceData.additional_info) {
+      body.additional_info = preferenceData.additional_info;
+    }
+    if (preferenceData.expires !== undefined) {
+      body.expires = preferenceData.expires;
+      if (preferenceData.expiration_date_from) {
+        body.expiration_date_from = preferenceData.expiration_date_from;
+      }
+      if (preferenceData.expiration_date_to) {
+        body.expiration_date_to = preferenceData.expiration_date_to;
+      }
+    }
 
     const preference = await preferenceClient.create({
       body,
@@ -142,12 +207,112 @@ export async function createPaymentPreference(
 }
 
 /**
+ * Criar preferência para integração WEB (Checkout Pro)
+ * Redireciona para o Mercado Pago Checkout Pro
+ */
+export async function createWebCheckoutPreference(
+  items: MercadoPagoItem[],
+  payerEmail: string,
+  orderId: string,
+  options?: {
+    payerName?: string;
+    payerSurname?: string;
+    payerPhone?: string;
+    payerIdentification?: string;
+    shipmentMode?: 'not_specified' | 'custom' | 'me2';
+    statementDescriptor?: string;
+    installments?: number;
+  }
+): Promise<any> {
+  const backUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+  const preference = await createPaymentPreference({
+    items,
+    payer: {
+      email: payerEmail,
+      name: options?.payerName,
+      surname: options?.payerSurname,
+      phone: options?.payerPhone ? { number: options.payerPhone } : undefined,
+      identification: options?.payerIdentification
+        ? { number: options.payerIdentification }
+        : undefined,
+    },
+    back_urls: {
+      success: `${backUrl}/checkout/success?preference_id={preference_id}`,
+      failure: `${backUrl}/checkout/failure`,
+      pending: `${backUrl}/checkout/pending`,
+    },
+    auto_return: 'approved',
+    external_reference: orderId,
+    statement_descriptor: options?.statementDescriptor || 'LEOSPORT',
+    notification_url: `${backUrl}/api/payments/webhook`,
+    payment_methods: {
+      installments: options?.installments || 12,
+    },
+    metadata: {
+      order_id: orderId,
+      integration_type: 'web',
+      created_at: new Date().toISOString(),
+    },
+  });
+
+  return preference;
+}
+
+/**
+ * Criar preferência para integração MOBILE
+ * Retorna dados para integração com apps nativos
+ */
+export async function createMobileCheckoutPreference(
+  items: MercadoPagoItem[],
+  payerEmail: string,
+  orderId: string,
+  options?: {
+    payerName?: string;
+    payerPhone?: string;
+    installments?: number;
+    excludedPaymentMethods?: string[];
+  }
+): Promise<any> {
+  const backUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+  const preference = await createPaymentPreference({
+    items,
+    payer: {
+      email: payerEmail,
+      name: options?.payerName,
+      phone: options?.payerPhone ? { number: options.payerPhone } : undefined,
+    },
+    back_urls: {
+      success: `${backUrl}/checkout/success?preference_id={preference_id}`,
+      failure: `${backUrl}/checkout/failure`,
+      pending: `${backUrl}/checkout/pending`,
+    },
+    external_reference: orderId,
+    statement_descriptor: 'LEOSPORT',
+    notification_url: `${backUrl}/api/payments/webhook`,
+    payment_methods: {
+      installments: options?.installments || 12,
+      excluded_payment_methods: options?.excludedPaymentMethods?.map(id => ({
+        id,
+      })),
+    },
+    metadata: {
+      order_id: orderId,
+      integration_type: 'mobile',
+      device_type: 'mobile_app',
+      created_at: new Date().toISOString(),
+    },
+  });
+
+  return preference;
+}
+
+/**
  * Buscar informação de pagamento por ID
  */
 export async function getPaymentById(paymentId: string): Promise<any> {
   try {
-    // Usar o SDK do Mercado Pago para buscar pagamento
-    // Nota: Será implementado quando necessário buscar detalhes do pagamento
     const response = await fetch(
       `https://api.mercadopago.com/v1/payments/${paymentId}`,
       {
@@ -167,6 +332,69 @@ export async function getPaymentById(paymentId: string): Promise<any> {
   } catch (error: any) {
     console.error('[Mercado Pago] Erro ao buscar pagamento:', error);
     throw new Error(`Erro ao buscar pagamento: ${error.message}`);
+  }
+}
+
+/**
+ * Buscar pagamentos por external_reference (ID do pedido)
+ */
+export async function searchPaymentsByReference(
+  externalReference: string
+): Promise<any> {
+  try {
+    const response = await fetch(
+      `https://api.mercadopago.com/v1/payments/search?external_reference=${externalReference}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Erro ao buscar pagamentos: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.results || [];
+  } catch (error: any) {
+    console.error('[Mercado Pago] Erro ao buscar pagamentos:', error);
+    throw new Error(`Erro ao buscar pagamentos: ${error.message}`);
+  }
+}
+
+/**
+ * Reembolsar um pagamento
+ */
+export async function refundPayment(paymentId: string, amount?: number): Promise<any> {
+  try {
+    const body: any = {};
+    if (amount) {
+      body.amount = amount;
+    }
+
+    const response = await fetch(
+      `https://api.mercadopago.com/v1/payments/${paymentId}/refunds`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Erro ao reembolsar: ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    console.error('[Mercado Pago] Erro ao reembolsar pagamento:', error);
+    throw new Error(`Erro ao reembolsar pagamento: ${error.message}`);
   }
 }
 

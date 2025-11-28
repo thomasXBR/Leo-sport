@@ -1,14 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateWebhookNotification, getPaymentById } from '@/lib/mercadoPagoClient';
+import { validateWebhookNotification as validateNotification, extractPaymentInfo } from '@/lib/webhookConfig';
 import { supabase } from '@/lib/supabase';
 
 /**
  * API Route para receber webhooks do Mercado Pago
  * POST /api/payments/webhook
  * 
- * O Mercado Pago enviará notificações sobre mudanças de status de pagamentos
+ * Eventos suportados:
+ * - payment.created: Um novo pagamento foi criado
+ * - payment.updated: Um pagamento foi atualizado (status, reembolso, etc)
+ * 
+ * Status de Pagamento:
+ * - pending: Aguardando confirmação
+ * - approved: Aprovado
+ * - rejected: Rejeitado
+ * - refunded: Reembolsado
+ * - cancelled: Cancelado
  */
+
+const WEBHOOK_LOG_ENABLED = process.env.WEBHOOK_LOG_ENABLED !== 'false';
+
 export async function POST(request: NextRequest) {
+  const requestId = `webhook_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const receivedAt = new Date().toISOString();
+
   try {
     const body = await request.json();
 
