@@ -48,7 +48,7 @@ export interface MercadoPagoPreference {
     address?: {
       zip_code?: string;
       street_name?: string;
-      street_number?: number;
+      street_number?: string | number; // Aceita ambos, será convertido para string
     };
   };
   back_urls?: {
@@ -88,14 +88,50 @@ export async function createPaymentPreference(
       console.log('[Mercado Pago] Modo de teste ativado');
     }
 
-    const preference = await preferenceClient.create({
-      body: {
-        ...preferenceData,
-        metadata: {
-          ...preferenceData.metadata,
-          test_mode: isTestMode,
-        },
+    // Preparar dados convertendo tipos conforme necessário
+    const body: any = {
+      items: preferenceData.items,
+      metadata: {
+        ...preferenceData.metadata,
+        test_mode: isTestMode,
       },
+    };
+
+    // Adicionar payer se existir, convertendo street_number para string
+    if (preferenceData.payer) {
+      body.payer = {
+        ...preferenceData.payer,
+        address: preferenceData.payer.address
+          ? {
+              ...preferenceData.payer.address,
+              street_number:
+                preferenceData.payer.address.street_number !== undefined
+                  ? String(preferenceData.payer.address.street_number)
+                  : undefined,
+            }
+          : undefined,
+      };
+    }
+
+    // Adicionar outros campos opcionais
+    if (preferenceData.back_urls) {
+      body.back_urls = preferenceData.back_urls;
+    }
+    if (preferenceData.auto_return) {
+      body.auto_return = preferenceData.auto_return;
+    }
+    if (preferenceData.external_reference) {
+      body.external_reference = preferenceData.external_reference;
+    }
+    if (preferenceData.notification_url) {
+      body.notification_url = preferenceData.notification_url;
+    }
+    if (preferenceData.statement_descriptor) {
+      body.statement_descriptor = preferenceData.statement_descriptor;
+    }
+
+    const preference = await preferenceClient.create({
+      body,
     });
 
     return preference;
