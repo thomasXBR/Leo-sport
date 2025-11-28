@@ -1,19 +1,73 @@
 'use client';
 
-import { productsData, getCategories } from '@/lib/products-data';
+import { useState, useEffect } from 'react';
+import { getProducts } from '@/lib/supabase';
+import type { Product as SupabaseProduct } from '@/lib/supabase';
 import ProductCard from '@/components/products/ProductCard';
 import { Search, Filter } from 'lucide-react';
 import Image from 'next/image';
 import { useSiteContent } from '@/hooks/use-site-content';
+import { Loader2 } from 'lucide-react';
+
+// Converter produto do Supabase para o formato esperado pelo ProductCard
+function convertProduct(supabaseProduct: SupabaseProduct & { categories?: { name: string; slug: string } | null }) {
+    return {
+        id: supabaseProduct.id,
+        name: supabaseProduct.name,
+        category: supabaseProduct.categories?.name || 'Sem categoria',
+        price: `R$ ${supabaseProduct.price.toFixed(2).replace('.', ',')}`,
+        imageUrl: supabaseProduct.image_url || 'https://placehold.co/400x400/e2e8f0/334155?text=Produto',
+        description: supabaseProduct.description || '',
+        stock: supabaseProduct.stock_quantity,
+        sku: supabaseProduct.sku,
+        brand: supabaseProduct.brand || '',
+        weight: supabaseProduct.weight || '',
+        dimensions: supabaseProduct.dimensions || '',
+        status: supabaseProduct.status,
+    };
+}
 
 export default function ProductsPage() {
-    const { getContent, loading } = useSiteContent();
-    const categories = getCategories();
+    const { getContent, loading: contentLoading } = useSiteContent();
+    const [products, setProducts] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('all');
 
-    if (loading) {
+    // Buscar produtos do Supabase
+    useEffect(() => {
+        async function loadProducts() {
+            try {
+                setLoading(true);
+                const data = await getProducts();
+                // Filtrar apenas produtos ativos
+                const activeProducts = (data || []).filter(p => p.status === 'Ativo');
+                setProducts(activeProducts.map(convertProduct));
+            } catch (error) {
+                console.error('Erro ao carregar produtos:', error);
+                setProducts([]);
+            } finally {
+                setLoading(false);
+            }
+        }
+        loadProducts();
+    }, []);
+
+    // Obter categorias únicas dos produtos
+    const categories = Array.from(new Set(products.map(p => p.category)));
+
+    // Filtrar produtos
+    const filteredProducts = products.filter(product => {
+        const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            product.description.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
+        return matchesSearch && matchesCategory;
+    });
+
+    if (contentLoading || loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
+                <Loader2 className="animate-spin text-cyan-600" size={48} />
             </div>
         );
     }
@@ -22,7 +76,6 @@ export default function ProductsPage() {
         <div className="min-h-screen bg-gray-50">
             {/* Hero Section */}
             <section className="relative text-white py-16 overflow-hidden">
-                {/* Background Image */}
                 <div className="absolute inset-0">
                     <Image
                         src="/images/1920x1080-hd-sports-61oi85jh19u3ptld.jpg"
@@ -33,7 +86,6 @@ export default function ProductsPage() {
                     />
                     <div className="absolute inset-0 bg-black/50" />
                 </div>
-                {/* Content */}
                 <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center">
                         <h1 className="text-4xl md:text-5xl font-bold mb-4">
@@ -43,12 +95,14 @@ export default function ProductsPage() {
                             {getContent('products_subtitle', 'Descubra nossa ampla variedade de produtos esportivos de alta qualidade')}
                         </p>
 
-                        {/* Search and Filter Bar */}
+                        {/* Search Bar */}
                         <div className="max-w-2xl mx-auto">
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white w-5 h-5" />
                                 <input
                                     type="text"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
                                     placeholder={getContent('products_search_placeholder', 'Buscar produtos...')}
                                     className="w-full pl-10 pr-4 py-3 rounded-lg border-0 bg-white/90 text-gray-900 focus:ring-2 focus:ring-blue-300 focus:bg-white"
                                 />
@@ -66,13 +120,23 @@ export default function ProductsPage() {
                         <h2 className="text-lg font-semibold text-gray-800">{getContent('products_filter_title', 'Filtrar por categoria:')}</h2>
                     </div>
                     <div className="flex flex-wrap gap-3">
-                        <button className="px-4 py-2 bg-blue-900 text-white rounded-full hover:bg-blue-800 transition-colors">
+                        <button
+                            onClick={() => setSelectedCategory('all')}
+                            className={`px-4 py-2 rounded-full transition-colors ${selectedCategory === 'all'
+                                    ? 'bg-blue-900 text-white'
+                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
+                        >
                             {getContent('products_filter_all', 'Todos')}
                         </button>
                         {categories.map((category) => (
                             <button
                                 key={category}
-                                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 transition-colors"
+                                onClick={() => setSelectedCategory(category)}
+                                className={`px-4 py-2 rounded-full transition-colors ${selectedCategory === category
+                                        ? 'bg-blue-900 text-white'
+                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                    }`}
                             >
                                 {category}
                             </button>
@@ -86,31 +150,21 @@ export default function ProductsPage() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center mb-8">
                         <h2 className="text-2xl font-bold text-gray-900">
-                            {getContent('products_list_title', 'Todos os Produtos')} ({productsData.length})
+                            {getContent('products_list_title', 'Todos os Produtos')} ({filteredProducts.length})
                         </h2>
-                        <div className="flex items-center gap-4">
-                            <select className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                <option value="relevance">Relevância</option>
-                                <option value="price-low">Menor preço</option>
-                                <option value="price-high">Maior preço</option>
-                                <option value="name">Nome A-Z</option>
-                                <option value="newest">Mais recentes</option>
-                            </select>
+                    </div>
+
+                    {filteredProducts.length === 0 ? (
+                        <div className="text-center py-12">
+                            <p className="text-gray-500 text-lg">Nenhum produto encontrado.</p>
                         </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {productsData.map((product) => (
-                            <ProductCard key={product.id} product={product} />
-                        ))}
-                    </div>
-
-                    {/* Load More Button */}
-                    <div className="text-center mt-12">
-                        <button className="px-8 py-3 bg-blue-900 text-white rounded-lg hover:bg-blue-800 transition-colors font-semibold">
-                            {getContent('products_load_more', 'Carregar Mais Produtos')}
-                        </button>
-                    </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {filteredProducts.map((product) => (
+                                <ProductCard key={product.id} product={product} />
+                            ))}
+                        </div>
+                    )}
                 </div>
             </section>
 

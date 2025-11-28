@@ -104,13 +104,51 @@ export interface PartnerApplication {
 }
 
 export interface ShippingOption {
-  id: string;
+  id: number;
   name: string;
   price: number;
+  currency?: string;
   delivery_time: number;
+  delivery_range?: {
+    min: number;
+    max: number;
+  };
   company: {
     id: number;
     name: string;
     picture: string;
   };
+}
+
+// Tipos para integração de pagamento
+export interface PaymentPreference {
+  id: string;
+  init_point: string;
+  sandbox_init_point?: string;
+  external_reference?: string;
+}
+
+export interface PaymentStatus {
+  id: string;
+  status: 'pending' | 'approved' | 'in_process' | 'rejected' | 'cancelled' | 'refunded';
+  status_detail: string;
+  external_reference?: string;
+  transaction_amount: number;
+  payment_method_id?: string;
+  payment_type_id?: string;
+  date_created: string;
+  date_approved?: string;
+}
+
+export interface ShippingTracking {
+  id: string;
+  protocol: string;
+  status: string;
+  tracking?: string;
+  events?: Array<{
+    date: string;
+    status: string;
+    location?: string;
+    description?: string;
+  }>;
 }

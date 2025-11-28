@@ -99,8 +99,8 @@ Um marketplace completo para produtos esportivos, conectando vendedores parceiro
 - [ ] Implementar autenticação real
 
 ### Integrações
-- [ ] Implementar Mercado Pago real
-- [ ] Implementar Melhor Envio real
+- [x] Implementar Mercado Pago real
+- [x] Implementar Melhor Envio real
 - [ ] Configurar Resend para emails
 
 ### Funcionalidades
