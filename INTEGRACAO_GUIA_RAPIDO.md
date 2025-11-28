@@ -7,6 +7,7 @@
 - ✅ Webhook do Mercado Pago para atualização automática de status
 - ✅ Cliente Melhor Envio para cálculo de frete e criação de envios
 - ✅ API routes para cálculo de frete e rastreamento
+- ✅ Webhook do Melhor Envio para atualização automática de status de envios
 
 ## 🚀 Configuração Rápida
 
@@ -29,6 +30,7 @@ MERCADOPAGO_TEST_MODE=true
 # Melhor Envio
 MELHOR_ENVIO_TOKEN=your_token_here
 MELHOR_ENVIO_PRODUCTION=false
+MELHOR_ENVIO_WEBHOOK_SECRET=your_webhook_secret  # Secret do webhook (obtido no painel)
 ```
 
 ### 2. Obter Credenciais
@@ -53,9 +55,18 @@ npx ngrok http 3000
 ```
 
 Copie a URL (ex: `https://abc123.ngrok.io`) e configure:
-1. No Mercado Pago: https://www.mercadopago.com.br/developers/panel/app/YOUR_APP/webhooks
+
+**Mercado Pago:**
+1. Acesse: https://www.mercadopago.com.br/developers/panel/app/YOUR_APP/webhooks
 2. URL do webhook: `https://abc123.ngrok.io/api/payments/webhook`
 3. Eventos: selecione `payment`
+
+**Melhor Envio:**
+1. Acesse: https://melhorenvio.com.br/painel/gerenciar/tokens
+2. Vá em "Integrações" > "Área Dev" > "Seus aplicativos"
+3. Clique em "Novo Webhook"
+4. URL do webhook: `https://abc123.ngrok.io/api/shipping/webhook`
+5. Copie o **Secret** e configure como `MELHOR_ENVIO_WEBHOOK_SECRET` no `.env.local`
 
 ## 📡 Endpoints Disponíveis
 
@@ -70,6 +81,7 @@ Copie a URL (ex: `https://abc123.ngrok.io`) e configure:
 - `POST /api/shipping/calculate` - Calcular frete
 - `POST /api/shipping/create` - Criar envio
 - `GET /api/shipping/track/[id]` - Rastrear envio
+- `POST /api/shipping/webhook` - Webhook (chamado pelo Melhor Envio)
 
 ## 🔍 Testando
 

@@ -21,6 +21,7 @@ MERCADOPAGO_TEST_MODE=true
 # Melhor Envio Configuration
 MELHOR_ENVIO_TOKEN=your_melhor_envio_token
 MELHOR_ENVIO_PRODUCTION=false
+MELHOR_ENVIO_WEBHOOK_SECRET=your_webhook_secret  # Secret para validar webhooks
 ```
 
 ## 💳 Mercado Pago
@@ -105,6 +106,7 @@ POST /api/payments/webhook
    ```env
    MELHOR_ENVIO_TOKEN=seu_token_melhor_envio
    MELHOR_ENVIO_PRODUCTION=false  # true para produção
+   MELHOR_ENVIO_WEBHOOK_SECRET=seu_webhook_secret  # Secret do webhook (obtido no painel)
    ```
 
 ### API Routes Disponíveis
@@ -194,6 +196,29 @@ Body: {
 GET /api/shipping/track/[id]
 ```
 
+#### Webhook (automático)
+```typescript
+POST /api/shipping/webhook
+// Chamado automaticamente pelo Melhor Envio
+```
+
+**Para configurar no Melhor Envio:**
+1. Acesse: https://melhorenvio.com.br/painel/gerenciar/tokens
+2. Vá em "Integrações" > "Área Dev"
+3. Em "Seus aplicativos", localize a integração desejada
+4. Clique em "Novo Webhook"
+5. Insira a URL do webhook: `https://seu-dominio.com/api/shipping/webhook`
+6. Copie o **Secret** do webhook e configure no `.env.local` como `MELHOR_ENVIO_WEBHOOK_SECRET`
+7. Salve as configurações
+
+**Eventos suportados:**
+- `order.created` - Envio criado
+- `order.paid` - Envio pago
+- `order.cancelled` - Envio cancelado
+- `order.shipped` - Envio enviado
+- `order.delivered` - Envio entregue
+- `order.returned` - Envio retornado
+
 ## 🔄 Fluxo Completo
 
 ### 1. Checkout
@@ -215,12 +240,15 @@ GET /api/shipping/track/[id]
 
 1. Após pagamento aprovado, criar envio usando `/api/shipping/create`
 2. Gerar etiqueta (se necessário)
-3. Rastrear envio usando `/api/shipping/track/[id]`
+3. Melhor Envio envia webhook para `/api/shipping/webhook` com atualizações de status
+4. Sistema atualiza status do pedido automaticamente via webhook
+5. Rastrear envio usando `/api/shipping/track/[id]` (opcional)
 
 ## 📝 Notas Importantes
 
 - **Modo de Teste**: Configure `MERCADOPAGO_TEST_MODE=true` para usar credenciais de teste
-- **Webhook**: O webhook precisa estar acessível publicamente (use ngrok ou similar para desenvolvimento local)
+- **Webhooks**: Os webhooks precisam estar acessíveis publicamente (use ngrok ou similar para desenvolvimento local)
+- **Validação de Webhook**: O webhook do Melhor Envio valida a assinatura HMAC-SHA256 usando o `MELHOR_ENVIO_WEBHOOK_SECRET`
 - **CEP**: Sempre remover formatação dos CEPs antes de enviar (apenas números)
 - **Documentos**: CPF/CNPJ devem ser enviados apenas com números
 

@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
+import crypto from 'crypto';
 
 /**
  * Cliente Melhor Envio para cálculo de frete e criação de envios
@@ -6,6 +7,7 @@ import axios, { AxiosInstance } from 'axios';
 
 const token = process.env.MELHOR_ENVIO_TOKEN || '';
 const isProduction = process.env.MELHOR_ENVIO_PRODUCTION === 'true';
+const webhookSecret = process.env.MELHOR_ENVIO_WEBHOOK_SECRET || '';
 
 // URLs da API do Melhor Envio
 const BASE_URL = isProduction
@@ -237,6 +239,58 @@ export async function generateShippingLabel(shippingId: string): Promise<any> {
       `Erro ao gerar etiqueta: ${error.response?.data?.message || error.message}`
     );
   }
+}
+
+/**
+ * Validar assinatura do webhook do Melhor Envio
+ * @param signature - Assinatura recebida no cabeçalho X-ME-Signature
+ * @param body - Corpo da requisição (string JSON)
+ * @returns true se a assinatura for válida
+ */
+export function validateWebhookSignature(signature: string, body: string): boolean {
+  if (!webhookSecret) {
+    console.warn('[Melhor Envio] Webhook secret não configurado. Validação desabilitada.');
+    return true; // Em desenvolvimento, permitir sem validação se não houver secret
+  }
+
+  if (!signature) {
+    return false;
+  }
+
+  try {
+    // Calcular HMAC-SHA256
+    const hmac = crypto.createHmac('sha256', webhookSecret);
+    hmac.update(body);
+    const calculatedSignature = hmac.digest('hex');
+
+    // Verificar se as assinaturas têm o mesmo tamanho
+    if (signature.length !== calculatedSignature.length) {
+      return false;
+    }
+
+    // Comparar assinaturas (usar comparação segura para evitar timing attacks)
+    return crypto.timingSafeEqual(
+      Buffer.from(signature),
+      Buffer.from(calculatedSignature)
+    );
+  } catch (error) {
+    console.error('[Melhor Envio] Erro ao validar assinatura do webhook:', error);
+    return false;
+  }
+}
+
+/**
+ * Tipos para webhook do Melhor Envio
+ */
+export interface MelhorEnvioWebhookEvent {
+  event: string; // Ex: "order.created", "order.paid", "order.cancelled", "order.shipped", etc.
+  data: {
+    id: string;
+    protocol?: string;
+    status?: string;
+    tracking?: string;
+    [key: string]: any;
+  };
 }
 
 export { apiClient as melhorEnvioClient };
