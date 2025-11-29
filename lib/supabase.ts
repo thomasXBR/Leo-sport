@@ -59,6 +59,20 @@ export type Product = {
   updated_at: string;
 };
 
+// --- Tipagem para reviews conforme oque está no Supabase:
+export type Review = {
+  id: number;
+  product_id: string;
+  user_id: string | null;
+  stars: number;
+  comment: string;
+  created_at: string;
+};
+
+export type ReviewWithUser = Review & {
+  user: { id: string; name: string; avatar_url?: string } | null
+};
+
 export type InventoryMovement = {
   id: string;
   product_id: string;
@@ -152,9 +166,12 @@ export async function getProducts() {
 }
 
 export async function getProductById(id: string) {
+  // Se quiser incluir reviews ao buscar um produto, basta fazer um join:
+  // Exemplo:
+  // .select('*, categories(name, slug), reviews(*)')
   const { data, error } = await supabase
     .from('products')
-    .select('*, categories(name, slug)')
+    .select('*, categories(name, slug), reviews(*)')
     .eq('id', id)
     .single();
   
@@ -191,6 +208,61 @@ export async function deleteProduct(id: string) {
     .delete()
     .eq('id', id);
   
+  if (error) throw error;
+}
+
+// ============================================
+// CRUD - REVIEWS
+// ============================================
+/**
+ * Obtém todos os reviews de um produto, incluindo dados do usuário se desejar
+ */
+export async function getReviewsByProduct(product_id: string) {
+  // Inclua user (perfil do usuário) no select se desejar mostrar nome/avatar
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('*, user:users(id, name, avatar_url)')
+    .eq('product_id', product_id)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as ReviewWithUser[];
+}
+
+/**
+ * Cria um novo review
+ */
+export async function createReview(review: Omit<Review, 'id' | 'created_at' | 'updated_at'>) {
+  const { data, error } = await supabase
+    .from('reviews')
+    .insert([review])
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Review;
+}
+
+/**
+ * Atualiza um review existente
+ */
+export async function updateReview(id: string, updates: Partial<Review>) {
+  const { data, error } = await supabase
+    .from('reviews')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Review;
+}
+
+/**
+ * Deleta um review
+ */
+export async function deleteReview(id: string) {
+  const { error } = await supabase
+    .from('reviews')
+    .delete()
+    .eq('id', id);
   if (error) throw error;
 }
 
