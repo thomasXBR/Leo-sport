@@ -1,22 +1,33 @@
-import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 
 /**
  * Cliente Mercado Pago para integração de pagamentos
  * Suporta credenciais de teste e produção
+ * 
+ * Variáveis de ambiente necessárias:
+ * - MERCADO_PAGO_ACCESS_TOKEN: Token de acesso do Mercado Pago
+ * - MERCADO_PAGO_TEST_MODE: 'true' para modo de teste (opcional)
+ * - NEXT_PUBLIC_APP_URL: URL base da aplicação para webhooks
  */
 
 const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || '';
 const isTestMode = process.env.MERCADO_PAGO_TEST_MODE === 'true' || !accessToken;
 
+if (!accessToken && process.env.NODE_ENV === 'production') {
+  console.warn('[Mercado Pago] ATENÇÃO: MERCADO_PAGO_ACCESS_TOKEN não configurado em produção!');
+}
+
 // Inicializar cliente Mercado Pago
 const client = new MercadoPagoConfig({ 
   accessToken,
   options: {
-    timeout: 5000,
+    timeout: 30000, // 30 segundos para operações mais complexas
+    idempotencyKey: undefined, // Será definido por requisição se necessário
   }
 });
 
 export const preferenceClient = new Preference(client);
+export const paymentClient = new Payment(client);
 
 /**
  * Tipos para integração com Mercado Pago
@@ -313,22 +324,8 @@ export async function createMobileCheckoutPreference(
  */
 export async function getPaymentById(paymentId: string): Promise<any> {
   try {
-    const response = await fetch(
-      `https://api.mercadopago.com/v1/payments/${paymentId}`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`Erro ao buscar pagamento: ${response.statusText}`);
-    }
-
-    return await response.json();
+    const payment = await paymentClient.get({ id: paymentId });
+    return payment;
   } catch (error: any) {
     console.error('[Mercado Pago] Erro ao buscar pagamento:', error);
     throw new Error(`Erro ao buscar pagamento: ${error.message}`);
@@ -366,15 +363,16 @@ export async function searchPaymentsByReference(
 }
 
 /**
- * Reembolsar um pagamento
+ * Reembolsar um pagamento (total ou parcial)
  */
 export async function refundPayment(paymentId: string, amount?: number): Promise<any> {
   try {
-    const body: any = {};
+    const refundData: any = {};
     if (amount) {
-      body.amount = amount;
+      refundData.amount = amount;
     }
 
+    // Usar API REST diretamente pois o SDK não expõe método refund
     const response = await fetch(
       `https://api.mercadopago.com/v1/payments/${paymentId}/refunds`,
       {
@@ -383,18 +381,87 @@ export async function refundPayment(paymentId: string, amount?: number): Promise
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify(refundData),
       }
     );
 
     if (!response.ok) {
-      throw new Error(`Erro ao reembolsar: ${response.statusText}`);
+      const errorData = await response.json();
+      throw new Error(`Erro ao reembolsar: ${errorData.message || response.statusText}`);
     }
 
     return await response.json();
   } catch (error: any) {
     console.error('[Mercado Pago] Erro ao reembolsar pagamento:', error);
     throw new Error(`Erro ao reembolsar pagamento: ${error.message}`);
+  }
+}
+
+/**
+ * Cancelar um pagamento pendente
+ */
+export async function cancelPayment(paymentId: string): Promise<any> {
+  try {
+    // Usar API REST diretamente
+    const response = await fetch(
+      `https://api.mercadopago.com/v1/payments/${paymentId}`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'cancelled' }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Erro ao cancelar: ${errorData.message || response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    console.error('[Mercado Pago] Erro ao cancelar pagamento:', error);
+    throw new Error(`Erro ao cancelar pagamento: ${error.message}`);
+  }
+}
+
+/**
+ * Capturar um pagamento autorizado
+ */
+export async function capturePayment(paymentId: string, amount?: number): Promise<any> {
+  try {
+    const captureData: any = {};
+    if (amount) {
+      captureData.transaction_amount = amount;
+    }
+
+    // Usar API REST diretamente
+    const response = await fetch(
+      `https://api.mercadopago.com/v1/payments/${paymentId}`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...captureData,
+          capture: true,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Erro ao capturar: ${errorData.message || response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    console.error('[Mercado Pago] Erro ao capturar pagamento:', error);
+    throw new Error(`Erro ao capturar pagamento: ${error.message}`);
   }
 }
 
@@ -415,6 +482,54 @@ export function validateWebhookNotification(
   }
 
   return true;
+}
+
+/**
+ * Obter URL base da aplicação para webhooks e redirects
+ */
+export function getBaseUrl(): string {
+  if (process.env.NODE_ENV === 'production') {
+    return process.env.NEXT_PUBLIC_APP_URL || 
+           (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
+  }
+  
+  return process.env.NEXT_PUBLIC_APP_URL || 
+         (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+}
+
+/**
+ * Verificar se o pagamento está aprovado
+ */
+export function isPaymentApproved(payment: any): boolean {
+  return payment?.status === 'approved';
+}
+
+/**
+ * Verificar se o pagamento está pendente
+ */
+export function isPaymentPending(payment: any): boolean {
+  return payment?.status === 'pending' || payment?.status === 'in_process';
+}
+
+/**
+ * Verificar se o pagamento foi rejeitado
+ */
+export function isPaymentRejected(payment: any): boolean {
+  return payment?.status === 'rejected';
+}
+
+/**
+ * Verificar se o pagamento foi cancelado
+ */
+export function isPaymentCancelled(payment: any): boolean {
+  return payment?.status === 'cancelled';
+}
+
+/**
+ * Verificar se o pagamento foi reembolsado
+ */
+export function isPaymentRefunded(payment: any): boolean {
+  return payment?.status === 'refunded';
 }
 
 export { client };
