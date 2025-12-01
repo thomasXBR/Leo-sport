@@ -3,6 +3,8 @@ export interface Product {
   name: string;
   category: string;
   price: string;
+  discountedPrice?: string | null;
+  discountPercentage?: string | null;
   imageUrl: string;
   description: string;
   stock: number;
@@ -10,7 +12,12 @@ export interface Product {
   brand: string;
   weight: string;
   dimensions: string;
+  width?: string;
+  height?: string;
+  color?: string;
+  sport?: string;
   status: 'Ativo' | 'Inativo' | 'Esgotado';
+  relevance?: number;
   features?: string[];
   specifications?: Record<string, string>;
 }

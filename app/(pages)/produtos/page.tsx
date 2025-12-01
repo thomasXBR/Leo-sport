@@ -1,17 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getProducts } from '@/lib/supabase';
+import { getProducts, getCoupons } from '@/lib/supabase';
 import type { Product as SupabaseProduct } from '@/lib/supabase';
 import ProductCard from '@/components/products/ProductCard';
 import { Search, Filter } from 'lucide-react';
 import Image from 'next/image';
 import { useSiteContent } from '@/hooks/use-site-content';
 import { Loader2 } from 'lucide-react';
+import { calculateDiscountedPrice } from '@/lib/utils';
 
 // Função para converter produto do supabase ao formato para o ProductCard
 function convertProduct(
-  supabaseProduct: SupabaseProduct & { categories?: { name: string; slug: string } | null }
+  supabaseProduct: SupabaseProduct & { categories?: { name: string; slug: string } | null },
+  discountInfo?: { discount_type?: string; discount_value?: string } | null
 ) {
   let width = '';
   let height = '';
@@ -33,14 +35,29 @@ function convertProduct(
   // Os campos color e sport não existem no tipo Product.
   // Portanto, mantemos os valores como string vazia para evitar erro de tipo.
 
+  const originalPrice = typeof supabaseProduct.price === 'number' ? supabaseProduct.price : 0;
+  
+  // Calcular preço com desconto se houver cupom ativo
+  const discountCalculation = calculateDiscountedPrice(
+    originalPrice,
+    discountInfo?.discount_type,
+    discountInfo?.discount_value
+  );
+
   return {
     id: supabaseProduct.id,
     name: supabaseProduct.name,
     category: supabaseProduct.categories?.name ?? 'Sem categoria',
     price:
-      typeof supabaseProduct.price === 'number'
-        ? `R$ ${supabaseProduct.price.toFixed(2).replace('.', ',')}`
+      originalPrice > 0
+        ? `R$ ${originalPrice.toFixed(2).replace('.', ',')}`
         : 'R$ 0,00',
+    discountedPrice: discountCalculation.hasDiscount
+      ? `R$ ${discountCalculation.finalPrice.toFixed(2).replace('.', ',')}`
+      : null,
+    discountPercentage: discountCalculation.hasDiscount
+      ? `${discountCalculation.discountPercentage}%`
+      : null,
     imageUrl:
       supabaseProduct.image_url ||
       'https://placehold.co/400x400/e2e8f0/334155?text=Produto',
@@ -106,15 +123,36 @@ export default function ProductsPage() {
     async function loadProducts() {
       try {
         setLoading(true);
-        const data = await getProducts();
-        if (!Array.isArray(data)) {
-          console.error('getProducts não retornou um array:', data);
+        
+        // Buscar produtos e cupons ativos
+        const [productsData, couponsData] = await Promise.all([
+          getProducts(),
+          getCoupons().catch(() => [])
+        ]);
+
+        if (!Array.isArray(productsData)) {
+          console.error('getProducts não retornou um array:', productsData);
           setProducts([]);
           return;
         }
+
+        // Encontrar cupom ativo (primeiro válido)
+        const activeCoupon = Array.isArray(couponsData)
+          ? couponsData.find((coupon: any) => {
+              const today = new Date().toISOString().split('T')[0];
+              return (
+                coupon.status === 'Ativo' &&
+                coupon.valid_from <= today &&
+                coupon.valid_until >= today
+              );
+            })
+          : null;
+
         // Só produtos ativos
-        const activeProducts = data.filter((p) => p.status === 'Ativo');
-        const prods = activeProducts.map(convertProduct);
+        const activeProducts = productsData.filter((p) => p.status === 'Ativo');
+        const prods = activeProducts.map((product: any) =>
+          convertProduct(product, activeCoupon)
+        );
         setProducts(prods);
 
         // Atualiza automatico min/max largura/altura

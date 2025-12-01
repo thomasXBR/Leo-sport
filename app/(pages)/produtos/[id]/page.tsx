@@ -13,14 +13,14 @@ import ReviewForm from '@/components/reviews/review-form'
 
 // ---- Types ----
 interface ProductPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 // ---- Metadata ----
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
-  const id = params.id
+  const { id } = await params
   const product = getProductById(parseInt(id))
 
   if (!product) {
@@ -45,7 +45,7 @@ export async function generateStaticParams() {
 
 // ---- Page ----
 export default async function ProductPage({ params }: ProductPageProps) {
-  const id = params.id
+  const { id } = await params
   const product = getProductById(parseInt(id))
 
   if (!product) {
