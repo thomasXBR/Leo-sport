@@ -11,7 +11,7 @@ import {
     Tooltip,
     Legend,
 } from 'chart.js'
-import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload, Loader2 } from 'lucide-react'
+import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload, Loader2, ChevronLeft,ChevronRight } from 'lucide-react'
 import Image from 'next/image'
 import {
     Dialog,
@@ -37,8 +37,8 @@ import {
     getInvoices, createInvoice, updateInvoice, deleteInvoice,
     getPartnerships, createPartnership, updatePartnership, deletePartnership,
     getCoupons, createCoupon, updateCoupon, deleteCoupon,
-    getSiteContent, updateSiteContent,
-    type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent
+    getSiteContent, updateSiteContent, getFAQs, creatFAQ, updateFAQ, deleteFAQ,
+    type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent, type FAQ
 } from '@/lib/supabase'
 
 ChartJS.register(
@@ -62,6 +62,15 @@ export default function Dashboard() {
     const [partnersList, setPartnersList] = useState<Partnership[]>([])
     const [coupons, setCoupons] = useState<Coupon[]>([])
     const [siteContent, setSiteContent] = useState<SupabaseSiteContent[]>([])
+    const [faqs, setFaqs] = useState<FAQ[]>([])
+    const FAQS_PER_PAGE = 2
+    const [currentPage, setCurrentPage] = useState(1)
+    const totalFAQs = faqs.length
+    const calculatedTotalPages = Math.ceil(totalFAQs / FAQS_PER_PAGE)
+    const currentFAQs = faqs.slice(
+        (currentPage – 1) * FAQS_PER_PAGE,
+        currentPage * FAQS_PER_PAGE
+    )
     const [salesData, setSalesData] = useState({
         labels: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho'],
         datasets: [{
@@ -74,7 +83,7 @@ export default function Dashboard() {
 
     // Estados dos modais
     const [isModalOpen, setIsModalOpen] = useState(false)
-    const [modalType, setModalType] = useState<'invoice' | 'partner' | 'coupon' | 'product' | 'inventory' | null>(null)
+    const [modalType, setModalType] = useState<'invoice' | 'partner' | 'coupon' | 'product' | 'inventory' | 'faq' | null>(null)
     const [editingItem, setEditingItem] = useState<any>(null)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [itemToDelete, setItemToDelete] = useState<{ type: string; id: string; name: string } | null>(null)
@@ -104,6 +113,7 @@ export default function Dashboard() {
                 getPartnerships().catch(() => []),
                 getCoupons().catch(() => []),
                 getSiteContent().catch(() => [])
+                getFAQs().catch(() => [])
             ])
 
             setProducts(productsData || [])
@@ -113,6 +123,7 @@ export default function Dashboard() {
             setPartnersList(partnersData || [])
             setCoupons(couponsData || [])
             setSiteContent(contentData || [])
+            setFaqs(faqsData || [])
 
             // Carregar dados do gráfico
             const chartSalesData = await getSalesDataForChart().catch(() => [])
@@ -376,6 +387,28 @@ export default function Dashboard() {
             alert('Erro ao salvar. Tente novamente.')
         }
     }
+    Const handlePageChange = (direction: ‘prev’ | ‘next’) => {
+        If (direction === ‘prev’ && currentPage > 1) {
+            setCurrentPage(prev => prev – 1)
+        } else if (direction === ‘next’ && currentPage < calculatedTotalPages) {
+            setCurrentPage(prev => prev + 1)
+        }
+    }
+    
+    Const handleSaveFAQ = async (formData: { question: string, answer: string }) => {
+        Try {
+            If (editingItem) {
+                Await updateFAQ(editingItem.id, formData)
+            } else {
+                Await createFAQ(formData as any)
+            }
+            closeModal()
+            loadAllData() // Recarrega para atualizar a lista e a paginação
+        } catch (error) {
+            Console.error(‘Erro ao salvar FAQ:’, error)
+            Alert(‘Erro ao salvar FAQ. Tente novamente.’)
+        }
+    }
 
     if (loading) {
         return (
@@ -390,7 +423,7 @@ export default function Dashboard() {
             <main className="flex-grow p-4 sm:p-6">
                 <h1 className="text-3xl font-bold text-gray-800 mb-8">Painel Administrativo</h1>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-3 mb-6">
                     <button onClick={() => setActiveTab('sales')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'sales' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Vendas</button>
                     <button onClick={() => setActiveTab('inventory')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'inventory' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Estoque</button>
                     <button onClick={() => setActiveTab('users')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'users' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Usuários</button>
@@ -399,6 +432,9 @@ export default function Dashboard() {
                     <button onClick={() => setActiveTab('partnerships')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'partnerships' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Parcerias</button>
                     <button onClick={() => setActiveTab('coupons')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'coupons' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Cupons</button>
                     <button onClick={() => setActiveTab('content')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'content' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Textos do Site</button>
+                    <button onClick={() => setActiveTab('faq')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'faq' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>FAQ </button>
+
+
                 </div>
 
                 <div className="bg-white rounded-lg p-6 shadow-lg min-h-[500px]">
@@ -884,6 +920,79 @@ case 'products':
         }
     }
 
+    Case 'faq':
+        Return (
+            <div>
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-semibold text-gray-700 flex items-center">
+                        <FileText className="mr-2" size={24} />
+                        Perguntas Frequentes (FAQ)
+                    </h2>
+                    <button onClick={() => openModal(‘faq’)} className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors">
+                        <PlusCircle size={20} className=”mr-2” />
+                            Adicionar Nova FAQ
+                    </button>
+                </div>
+                <div className="space-y-4">
+                    {currentFAQs.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                            Nenhuma FAQ cadastrada.
+                        </div>
+                    ):(
+                        currentFAQs.map((faq: any) => (
+                            <div key={faq.id} className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200">
+                                <div key={faq.id} className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <h3 className="text-lg font-semibold text-gray-800">{faq.question}</h3>
+                                                <p className="text-sm text-gray-600 mt-1">{faq.answer}</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => openModal('faq', faq)}
+                                                    className="text-cyan-600 hover:text-cyan-900"
+                                                    title="Editar FAQ"
+                                            >
+                                                <Edit size={18} />
+                                            </button>
+                                            <button
+                                                onClick={() => openDeleteDialog("faq", faq.id, faq.question)} className="text-red-600 hover:text-red-900"
+                                                title="Deletar FAQ"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                        <p className="text-xs text-gray-400 mt-2">ID: {faq.id}</p>
+                                    </div>
+                                ))
+                            )}
+                            </div>
+                            {totalFAQs > FAQS_PER_PAGE && (
+                                <div className="flex justify-center items-center mt-6 space-x-4">
+                                    <button onClick={() => handlePageChange("prev")}
+                                    disabled={currentPage === 1}
+                                    className={p-2 rounded-full transition-colors ${currentPage === 1 ? "text-gray-400 cursor-not-allowed" : "bg-cyan-50 text-cyan-700 hover:bg-cyan-100"}}
+                                >
+                                    <ChevronLeft size={24} />
+                                </button>
+                                <span className="text-sm font-medium text-gray-600">
+                                    Página {currentPage} de {calculatedTotalPages}
+                                </span>
+                                <button onClick={() => handlePageChange("next")}
+                                    disabled={currentPage === calculatedTotalPages}
+                                    className={p-2 rounded-full transition-colors ${currentPage === calculatedTotalPages ? "text-gray-400 cursor-not-allowed" : "bg-cyan-50 text-cyan-700 hover:bg-cyan-100"}}
+                                >
+                                <ChevronRight size={24} />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                );
+            Default:
+                Return null;
+        }
+    }
+ 
     function renderModals() {
         return (
             <>
@@ -980,7 +1089,22 @@ case 'products':
         )
     }
 }
-
+                {/* Modal de FAQ (NOVO!) */}
+                <Dialog open={isModalOpen && modalType === 'faq'} onOpenChange={closeModal}>
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>
+                                {editingItem ? 'Editar FAQ' : 'Nova Pergunta Frequente'}
+                            </DialogTitle>
+                        </DialogHeader>
+                        <FAQForm faq={editingItem} onSave={handleSaveFAQ} onCancel={closeModal} />
+                    </DialogContent>
+                </Dialog>
+                {/* FIM Modal de FAQ */}
+            </>
+        ]
+    }
+]
 // Componentes de Formulário
 function InvoiceForm({ invoice, onSave, onCancel }: any) {
     const [formData, setFormData] = useState({
@@ -1256,7 +1380,7 @@ function InventoryForm({ item, products, onSave, onCancel }: any) {
                         onChange={(e) => setFormData({ ...formData, movement_type: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                     >
-                        <option value="Entrada">Entrada</option>
+                    placeholder    <option value="Entrada">Entrada</option>
                         <option value="Saída">Saída</option>
                         <option value="Ajuste">Ajuste</option>
                     </select>
@@ -1459,7 +1583,7 @@ function PartnershipForm({ partnership, onSave, onCancel }: any) {
                         value={formData.company_name}
                         onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                        placeholder="Nome da Empresa"
+                        ="Nome da Empresa"
                         required
                     />
                 </div>
@@ -1506,5 +1630,49 @@ function PartnershipForm({ partnership, onSave, onCancel }: any) {
                 </button>
             </DialogFooter>
         </form>
-    )
+    )   
+}
+
+Function FAQForm({ faq, onSave, onCancel }: any) {
+    Const [formData, setFormData] = useState({
+        Question: faq?.question || '',
+        Answer: faq?.answer || '',
+    })
+
+     Return (
+        <form onSubmit={(e) => { e.preventDefault(); onSave(formData); }}>
+            <div className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Pergunta *</label>
+                    <input
+                        Type='text'
+                        Value={formData.question}
+                        onChange={(e) => setFormData({ ...formData, question: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder='Ex: Como faço para rastrear meu pedido?'
+                        required
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Resposta *</label>
+                    <textarea
+                        value={formData.answer}
+                        onChange={(e) => setFormData({ ...formData, answer: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        rows={6}
+                        placeholder='Resposta detalhada...'
+                        required
+                    />
+                </div>
+            </div>
+            <DialogFooter className="mt-6">
+                <button type='button' onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
+                    Cancelar
+                </button>
+                <button type="submit” className=”px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700">
+                    Salvar
+                </button>
+            </DialogFooter>
+        </form>
+    )
 }
