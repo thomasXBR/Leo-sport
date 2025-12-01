@@ -1,26 +1,11 @@
 {
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
-  "installCommand": "npm ci",
-  "framework": "nextjs",
-  "env": [
-    {
-      "key": "NEXT_PUBLIC_SUPABASE_URL",
-      "value": "https://pxwjbrjtwkoejplsnjjl.supabase.co"
-    },
-    {
-      "key": "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4d2picmp0d2tvZWpwbHNuampsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMTk5OTksImV4cCI6MjA3NTY5NTk5OX0.jHlcKIsa18MwORvS2YZKVdGXHvRVdstfQ3FL4bKtd1g"
-    },
-    {
-      "key": "NEXT_PUBLIC_MERCADO_PAGO_PUBLIC_KEY",
-      "value": "APP_USR-c67f95c9-d6a3-4a83-92f5-6ad5b40a8fc2"
-    },
-    {
-      "key": "NEXT_PUBLIC_APP_URL",
-      "value": "https://leo-sport-git-main-thomasxbrs-projects.vercel.app"
-    }
-  ],
+  "version": 2,
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_URL": "https://pxwjbrjtwkoejplsnjjl.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4d2picmp0d2tvZWpwbHNuampsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMTk5OTksImV4cCI6MjA3NTY5NTk5OX0.jHlcKIsa18MwORvS2YZKVdGXHvRVdstfQ3FL4bKtd1g",
+    "NEXT_PUBLIC_MERCADO_PAGO_PUBLIC_KEY": "APP_USR-c67f95c9-d6a3-4a83-92f5-6ad5b40a8fc2",
+    "NEXT_PUBLIC_APP_URL": "https://leo-sport-git-main-thomasxbrs-projects.vercel.app"
+  },
   "redirects": [
     {
       "source": "/pagamento",
