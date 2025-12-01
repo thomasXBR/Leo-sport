@@ -155,6 +155,117 @@ export type SiteContent = {
 // FUNÇÕES CRUD - PRODUTOS
 // ============================================
 
+/**
+ * 1. FUNÇÃO: getFAQs
+ * Objetivo: Obter todas as Perguntas e Respostas.
+ */
+export async function getFAQs() {
+  const { data, error } = await supabase
+    .from('perguntas_respostas') // Nome da Tabela
+    .select('id, perguntas_frequentes, respostas') // Colunas a serem selecionadas
+    .order('id', { ascending: true }); // Ordenar, por exemplo, por ID
+
+  if (error) {
+    console.error('Erro ao buscar FAQs:', error);
+    throw new Error('Não foi possível carregar as perguntas frequentes.');
+  }
+  
+  // Retorna os dados, ou um array vazio se não houver nada
+  return data || [];
+}
+
+export interface FAQ {
+  id: string; // CORREÇÃO
+  perguntas_frequentes: string;
+  respostas: string;
+}
+
+/**
+ * 2. FUNÇÃO: createFAQ
+ * Objetivo: Inserir uma nova Pergunta Frequente e Resposta.
+ * @param faq - Objeto contendo 'pergunta' e 'resposta'.
+ */
+interface NewFAQ {
+  pergunta: string;
+  resposta: string;
+}
+
+export async function createFAQ({ pergunta, resposta }: NewFAQ) {
+  const { data, error } = await supabase
+    .from('perguntas_respostas') // Nome da Tabela
+    .insert([
+      { 
+        perguntas_frequentes: pergunta, // Mapeamento para a coluna Supabase
+        respostas: resposta            // Mapeamento para a coluna Supabase
+      }
+    ])
+    .select() // Retorna o registro recém-criado
+    .single();
+
+  if (error) {
+    console.error('Erro ao criar FAQ:', error);
+    throw new Error('Não foi possível adicionar a nova pergunta.');
+  }
+
+  return data;
+}
+
+/**
+ * 3. FUNÇÃO: updateFAQ
+ * Objetivo: Atualizar uma Pergunta Frequente e Resposta existente.
+ * @param id - O ID (UUID ou INT) do registro a ser atualizado.
+ * @param updates - Objeto com os campos a serem atualizados (pergunta e/ou resposta).
+ */
+interface UpdatedFAQ {
+  pergunta?: string;
+  resposta?: string;
+}
+
+export async function updateFAQ(id: string | number, updates: UpdatedFAQ) {
+  // Cria o objeto de atualização com base nos nomes das colunas do Supabase
+  const updatePayload: Record<string, any> = {};
+  if (updates.pergunta !== undefined) {
+    updatePayload.perguntas_frequentes = updates.pergunta;
+  }
+  if (updates.resposta !== undefined) {
+    updatePayload.respostas = updates.resposta;
+  }
+
+  const { data, error } = await supabase
+    .from('perguntas_respostas')
+    .update(updatePayload)
+    .eq('id', id) // Condição de filtro para o registro correto
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Erro ao atualizar FAQ:', error);
+    throw new Error(`Não foi possível atualizar a pergunta com ID ${id}.`);
+  }
+
+  return data;
+}
+
+/**
+ * 4. FUNÇÃO: deleteFAQ
+ * Objetivo: Excluir uma Pergunta Frequente e Resposta pelo ID.
+ * @param id - O ID (UUID ou INT) do registro a ser excluído.
+ */
+export async function deleteFAQ(id: string | number) {
+  const { error } = await supabase
+    .from('perguntas_respostas')
+    .delete()
+    .eq('id', id); // Condição de filtro para o registro correto
+
+  if (error) {
+    console.error('Erro ao deletar FAQ:', error);
+    throw new Error(`Não foi possível deletar a pergunta com ID ${id}.`);
+  }
+  
+  // Retorna true em caso de sucesso (ou void/undefined, dependendo da sua preferência)
+  return true; 
+}
+
 export async function getProducts() {
   const { data, error } = await supabase
     .from('products')
