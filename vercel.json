@@ -21,7 +21,6 @@
       "value": "https://leo-sport-git-main-thomasxbrs-projects.vercel.app"
     }
   ],
-  "buildOutputDirectory": ".next",
   "publicSource": "./public",
   "redirects": [
     {
