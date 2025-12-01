@@ -1,4 +1,4 @@
-'use client'
+ 'use client'
 
 import { useState, useEffect } from 'react'
 import { Bar } from 'react-chartjs-2'
@@ -11,7 +11,7 @@ import {
     Tooltip,
     Legend,
 } from 'chart.js'
-import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload, Loader2, ChevronLeft,ChevronRight } from 'lucide-react'
+import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import Image from 'next/image'
 import {
     Dialog,
@@ -37,7 +37,7 @@ import {
     getInvoices, createInvoice, updateInvoice, deleteInvoice,
     getPartnerships, createPartnership, updatePartnership, deletePartnership,
     getCoupons, createCoupon, updateCoupon, deleteCoupon,
-    getSiteContent, updateSiteContent, getFAQs, creatFAQ, updateFAQ, deleteFAQ,
+    getSiteContent, updateSiteContent, getFAQs, createFAQ, updateFAQ, deleteFAQ,
     type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent, type FAQ
 } from '@/lib/supabase'
 
@@ -68,9 +68,10 @@ export default function Dashboard() {
     const totalFAQs = faqs.length
     const calculatedTotalPages = Math.ceil(totalFAQs / FAQS_PER_PAGE)
     const currentFAQs = faqs.slice(
-        (currentPage – 1) * FAQS_PER_PAGE,
+        (currentPage - 1) * FAQS_PER_PAGE,
         currentPage * FAQS_PER_PAGE
-    )
+    )
+
     const [salesData, setSalesData] = useState({
         labels: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho'],
         datasets: [{
@@ -105,15 +106,15 @@ export default function Dashboard() {
     async function loadAllData() {
         try {
             setLoading(true)
-            const [productsData, inventoryData, salesData, invoicesData, partnersData, couponsData, contentData] = await Promise.all([
+            const [productsData, inventoryData, salesData, invoicesData, partnersData, couponsData, contentData, faqsData] = await Promise.all([
                 getProducts().catch(() => []),
                 getInventoryItems().catch(() => []),
                 getSales().catch(() => []),
                 getInvoices().catch(() => []),
                 getPartnerships().catch(() => []),
                 getCoupons().catch(() => []),
-                getSiteContent().catch(() => [])
-                getFAQs().catch(() => [])
+                getSiteContent().catch(() => []),
+                getFAQs().catch(() => []),
             ])
 
             setProducts(productsData || [])
@@ -387,26 +388,26 @@ export default function Dashboard() {
             alert('Erro ao salvar. Tente novamente.')
         }
     }
-    Const handlePageChange = (direction: ‘prev’ | ‘next’) => {
-        If (direction === ‘prev’ && currentPage > 1) {
-            setCurrentPage(prev => prev – 1)
-        } else if (direction === ‘next’ && currentPage < calculatedTotalPages) {
+    const handlePageChange = (direction: 'prev' | 'next') => {
+        if (direction === 'prev' && currentPage > 1) {
+            setCurrentPage(prev => prev - 1)
+        } else if (direction === 'next' && currentPage < calculatedTotalPages) {
             setCurrentPage(prev => prev + 1)
         }
     }
-    
-    Const handleSaveFAQ = async (formData: { question: string, answer: string }) => {
-        Try {
-            If (editingItem) {
-                Await updateFAQ(editingItem.id, formData)
+
+    const handleSaveFAQ = async (formData: { question: string, answer: string }) => {
+        try {
+            if (editingItem) {
+                await updateFAQ(editingItem.id, formData)
             } else {
-                Await createFAQ(formData as any)
+                await createFAQ(formData as any)
             }
             closeModal()
             loadAllData() // Recarrega para atualizar a lista e a paginação
         } catch (error) {
-            Console.error(‘Erro ao salvar FAQ:’, error)
-            Alert(‘Erro ao salvar FAQ. Tente novamente.’)
+            console.error('Erro ao salvar FAQ:', error)
+            alert('Erro ao salvar FAQ. Tente novamente.')
         }
     }
 
@@ -920,78 +921,7 @@ case 'products':
         }
     }
 
-    case 'faq':
-        return (
-            <div>
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-semibold text-gray-700 flex items-center">
-                        <FileText className="mr-2" size={24} />
-                        Perguntas Frequentes (FAQ)
-                    </h2>
-                    <button onClick={() => openModal(‘faq’)} className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors">
-                        <PlusCircle size={20} className=”mr-2” />
-                            Adicionar Nova FAQ
-                    </button>
-                </div>
-                <div className="space-y-4">
-                    {currentFAQs.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">
-                            Nenhuma FAQ cadastrada.
-                        </div>
-                    ):(
-                        currentFAQs.map((faq: any) => (
-                            <div key={faq.id} className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200">
-                                <div key={faq.id} className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <h3 className="text-lg font-semibold text-gray-800">{faq.question}</h3>
-                                                <p className="text-sm text-gray-600 mt-1">{faq.answer}</p>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => openModal('faq', faq)}
-                                                    className="text-cyan-600 hover:text-cyan-900"
-                                                    title="Editar FAQ"
-                                            >
-                                                <Edit size={18} />
-                                            </button>
-                                            <button
-                                                onClick={() => openDeleteDialog("faq", faq.id, faq.question)} className="text-red-600 hover:text-red-900"
-                                                title="Deletar FAQ"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                        <p className="text-xs text-gray-400 mt-2">ID: {faq.id}</p>
-                                    </div>
-                                ))
-                            )}
-                            </div>
-                            {totalFAQs > FAQS_PER_PAGE && (
-                                <div className="flex justify-center items-center mt-6 space-x-4">
-                                    <button onClick={() => handlePageChange("prev")}
-                                    disabled={currentPage === 1}
-                                    className={p-2 rounded-full transition-colors ${currentPage === 1 ? "text-gray-400 cursor-not-allowed" : "bg-cyan-50 text-cyan-700 hover:bg-cyan-100"}}
-                                >
-                                    <ChevronLeft size={24} />
-                                </button>
-                                <span className="text-sm font-medium text-gray-600">
-                                    Página {currentPage} de {calculatedTotalPages}
-                                </span>
-                                <button onClick={() => handlePageChange("next")}
-                                    disabled={currentPage === calculatedTotalPages}
-                                    className={p-2 rounded-full transition-colors ${currentPage === calculatedTotalPages ? "text-gray-400 cursor-not-allowed" : "bg-cyan-50 text-cyan-700 hover:bg-cyan-100"}}
-                                >
-                                <ChevronRight size={24} />
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                );
-            Default:
-                Return null;
-        }
-    }
+// ...existing code...
  
     function renderModals() {
         return (
@@ -1085,11 +1015,7 @@ case 'products':
                         }} onCancel={closeModal} />
                     </DialogContent>
                 </Dialog>
-            </>
-        )
-    }
-}
-                {/* Modal de FAQ (NOVO!) */}
+                {/* Modal de FAQ */}
                 <Dialog open={isModalOpen && modalType === 'faq'} onOpenChange={closeModal}>
                     <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
@@ -1100,11 +1026,10 @@ case 'products':
                         <FAQForm faq={editingItem} onSave={handleSaveFAQ} onCancel={closeModal} />
                     </DialogContent>
                 </Dialog>
-                {/* FIM Modal de FAQ */}
             </>
-        ]
+        )
     }
-]
+
 // Componentes de Formulário
 function InvoiceForm({ invoice, onSave, onCancel }: any) {
     const [formData, setFormData] = useState({
@@ -1380,7 +1305,7 @@ function InventoryForm({ item, products, onSave, onCancel }: any) {
                         onChange={(e) => setFormData({ ...formData, movement_type: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                     >
-                    placeholder    <option value="Entrada">Entrada</option>
+                        <option value="Entrada">Entrada</option>
                         <option value="Saída">Saída</option>
                         <option value="Ajuste">Ajuste</option>
                     </select>
@@ -1583,7 +1508,7 @@ function PartnershipForm({ partnership, onSave, onCancel }: any) {
                         value={formData.company_name}
                         onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                        ="Nome da Empresa"
+                        placeholder="Nome da Empresa"
                         required
                     />
                 </div>
@@ -1633,23 +1558,23 @@ function PartnershipForm({ partnership, onSave, onCancel }: any) {
     )   
 }
 
-Function FAQForm({ faq, onSave, onCancel }: any) {
-    Const [formData, setFormData] = useState({
-        Question: faq?.question || '',
-        Answer: faq?.answer || '',
+function FAQForm({ faq, onSave, onCancel }: any) {
+    const [formData, setFormData] = useState({
+        question: faq?.question || '',
+        answer: faq?.answer || '',
     })
 
-     Return (
+    return (
         <form onSubmit={(e) => { e.preventDefault(); onSave(formData); }}>
             <div className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Pergunta *</label>
                     <input
-                        Type='text'
-                        Value={formData.question}
+                        type="text"
+                        value={formData.question}
                         onChange={(e) => setFormData({ ...formData, question: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                        placeholder='Ex: Como faço para rastrear meu pedido?'
+                        placeholder="Ex: Como faço para rastrear meu pedido?"
                         required
                     />
                 </div>
@@ -1660,19 +1585,20 @@ Function FAQForm({ faq, onSave, onCancel }: any) {
                         onChange={(e) => setFormData({ ...formData, answer: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                         rows={6}
-                        placeholder='Resposta detalhada...'
+                        placeholder="Resposta detalhada..."
                         required
                     />
                 </div>
             </div>
             <DialogFooter className="mt-6">
-                <button type='button' onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
+                <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
                     Cancelar
                 </button>
-                <button type="submit” className=”px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700">
+                <button type="submit" className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700">
                     Salvar
                 </button>
             </DialogFooter>
         </form>
-    )
+    )
+}
 }
