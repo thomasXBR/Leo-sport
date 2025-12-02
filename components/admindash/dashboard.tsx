@@ -590,8 +590,25 @@ export default function Dashboard() {
                 break
             case 'product':
                 modalTitle = isEdit ? 'Editar Produto' : 'Adicionar Novo Produto'
+<<<<<<< HEAD
                 // Aqui você precisaria de um componente ProductForm
                 modalContent = <p>Formulário de Produto Pendente</p>
+=======
+                modalContent = (
+                    <ProductRegistrationForm
+                        initialData={editingItem}
+                        productId={editingItem?.id ?? null}
+                        onSuccess={() => {
+                            // reload products and close modal after success
+                            loadAllData()
+                            closeModal()
+                        }}
+                        onError={(err) => {
+                            alert(`Erro ao salvar produto: ${err}`)
+                        }}
+                    />
+                )
+>>>>>>> 551d8329c535a6d7f4370a697241a00838b263e1
                 break
             case 'inventory':
                 modalTitle = isEdit ? 'Editar Movimentação' : 'Nova Movimentação de Estoque'
