@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Menu, User, X, LogOut, UserCircle, ShoppingCart, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import { useCart } from '@/contexts/CartContext';
 
 export default function Header() {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, profile, signIn, signUp, signOut } = useAuth();
   const { cartCount, clearCart } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -164,15 +165,22 @@ export default function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-8">
-            {navigationItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="text-gray-600 hover:text-blue-900 transition-colors duration-200"
-              >
-                {item.label}
-              </Link>
-            ))}
+            {navigationItems.map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`px-3 py-2 rounded-md transition-colors duration-200 font-medium ${
+                    isActive
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-600 hover:text-blue-900 hover:bg-blue-50'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
 
           {/* Actions */}
@@ -375,19 +383,30 @@ export default function Header() {
         {isMenuOpen && (
           <div className="md:hidden py-4 border-t">
             <nav className="flex flex-col space-y-2">
-              {navigationItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="text-gray-600 hover:text-blue-900 py-2 transition-colors duration-200"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {item.label}
-                </Link>
-              ))}
+              {navigationItems.map((item) => {
+                const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`px-3 py-2 rounded-md transition-colors duration-200 font-medium ${
+                      isActive
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-600 hover:text-blue-900 hover:bg-blue-50'
+                    }`}
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
               <Link
                 href="/carrinho"
-                className="flex items-center text-gray-600 hover:text-blue-900 py-2 transition-colors duration-200"
+                className={`flex items-center px-3 py-2 rounded-md transition-colors duration-200 font-medium ${
+                  pathname === '/carrinho'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:text-blue-900 hover:bg-blue-50'
+                }`}
                 onClick={() => setIsMenuOpen(false)}
               >
                 <ShoppingCart className="w-5 h-5 mr-2" />
