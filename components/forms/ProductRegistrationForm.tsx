@@ -1,46 +1,78 @@
  'use client';
 
-import { useState } from 'react';
-import { createProduct, Product } from '@/lib/supabase';
-import { getCategories } from '@/lib/products-data';
+import { useState, useEffect } from 'react';
+import { createProduct, updateProduct, Product, getSiteContent } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertCircle, CheckCircle } from 'lucide-react';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 
 interface ProductRegistrationFormProps {
   onSuccess?: () => void;
   onError?: (error: string) => void;
+  initialData?: Partial<Product> | null;
+  productId?: string | null;
 }
 
-export default function ProductRegistrationForm({ onSuccess, onError }: ProductRegistrationFormProps) {
+export default function ProductRegistrationForm({ onSuccess, onError, initialData = null, productId = null }: ProductRegistrationFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    sku: '',
-    content_id: '',
-    category_id: '',
-    brand: '',
-    price: '',
-    fake_price: '',
-    stock_quantity: '',
-    weight: '',
-    dimensions: '',
-    image_url: '',
-    status: 'Ativo',
-    color: '',
-    features: '',
-    specifications: '',
-    no_shipping: false,
-    devolution_months: '1',
-    warranty_months: '12',
-    additional_data: '',
-  });
+  const [sports, setSports] = useState<string[]>([]);
+  const [loadingContent, setLoadingContent] = useState(true);
+  
+  const [formData, setFormData] = useState(() => ({
+    name: initialData?.name ?? '',
+    description: initialData?.description ?? '',
+    sku: initialData?.sku ?? '',
+    category_id: initialData?.category_id ?? '',
+    brand: initialData?.brand ?? '',
+    price: initialData?.price ? String((initialData as any).price) : '',
+    fake_price: (initialData as any)?.fake_price ? String((initialData as any).fake_price) : '',
+    stock_quantity: (initialData as any)?.stock_quantity ? String((initialData as any).stock_quantity) : '',
+    weight: (initialData as any)?.weight ?? '',
+    dimensions: (initialData as any)?.dimensions ?? '',
+    image_url: (initialData as any)?.image_url ?? '',
+    status: (initialData as any)?.status ?? 'Ativo',
+    color: (initialData as any)?.color ?? '',
+    features: Array.isArray((initialData as any)?.features)
+      ? ((initialData as any).features as string[]).join('\n')
+      : ((initialData as any)?.features ?? ''),
+    specifications: typeof (initialData as any)?.specifications === 'object' && (initialData as any)?.specifications
+      ? Object.entries((initialData as any).specifications).map(([k, v]) => `${k}: ${v}`).join('\n')
+      : ((initialData as any)?.specifications ?? ''),
+    no_shipping: (initialData as any)?.no_shipping ?? false,
+    devolution_months: (initialData as any)?.devolution_months ? String((initialData as any).devolution_months) : '1',
+    warranty_months: (initialData as any)?.warranty_months ? String((initialData as any).warranty_months) : '12',
+  }));
 
-  const categories = getCategories();
+  useEffect(() => {
+    const loadSports = async () => {
+      try {
+        const content = await getSiteContent();
+        console.log('getSiteContent response:', content);
+        
+        // Extract unique sports from content_key field where section is 'esportes'
+        const sportsSet = new Set<string>();
+        content?.forEach((item: any) => {
+          console.log('Processing item:', item);
+          if (item.section === 'esportes' && item.content_key) {
+            sportsSet.add(item.content_key);
+          }
+        });
+        
+        console.log('Sports loaded:', Array.from(sportsSet));
+        setSports(Array.from(sportsSet).sort());
+      } catch (err) {
+        console.error('Failed to load sports:', err);
+        setSports([]);
+      } finally {
+        setLoadingContent(false);
+      }
+    };
+    loadSports();
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const target = e.target as HTMLInputElement;
@@ -126,7 +158,6 @@ export default function ProductRegistrationForm({ onSuccess, onError }: ProductR
         name: formData.name,
         description: formData.description || undefined,
         sku: formData.sku,
-        content_id: formData.content_id || undefined,
         category_id: formData.category_id || undefined,
         brand: formData.brand || undefined,
         price: parseFloat(String(formData.price)),
@@ -144,46 +175,38 @@ export default function ProductRegistrationForm({ onSuccess, onError }: ProductR
         warranty_months: formData.warranty_months ? parseInt(formData.warranty_months, 10) : undefined,
       };
 
-      // Parsear dados adicionais JSON se houver
-      if (formData.additional_data && formData.additional_data.trim()) {
-        try {
-          const additionalData = JSON.parse(formData.additional_data);
-          Object.assign(productData, additionalData);
-        } catch (parseError) {
-          setError('Dados adicionais JSON inválido. Verifique o formato.');
-          setLoading(false);
-          return;
-        }
+      if (productId) {
+        await updateProduct(productId, productData as Partial<Product>);
+        setSuccess(`Produto "${formData.name}" atualizado com sucesso!`);
+        onSuccess?.();
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        await createProduct(productData as Omit<Product, 'id' | 'created_at' | 'updated_at'>);
+        setSuccess(`Produto "${formData.name}" registrado com sucesso!`);
+        setFormData({
+          name: '',
+          description: '',
+          sku: '',
+          category_id: '',
+          brand: '',
+          price: '',
+          fake_price: '',
+          stock_quantity: '',
+          weight: '',
+          dimensions: '',
+          image_url: '',
+          status: 'Ativo',
+          color: '',
+          features: '',
+          specifications: '',
+          no_shipping: false,
+          devolution_months: '1',
+          warranty_months: '12',
+        });
+
+        onSuccess?.();
+        setTimeout(() => setSuccess(''), 3000);
       }
-
-      await createProduct(productData as Omit<Product, 'id' | 'created_at' | 'updated_at'>);
-
-      setSuccess(`Produto "${formData.name}" registrado com sucesso!`);
-      setFormData({
-        name: '',
-        description: '',
-        sku: '',
-        content_id: '',
-        category_id: '',
-        brand: '',
-        price: '',
-        fake_price: '',
-        stock_quantity: '',
-        weight: '',
-        dimensions: '',
-        image_url: '',
-        status: 'Ativo',
-        color: '',
-        features: '',
-        specifications: '',
-        no_shipping: false,
-        devolution_months: '1',
-        warranty_months: '12',
-        additional_data: '',
-      });
-
-      onSuccess?.();
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       const errorMessage = err?.message || 'Erro ao registrar produto. Tente novamente.';
       setError(errorMessage);
@@ -198,28 +221,34 @@ export default function ProductRegistrationForm({ onSuccess, onError }: ProductR
   const discount = calculateDiscount();
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-lg">
-      <h1 className="text-3xl font-bold text-gray-900 mb-2">Registrar Novo Produto</h1>
-      <p className="text-gray-600 mb-6">Preencha todos os campos obrigatórios para adicionar um novo produto ao catálogo</p>
+    <div className="max-w-3xl mx-auto p-4 bg-white rounded-lg shadow-sm">
+      <h1 className="text-2xl font-semibold text-gray-900 mb-1">{productId ? 'Editar Produto' : 'Registrar Produto'}</h1>
+      <p className="text-sm text-gray-600 mb-4">{productId ? 'Atualize os campos do produto e salve as alterações' : 'Preencha os campos obrigatórios para adicionar um produto'}</p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
-          <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <AlertCircle className="w-5 h-5 text-red-600" />
-            <p className="text-red-700">{error}</p>
+          <div className="flex items-center gap-2 p-2 bg-red-50 border border-red-200 rounded">
+            <AlertCircle className="w-4 h-4 text-red-600" />
+            <p className="text-sm text-red-700">{error}</p>
           </div>
         )}
 
         {success && (
-          <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <CheckCircle className="w-5 h-5 text-green-600" />
-            <p className="text-green-700">{success}</p>
+          <div className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded">
+            <CheckCircle className="w-4 h-4 text-green-600" />
+            <p className="text-sm text-green-700">{success}</p>
           </div>
         )}
 
-        <div className="border-t pt-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Informações Básicas</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Collapsible defaultOpen>
+          <div className="border-t pt-4">
+            <CollapsibleTrigger asChild>
+              <button className="w-full text-left flex items-center justify-between">
+                <h2 className="text-lg font-medium text-gray-800">Informações Básicas</h2>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
             <div>
               <Label htmlFor="name" className="text-sm font-medium text-gray-700 mb-1">Nome do Produto *</Label>
               <Input id="name" name="name" value={formData.name} onChange={handleInputChange} required />
@@ -231,16 +260,11 @@ export default function ProductRegistrationForm({ onSuccess, onError }: ProductR
             </div>
 
             <div>
-              <Label htmlFor="content_id" className="text-sm font-medium text-gray-700 mb-1">Esporte / Conteúdo ID</Label>
-              <Input id="content_id" name="content_id" value={formData.content_id} onChange={handleInputChange} placeholder="Ex: ciclismo, corrida, etc" />
-            </div>
-
-            <div>
               <Label htmlFor="category_id" className="text-sm font-medium text-gray-700 mb-1">Esporte / Categoria</Label>
-              <select id="category_id" name="category_id" value={formData.category_id} onChange={handleInputChange} className="w-full border rounded px-2 py-1">
-                <option value="">Escolha uma categoria...</option>
-                {categories.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+              <select id="category_id" name="category_id" value={formData.category_id} onChange={handleInputChange} className="w-full border rounded px-2 py-1" disabled={loadingContent}>
+                <option value="">{loadingContent ? 'Carregando esportes...' : 'Escolha um esporte...'}</option>
+                {sports.map((sport: string) => (
+                  <option key={sport} value={sport}>{sport}</option>
                 ))}
               </select>
             </div>
@@ -255,11 +279,19 @@ export default function ProductRegistrationForm({ onSuccess, onError }: ProductR
             <Label htmlFor="description" className="text-sm font-medium text-gray-700 mb-1">Descrição</Label>
             <textarea id="description" name="description" value={formData.description} onChange={handleInputChange} rows={4} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
           </div>
-        </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
 
-        <div className="border-t pt-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Preço e Estoque</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Collapsible defaultOpen>
+          <div className="border-t pt-3">
+            <CollapsibleTrigger asChild>
+              <button className="w-full text-left flex items-center justify-between">
+                <h2 className="text-lg font-medium text-gray-800">Preço & Estoque</h2>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <Label htmlFor="price" className="text-sm font-medium text-gray-700 mb-1">Preço Real (R$) *</Label>
               <Input id="price" name="price" type="number" step="0.01" value={formData.price} onChange={handleInputChange} required />
@@ -285,11 +317,19 @@ export default function ProductRegistrationForm({ onSuccess, onError }: ProductR
               </div>
             </div>
           )}
-        </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
 
-        <div className="border-t pt-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Especificações Físicas</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Collapsible>
+          <div className="border-t pt-3">
+            <CollapsibleTrigger asChild>
+              <button className="w-full text-left flex items-center justify-between">
+                <h2 className="text-lg font-medium text-gray-800">Especificações Físicas</h2>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <Label htmlFor="weight" className="text-sm font-medium text-gray-700 mb-1">Peso (kg)</Label>
               <Input id="weight" name="weight" value={formData.weight} onChange={handleInputChange} />
@@ -298,26 +338,42 @@ export default function ProductRegistrationForm({ onSuccess, onError }: ProductR
               <Label htmlFor="dimensions" className="text-sm font-medium text-gray-700 mb-1">Dimensões (LxAxP em cm)</Label>
               <Input id="dimensions" name="dimensions" value={formData.dimensions} onChange={handleInputChange} />
             </div>
-          </div>
-        </div>
-
-        <div className="border-t pt-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Imagem</h2>
-          <div>
-            <Label htmlFor="image_url" className="text-sm font-medium text-gray-700 mb-1">URL da Imagem</Label>
-            <Input id="image_url" name="image_url" value={formData.image_url} onChange={handleInputChange} />
-            {formData.image_url && (
-              <div className="mt-4">
-                <p className="text-sm text-gray-600 mb-2">Prévia:</p>
-                <img src={formData.image_url} alt="Prévia" className="max-w-xs h-auto rounded-lg border" onError={(e) => {(e.target as HTMLImageElement).src = 'https://placehold.co/200x200';}} />
               </div>
-            )}
+            </CollapsibleContent>
           </div>
-        </div>
+        </Collapsible>
 
-        <div className="border-t pt-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Recursos e Especificações</h2>
-          <div className="grid grid-cols-1 gap-4">
+        <Collapsible>
+          <div className="border-t pt-3">
+            <CollapsibleTrigger asChild>
+              <button className="w-full text-left flex items-center justify-between">
+                <h2 className="text-lg font-medium text-gray-800">Imagem</h2>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div>
+                <Label htmlFor="image_url" className="text-sm font-medium text-gray-700 mb-1">URL da Imagem</Label>
+                <Input id="image_url" name="image_url" value={formData.image_url} onChange={handleInputChange} />
+                {formData.image_url && (
+                  <div className="mt-3">
+                    <p className="text-sm text-gray-600 mb-2">Prévia:</p>
+                    <img src={formData.image_url} alt="Prévia" className="max-w-xs h-auto rounded-lg border" onError={(e) => {(e.target as HTMLImageElement).src = 'https://placehold.co/200x200';}} />
+                  </div>
+                )}
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+
+        <Collapsible>
+          <div className="border-t pt-3">
+            <CollapsibleTrigger asChild>
+              <button className="w-full text-left flex items-center justify-between">
+                <h2 className="text-lg font-medium text-gray-800">Recursos e Especificações</h2>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="grid grid-cols-1 gap-3">
             <div>
               <Label htmlFor="features" className="text-sm font-medium text-gray-700 mb-1">Recursos (um por linha)</Label>
               <textarea id="features" name="features" value={formData.features} onChange={handleInputChange} rows={4} className="w-full px-3 py-2 border rounded-lg" placeholder="Quadro de alumínio&#10;Suspensão dianteira&#10;Freios a disco" />
@@ -347,11 +403,19 @@ export default function ProductRegistrationForm({ onSuccess, onError }: ProductR
                 </div>
               )}
             </div>
+              </div>
+            </CollapsibleContent>
           </div>
-        </div>
+        </Collapsible>
 
-        <div className="border-t pt-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Frete, Devolução e Garantia</h2>
+        <Collapsible>
+          <div className="border-t pt-3">
+            <CollapsibleTrigger asChild>
+              <button className="w-full text-left flex items-center justify-between">
+                <h2 className="text-lg font-medium text-gray-800">Frete, Devolução e Garantia</h2>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
 
           <div className="space-y-4">
             <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
@@ -373,30 +437,16 @@ export default function ProductRegistrationForm({ onSuccess, onError }: ProductR
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="border-t pt-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Dados Adicionais (JSON)</h2>
-          <div>
-            <Label htmlFor="additional_data" className="text-sm font-medium text-gray-700 mb-1">Campos Extras do Supabase (JSON)</Label>
-            <textarea 
-              id="additional_data" 
-              name="additional_data" 
-              value={formData.additional_data} 
-              onChange={handleInputChange} 
-              rows={4} 
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm" 
-              placeholder='{"campo1": "valor1", "campo2": "valor2"}'
-            />
-            <p className="text-xs text-gray-500 mt-2">Adicione qualquer campo adicional em formato JSON que não esteja mapeado no formulário acima. Será enviado diretamente para o Supabase.</p>
+            </CollapsibleContent>
           </div>
-        </div>
-        <div className="border-t pt-6 flex gap-4 justify-end">
-          <Button type="button" variant="outline" onClick={() => setFormData({
-            name: '', description: '', sku: '', content_id: '', category_id: '', brand: '', price: '', fake_price: '', stock_quantity: '', weight: '', dimensions: '', image_url: '', status: 'Ativo', color: '', features: '', specifications: '', no_shipping: false, devolution_months: '1', warranty_months: '12', additional_data: ''
-          })} className="px-6 py-2">Limpar</Button>
+        </Collapsible>
 
-          <Button type="submit" disabled={loading} className="px-6 py-2 bg-blue-600 text-white hover:bg-blue-700">{loading ? 'Registrando...' : 'Registrar Produto'}</Button>
+        <div className="border-t pt-4 flex gap-3 justify-end">
+          <Button type="button" variant="outline" onClick={() => setFormData({
+            name: '', description: '', sku: '', category_id: '', brand: '', price: '', fake_price: '', stock_quantity: '', weight: '', dimensions: '', image_url: '', status: 'Ativo', color: '', features: '', specifications: '', no_shipping: false, devolution_months: '1', warranty_months: '12'
+          })} className="px-4 py-1 text-sm">Limpar</Button>
+
+          <Button type="submit" disabled={loading} className="px-4 py-1 text-sm bg-blue-600 text-white hover:bg-blue-700">{loading ? (productId ? 'Atualizando...' : 'Registrando...') : (productId ? 'Atualizar Produto' : 'Registrar Produto')}</Button>
         </div>
       </form>
     </div>

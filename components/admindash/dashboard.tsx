@@ -708,10 +708,17 @@ export default function Dashboard() {
             case 'product':
                 modalTitle = isEdit ? 'Editar Produto' : 'Adicionar Novo Produto'
                 modalContent = (
-                    <ProductForm
-                        product={editingItem}
-                        onSave={handleSaveProduct}
-                        onCancel={closeModal}
+                    <ProductRegistrationForm
+                        initialData={editingItem}
+                        productId={editingItem?.id ?? null}
+                        onSuccess={() => {
+                            // reload products and close modal after success
+                            loadAllData()
+                            closeModal()
+                        }}
+                        onError={(err) => {
+                            alert(`Erro ao salvar produto: ${err}`)
+                        }}
                     />
                 )
                 break
