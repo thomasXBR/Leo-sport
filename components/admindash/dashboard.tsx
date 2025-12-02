@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Bar } from 'react-chartjs-2'
 import {
     Chart as ChartJS,
@@ -11,7 +11,7 @@ import {
     Tooltip,
     Legend,
 } from 'chart.js'
-import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload, Loader2, ChevronLeft, ChevronRight, ShoppingCart, Package, DollarSign } from 'lucide-react'
 import Image from 'next/image'
 import {
     Dialog,
@@ -30,7 +30,6 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import ProductRegistrationForm from '@/components/forms/ProductRegistrationForm'
 import {
     getProducts, createProduct, updateProduct, deleteProduct,
     getInventoryItems, createInventoryMovement, deleteInventoryMovement,
@@ -38,9 +37,10 @@ import {
     getInvoices, createInvoice, updateInvoice, deleteInvoice,
     getPartnerships, createPartnership, updatePartnership, deletePartnership,
     getCoupons, createCoupon, updateCoupon, deleteCoupon,
-    getSiteContent, updateSiteContent, getFAQs, createFAQ, updateFAQ, deleteFAQ,
-    type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent, type FAQ
+    getSiteContent, updateSiteContent, getFAQs, createFAQ, updateFAQ, deleteFAQ, getPurchases, createPurchase, updatePurchase, deletePurchase,
+    type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent, type FAQ, type Purchase,
 } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 ChartJS.register(
     CategoryScale,
@@ -51,7 +51,7 @@ ChartJS.register(
     Legend
 )
 
-// Componente de Formulário FAQ (necessário para o modal)
+// Componente de Formulário do FAQ (necessário para o modal)
 const FAQForm = ({ initialData, onSave, onCancel }: { initialData: any, onSave: (data: { pergunta: string, resposta: string }) => void, onCancel: () => void }) => {
     const [pergunta, setPergunta] = useState(initialData?.perguntas_frequentes || '')
     const [resposta, setResposta] = useState(initialData?.respostas || '')
@@ -96,161 +96,47 @@ const FAQForm = ({ initialData, onSave, onCancel }: { initialData: any, onSave: 
         </form>
     )
 }
-
-// Componente de Formulário de Produto (para o modal)
-const ProductForm = ({ product, onSave, onCancel }: { product: any, onSave: (data: any) => void, onCancel: () => void }) => {
-    const [formData, setFormData] = useState({
-        name: product?.name || '',
-        description: product?.description || '',
-        sku: product?.sku || '',
-        category_id: product?.category_id || '',
-        brand: product?.brand || '',
-        price: product?.price || '',
-        stock_quantity: product?.stock_quantity || '',
-        weight: product?.weight || '',
-        dimensions: product?.dimensions || '',
-        image_url: product?.image_url || '',
-        status: product?.status || 'Ativo',
-    })
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value } = e.target
-        setFormData(prev => ({ ...prev, [name]: value }))
-    }
+// Componente de Formulário de Compras (Placeholder)
+const PurchaseForm = ({ initialData, onSave, onCancel }: { initialData: any, onSave: (data: any) => void, onCancel: () => void }) => {
+    const [supplier, setSupplier] = useState(initialData?.supplier_name || '')
+    const [total, setTotal] = useState<string>(initialData?.total_amount ? String(initialData.total_amount) : '')
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        onSave(formData)
+        onSave({ supplier_name: supplier, total_amount: parseFloat(total || '0') })
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit}>
+            <div className="space-y-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+                    <label className="block text-sm font-medium text-gray-700">Fornecedor</label>
                     <input
                         type="text"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={supplier}
+                        onChange={(e) => setSupplier(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                         required
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">SKU *</label>
-                    <input
-                        type="text"
-                        name="sku"
-                        value={formData.sku}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                        required
-                    />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>
-                    <input
-                        type="text"
-                        name="brand"
-                        value={formData.brand}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Categoria ID</label>
-                    <input
-                        type="text"
-                        name="category_id"
-                        value={formData.category_id}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Preço (R$) *</label>
+                    <label className="block text-sm font-medium text-gray-700">Valor Total (R$)</label>
                     <input
                         type="number"
                         step="0.01"
-                        name="price"
-                        value={formData.price}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={total}
+                        onChange={(e) => setTotal(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                         required
                     />
                 </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Estoque *</label>
-                    <input
-                        type="number"
-                        name="stock_quantity"
-                        value={formData.stock_quantity}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                        required
-                    />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Peso (kg)</label>
-                    <input
-                        type="text"
-                        name="weight"
-                        value={formData.weight}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Dimensões (LxAxP)</label>
-                    <input
-                        type="text"
-                        name="dimensions"
-                        value={formData.dimensions}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <select
-                        name="status"
-                        value={formData.status}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    >
-                        <option value="Ativo">Ativo</option>
-                        <option value="Inativo">Inativo</option>
-                        <option value="Esgotado">Esgotado</option>
-                    </select>
-                </div>
-            </div>
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-                <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
-            </div>
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">URL da Imagem</label>
-                <input
-                    type="url"
-                    name="image_url"
-                    value={formData.image_url}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
             </div>
             <DialogFooter className="mt-6">
                 <button type="button" onClick={onCancel} className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400">
                     Cancelar
                 </button>
                 <button type="submit" className="bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700">
-                    <Save size={20} className="inline mr-2" /> Salvar
+                    <Save size={20} className="inline mr-2" /> Salvar Compra
                 </button>
             </DialogFooter>
         </form>
@@ -258,7 +144,7 @@ const ProductForm = ({ product, onSave, onCancel }: { product: any, onSave: (dat
 }
 
 export default function Dashboard() {
-    const [activeTab, setActiveTab] = useState('sales')
+    const [activeTab, setActiveTab] = useState('purchases')
     const [loading, setLoading] = useState(true)
 
     // Estados dos dados
@@ -270,6 +156,8 @@ export default function Dashboard() {
     const [coupons, setCoupons] = useState<Coupon[]>([])
     const [siteContent, setSiteContent] = useState<SupabaseSiteContent[]>([])
     const [faqs, setFaqs] = useState<FAQ[]>([])
+    const [purchases, setPurchases] = useState<Purchase[]>([])
+    
     const FAQS_PER_PAGE = 2
     const [currentPage, setCurrentPage] = useState(1)
     const totalFAQs = faqs.length
@@ -291,10 +179,13 @@ export default function Dashboard() {
 
     // Estados dos modais
     const [isModalOpen, setIsModalOpen] = useState(false)
-    const [modalType, setModalType] = useState<'invoice' | 'partner' | 'coupon' | 'product' | 'inventory' | 'faq' | null>(null)
+    const [modalType, setModalType] = useState<'invoice' | 'partner' | 'coupon' | 'product' | 'inventory' | 'faq' | 'purchase' | null>(null)
     const [editingItem, setEditingItem] = useState<any>(null)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [itemToDelete, setItemToDelete] = useState<{ type: string; id: string; name: string } | null>(null)
+    const fileInputRef = useRef<HTMLInputElement | null>(null)
+    const [uploadingPurchaseId, setUploadingPurchaseId] = useState<string | null>(null)
+    const [uploading, setUploading] = useState(false)
 
     const chartOptions = {
         responsive: true,
@@ -305,6 +196,43 @@ export default function Dashboard() {
         },
     }
 
+    const openFileSelector = (purchaseId: string) => {
+        setUploadingPurchaseId(purchaseId)
+        // trigger native file selector
+        fileInputRef.current?.click()
+    }
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        const purchaseId = uploadingPurchaseId
+        if (!file || !purchaseId) return
+        setUploading(true)
+        try {
+            // Upload to Supabase Storage - ensure you have a bucket named 'purchases-pdfs'
+            const path = `purchases/${purchaseId}/${Date.now()}_${file.name}`
+            const { error: uploadError } = await supabase.storage.from('purchases-pdfs').upload(path, file, { upsert: true })
+            if (uploadError) throw uploadError
+
+            // Get public URL (or use createSignedUrl for private buckets)
+            const { data: urlData } = supabase.storage.from('purchases-pdfs').getPublicUrl(path)
+            const publicUrl = urlData.publicUrl
+
+            // Save URL on purchase record (updatePurchase accepts partial)
+            await updatePurchase(purchaseId, { pdf_url: publicUrl } as any)
+
+            // Reload purchases
+            await loadAllData()
+            alert('PDF anexado com sucesso.')
+        } catch (err) {
+            console.error('Erro ao enviar PDF:', err)
+            alert('Erro ao enviar PDF. Verifique o console.')
+        } finally {
+            setUploading(false)
+            setUploadingPurchaseId(null)
+            if (fileInputRef.current) fileInputRef.current.value = ''
+        }
+    }
+
     // Carregar dados do Supabase
     useEffect(() => {
         loadAllData()
@@ -313,7 +241,7 @@ export default function Dashboard() {
     async function loadAllData() {
         try {
             setLoading(true)
-            const [productsData, inventoryData, salesData, invoicesData, partnersData, couponsData, contentData, faqsData] = await Promise.all([
+            const [productsData, inventoryData, salesData, invoicesData, partnersData, couponsData, contentData, faqsData, purchasesData] = await Promise.all([
                 getProducts().catch(() => []),
                 getInventoryItems().catch(() => []),
                 getSales().catch(() => []),
@@ -322,6 +250,7 @@ export default function Dashboard() {
                 getCoupons().catch(() => []),
                 getSiteContent().catch(() => []),
                 getFAQs().catch(() => []),
+                getPurchases().catch(() => []),
             ])
 
             setProducts(productsData || [])
@@ -332,6 +261,7 @@ export default function Dashboard() {
             setCoupons(couponsData || [])
             setSiteContent(contentData || [])
             setFaqs(faqsData || [])
+             setPurchases(purchasesData || [])
 
             // Carregar dados do gráfico
             const chartSalesData = await getSalesDataForChart().catch(() => [])
@@ -381,6 +311,8 @@ export default function Dashboard() {
             case 'Cancelada': return 'bg-red-100 text-red-800';
             case 'Rejeitada': return 'bg-red-100 text-red-800';
             case 'Expirado': return 'bg-red-100 text-red-800';
+            case 'Aberto': return 'bg-yellow-100 text-yellow-800';
+            case 'Recebido': return 'bg-green-100 text-green-800';
             default: return 'bg-gray-100 text-gray-800';
         }
     }
@@ -577,55 +509,6 @@ export default function Dashboard() {
         }
     }
 
-    const handleSaveProduct = async (formData: any) => {
-        try {
-            const productData = {
-                name: formData.name?.trim() || '',
-                description: formData.description?.trim() || undefined,
-                sku: formData.sku?.trim() || '',
-                category_id: formData.category_id?.trim() || undefined,
-                brand: formData.brand?.trim() || undefined,
-                price: formData.price ? parseFloat(String(formData.price)) : 0,
-                stock_quantity: formData.stock_quantity ? parseInt(String(formData.stock_quantity)) : 0,
-                weight: formData.weight?.trim() || undefined,
-                dimensions: formData.dimensions?.trim() || undefined,
-                image_url: formData.image_url?.trim() || undefined,
-                status: (formData.status || 'Ativo') as 'Ativo' | 'Inativo' | 'Esgotado',
-            };
-
-            // Validate required fields
-            if (!productData.name) {
-                alert('Nome do produto é obrigatório');
-                return;
-            }
-            if (!productData.sku) {
-                alert('SKU é obrigatório');
-                return;
-            }
-            if (productData.price <= 0) {
-                alert('Preço deve ser maior que zero');
-                return;
-            }
-
-            if (editingItem) {
-                await updateProduct(editingItem.id, productData)
-                alert('Produto atualizado com sucesso!')
-            } else {
-                await createProduct(productData as Omit<Product, 'id' | 'created_at' | 'updated_at'>)
-                alert('Produto criado com sucesso!')
-            }
-            
-            // Reload products list
-            const updatedProducts = await getProducts()
-            setProducts(updatedProducts || [])
-            closeModal()
-        } catch (error: any) {
-            console.error('Erro ao salvar produto:', error)
-            const errorMessage = error?.message || error?.details || 'Erro ao salvar produto. Tente novamente.';
-            alert(`Erro: ${errorMessage}`)
-        }
-    }
-
     const handleSaveContent = async (id: string, value: string) => {
         try {
             await updateSiteContent(id, value)
@@ -707,13 +590,8 @@ export default function Dashboard() {
                 break
             case 'product':
                 modalTitle = isEdit ? 'Editar Produto' : 'Adicionar Novo Produto'
-                modalContent = (
-                    <ProductForm
-                        product={editingItem}
-                        onSave={handleSaveProduct}
-                        onCancel={closeModal}
-                    />
-                )
+                // Aqui você precisaria de um componente ProductForm
+                modalContent = <p>Formulário de Produto Pendente</p>
                 break
             case 'inventory':
                 modalTitle = isEdit ? 'Editar Movimentação' : 'Nova Movimentação de Estoque'
@@ -1038,6 +916,62 @@ export default function Dashboard() {
                         )}
                     </div>
                 );
+            case 'purchases':
+                return (
+                    <div>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-semibold text-gray-700">Compras</h2>
+                            <button
+                                onClick={() => openModal('purchase')}
+                                className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
+                            >
+                                <PlusCircle size={20} className="mr-2" />
+                                Nova Compra
+                            </button>
+                        </div>
+
+                        {purchases.length === 0 ? (
+                            <p className="text-center py-8 text-gray-500">Nenhuma compra registrada.</p>
+                        ) : (
+                            <div className="space-y-4">
+                                {purchases.map((purchase: any) => (
+                                    <div key={purchase.id} className="p-4 border rounded-lg bg-white flex justify-between items-start">
+                                        <div className="flex-grow pr-4">
+                                            <p className="font-semibold text-gray-800 mb-1">#{purchase.purchase_number || purchase.id} — Fornecedor: {purchase.supplier_name}</p>
+                                            <p className="text-sm text-gray-600">Valor: R$ {Number(purchase.total_amount).toFixed(2).replace('.', ',')}</p>
+                                            <p className="text-sm text-gray-500 mt-1">Data: {new Date(purchase.purchase_date || purchase.created_at).toLocaleDateString('pt-BR')}</p>
+                                            {purchase.pdf_url && (
+                                                <p className="mt-2">
+                                                    <a href={purchase.pdf_url} target="_blank" rel="noreferrer" className="text-cyan-600 hover:underline">Visualizar PDF</a>
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div className="flex space-x-2 flex-shrink-0">
+                                            <button
+                                                onClick={() => openFileSelector(purchase.id)}
+                                                className="flex items-center gap-2 bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700"
+                                                title="Adicionar/Atualizar PDF"
+                                            >
+                                                {uploading && uploadingPurchaseId === purchase.id ? (
+                                                    <Loader2 className="animate-spin" size={16} />
+                                                ) : (
+                                                    <Package size={16} />
+                                                )}
+                                                <span className="text-sm">Anexar PDF</span>
+                                            </button>
+                                            <button
+                                                onClick={() => openDeleteDialog('purchase', purchase.id, purchase.purchase_number || purchase.supplier_name)}
+                                                className="bg-red-600 text-white px-3 py-2 rounded hover:bg-red-700"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )
             default:
                 return null;
         }
@@ -1066,6 +1000,9 @@ export default function Dashboard() {
                 <div className="bg-white rounded-lg p-6 shadow-lg min-h-[500px]">
                     {renderTabContent()}
                 </div>
+
+                {/* hidden file input used for attaching PDFs to purchases */}
+                <input ref={fileInputRef} type="file" accept="application/pdf" className="hidden" onChange={handleFileChange} />
 
                 {/* Modais de Edição */}
                 {renderModals()}
