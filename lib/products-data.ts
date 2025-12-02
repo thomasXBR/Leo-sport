@@ -197,6 +197,10 @@ export const getProductById = (id: number): Product | undefined => {
   return productsData.find(product => product.id === id);
 };
 
+export const getProducts = (): Product[] => {
+  return productsData;
+};
+
 export const getProductsByCategory = (category: string): Product[] => {
   return productsData.filter(product => product.category === category);
 };

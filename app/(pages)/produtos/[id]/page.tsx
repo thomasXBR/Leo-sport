@@ -21,7 +21,7 @@ interface ProductPageProps {
 // ---- Metadata ----
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const { id } = await params
-  
+
   // Try Supabase first, then fall back to mock data
   let product = null
   try {
@@ -55,7 +55,7 @@ export async function generateStaticParams() {
   } catch (error) {
     console.log('Using mock products for static generation')
   }
-  
+
   return productsData.map((product) => ({
     id: product.id.toString(),
   }))
@@ -64,11 +64,11 @@ export async function generateStaticParams() {
 // ---- Page ----
 export default async function ProductPage({ params }: ProductPageProps) {
   const { id } = await params
-  
+
   // Try Supabase first, then fall back to mock data
   let product = null
   let isSupabaseProduct = false
-  
+
   try {
     product = await getSupabaseProductById(id)
     if (product) {
@@ -193,11 +193,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     <Star
                       key={star}
                       size={16}
-                      className={`${
-                        avg && star <= Math.round(avg)
-                          ? 'text-yellow-400 fill-current'
-                          : 'text-gray-300'
-                      }`}
+                      className={`${avg && star <= Math.round(avg)
+                        ? 'text-yellow-400 fill-current'
+                        : 'text-gray-300'
+                        }`}
                     />
                   ))}
                 </div>
@@ -245,7 +244,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 <ul className="list-disc pl-5 space-y-2">
                   {Object.entries(product.specifications).map(([key, value]) => (
                     <li key={key} className="text-gray-900">
-                      <span className="font-semibold text-gray-700">{key}:</span> {value}
+                      <span className="font-semibold text-gray-700">{key}:</span> {String(value)}
                     </li>
                   ))}
                 </ul>
