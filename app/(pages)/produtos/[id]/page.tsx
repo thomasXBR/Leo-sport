@@ -3,11 +3,11 @@ import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-// Remover imports duplicados/desnecessários
 import { ArrowLeft, Heart, Share2, Star, Truck, Shield, RotateCcw } from 'lucide-react'
 import ProductCard from '@/components/products/ProductCard'
 import AddToCartButton from '@/components/products/AddToCartButton'
-import { getProductById, productsData } from '@/lib/products-data' // Usar apenas products-data
+import { getProductById, getProducts, productsData } from '@/lib/products-data'
+import { getProductById as getSupabaseProductById } from '@/lib/supabase'
 import { getReviews, computeAverage } from '@/lib/reviews'
 import ReviewForm from '@/components/reviews/review-form'
 
@@ -21,7 +21,14 @@ interface ProductPageProps {
 // ---- Metadata ----
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const { id } = await params
-  const product = getProductById(parseInt(id))
+  
+  // Try Supabase first, then fall back to mock data
+  let product = null
+  try {
+    product = await getSupabaseProductById(id)
+  } catch (error) {
+    product = getProductById(parseInt(id))
+  }
 
   if (!product) {
     return {
@@ -31,13 +38,24 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 
   return {
     title: `${product.name} - LeoSport`,
-    description: product.description,
+    description: product.description || '',
     keywords: [product.name, product.category, product.brand, 'produtos esportivos'],
   }
 }
 
 // ---- Static Params ----
 export async function generateStaticParams() {
+  try {
+    const supabaseProducts = await getProducts()
+    if (supabaseProducts && supabaseProducts.length > 0) {
+      return supabaseProducts.map((product: any) => ({
+        id: product.id.toString(),
+      }))
+    }
+  } catch (error) {
+    console.log('Using mock products for static generation')
+  }
+  
   return productsData.map((product) => ({
     id: product.id.toString(),
   }))
@@ -46,19 +64,50 @@ export async function generateStaticParams() {
 // ---- Page ----
 export default async function ProductPage({ params }: ProductPageProps) {
   const { id } = await params
-  const product = getProductById(parseInt(id))
+  
+  // Try Supabase first, then fall back to mock data
+  let product = null
+  let isSupabaseProduct = false
+  
+  try {
+    product = await getSupabaseProductById(id)
+    if (product) {
+      isSupabaseProduct = true
+    }
+  } catch (error) {
+    console.log('Supabase product not found, trying mock data')
+    product = getProductById(parseInt(id))
+  }
 
   if (!product) {
     notFound()
   }
 
+  // Normalize product data to work with both Supabase and mock products
+  const normalizedProduct = {
+    id: product.id.toString(),
+    name: product.name,
+    category: product.category || (product.categories?.name || 'Sem categoria'),
+    price: typeof product.price === 'string' ? product.price : `R$ ${parseFloat(product.price || 0).toFixed(2).replace('.', ',')}`,
+    imageUrl: product.imageUrl || product.image_url || 'https://placehold.co/600x600?text=Sem+Imagem',
+    description: product.description || '',
+    stock: product.stock !== undefined ? product.stock : product.stock_quantity || 0,
+    sku: product.sku || '',
+    brand: product.brand || '',
+    weight: product.weight || '',
+    dimensions: product.dimensions || '',
+    status: product.status || 'Ativo',
+    features: product.features || [],
+    specifications: product.specifications || {},
+  }
+
   // Carregar avaliações e calcular média
-  const reviews = await getReviews(product.id.toString())
+  const reviews = await getReviews(normalizedProduct.id)
   const avg = computeAverage(reviews)
 
   // Produtos relacionados
   const relatedProducts = productsData
-    .filter((p) => p.category === product.category && p.id !== product.id)
+    .filter((p) => p.category === normalizedProduct.category && p.id.toString() !== normalizedProduct.id)
     .slice(0, 4)
 
   return (
@@ -75,9 +124,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
               Produtos
             </Link>
             <span>/</span>
-            <span className="text-gray-900">{product.category}</span>
+            <span className="text-gray-900">{normalizedProduct.category}</span>
             <span>/</span>
-            <span className="text-gray-900 font-medium">{product.name}</span>
+            <span className="text-gray-900 font-medium">{normalizedProduct.name}</span>
           </div>
         </div>
       </div>
@@ -98,13 +147,13 @@ export default async function ProductPage({ params }: ProductPageProps) {
           <div className="space-y-4">
             <div className="relative aspect-square rounded-lg overflow-hidden bg-white">
               <Image
-                src={product.imageUrl}
-                alt={product.name}
+                src={normalizedProduct.imageUrl}
+                alt={normalizedProduct.name}
                 fill
                 className="object-cover"
                 priority
               />
-              {product.status === 'Esgotado' && (
+              {normalizedProduct.status === 'Esgotado' && (
                 <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
                   Esgotado
                 </div>
@@ -116,8 +165,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="aspect-square rounded-lg overflow-hidden bg-gray-200">
                   <Image
-                    src={product.imageUrl}
-                    alt={`${product.name} ${i}`}
+                    src={normalizedProduct.imageUrl}
+                    alt={`${normalizedProduct.name} ${i}`}
                     width={100}
                     height={100}
                     className="w-full h-full object-cover opacity-70"
@@ -131,11 +180,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
           <div className="space-y-6">
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-sm text-gray-500">{product.brand}</span>
+                <span className="text-sm text-gray-500">{normalizedProduct.brand}</span>
                 <span className="text-sm text-gray-400">•</span>
-                <span className="text-sm text-gray-500">{product.category}</span>
+                <span className="text-sm text-gray-500">{normalizedProduct.category}</span>
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">{product.name}</h1>
+              <h1 className="text-3xl font-bold text-gray-900 mb-4">{normalizedProduct.name}</h1>
 
               {/* Rating */}
               <div className="flex items-center gap-2 mb-4">
@@ -161,13 +210,13 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 )}
               </div>
 
-              <div className="text-3xl font-bold text-gray-900 mb-6">{product.price}</div>
+              <div className="text-3xl font-bold text-gray-900 mb-6">{normalizedProduct.price}</div>
             </div>
 
             {/* Product Description */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">Descrição</h3>
-              <p className="text-gray-700 leading-relaxed">{product.description}</p>
+              <p className="text-gray-700 leading-relaxed">{normalizedProduct.description}</p>
             </div>
 
             {/* Features */}

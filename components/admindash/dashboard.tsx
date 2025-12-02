@@ -30,6 +30,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import ProductRegistrationForm from '@/components/forms/ProductRegistrationForm'
 import {
     getProducts, createProduct, updateProduct, deleteProduct,
     getInventoryItems, createInventoryMovement, deleteInventoryMovement,
@@ -38,7 +39,8 @@ import {
     getPartnerships, createPartnership, updatePartnership, deletePartnership,
     getCoupons, createCoupon, updateCoupon, deleteCoupon,
     getSiteContent, updateSiteContent, getFAQs, createFAQ, updateFAQ, deleteFAQ,
-    type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent, type FAQ
+    getCategories,
+    type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent, type FAQ, type Category
 } from '@/lib/supabase'
 
 ChartJS.register(
@@ -84,6 +86,307 @@ const FAQForm = ({ initialData, onSave, onCancel }: { initialData: any, onSave: 
                     />
                 </div>
             </div>
+            <DialogFooter className="mt-6">
+                <button type="button" onClick={onCancel} className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400">
+                    Cancelar
+                </button>
+                <button type="submit" className="bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700">
+                    <Save size={20} className="inline mr-2" /> Salvar
+                </button>
+            </DialogFooter>
+        </form>
+    )
+}
+
+// Componente de Formulário de Produto (para o modal)
+const ProductForm = ({ product, onSave, onCancel }: { product: any, onSave: (data: any) => void, onCancel: () => void }) => {
+    const [categories, setCategories] = useState<Category[]>([])
+    
+    useEffect(() => {
+        const loadCategories = async () => {
+            try {
+                const cats = await getCategories()
+                // getCategories sempre retorna array, nunca lança erro
+                setCategories(Array.isArray(cats) ? cats : [])
+            } catch (err: any) {
+                // Fallback adicional caso algo inesperado aconteça
+                console.warn('Unexpected error loading categories:', err)
+                setCategories([])
+            }
+        }
+        loadCategories()
+    }, [])
+    
+    const [formData, setFormData] = useState({
+        name: product?.name || '',
+        description: product?.description || '',
+        sku: product?.sku || '',
+        category_id: product?.category_id || '',
+        brand: product?.brand || '',
+        price: product?.price || '',
+        fake_price: product?.fake_price || '',
+        stock_quantity: product?.stock_quantity || '',
+        weight: product?.weight || '',
+        dimensions: product?.dimensions || '',
+        image_url: product?.image_url || '',
+        color: product?.color || '',
+        features: product?.features || '',
+        specifications: product?.specifications || '',
+        no_shipping: product?.no_shipping || false,
+        devolution_months: product?.devolution_months || '',
+        warranty_months: product?.warranty_months || '',
+        status: product?.status || 'Ativo',
+    })
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value, type } = e.target
+        const checked = (e.target as HTMLInputElement).checked
+        setFormData(prev => ({ 
+            ...prev, 
+            [name]: type === 'checkbox' ? checked : value 
+        }))
+    }
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        onSave(formData)
+    }
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+                    <input
+                        type="text"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        required
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">SKU *</label>
+                    <input
+                        type="text"
+                        name="sku"
+                        value={formData.sku}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        required
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>
+                    <input
+                        type="text"
+                        name="brand"
+                        value={formData.brand}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Preço Falso (R$) - Preço Riscado</label>
+                    <input
+                        type="number"
+                        step="0.01"
+                        name="fake_price"
+                        value={formData.fake_price}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="Preço que será riscado"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Preço Real (R$) *</label>
+                    <input
+                        type="number"
+                        step="0.01"
+                        name="price"
+                        value={formData.price}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        required
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Estoque *</label>
+                    <input
+                        type="number"
+                        name="stock_quantity"
+                        value={formData.stock_quantity}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        required
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Peso (kg)</label>
+                    <input
+                        type="text"
+                        name="weight"
+                        value={formData.weight}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Dimensões (LxAxP)</label>
+                    <input
+                        type="text"
+                        name="dimensions"
+                        value={formData.dimensions}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Cor</label>
+                    <input
+                        type="text"
+                        name="color"
+                        value={formData.color}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="ex: Preto, Azul, Vermelho"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Categoria (Esporte)</label>
+                    <select
+                        name="category_id"
+                        value={formData.category_id}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="">Selecione a categoria</option>
+                        {categories.length > 0 ? (
+                            categories.map((category) => (
+                                <option key={category.id} value={category.id}>
+                                    {category.name}
+                                </option>
+                            ))
+                        ) : (
+                            <option value="" disabled>
+                                Nenhuma categoria disponível
+                            </option>
+                        )}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select
+                        name="status"
+                        value={formData.status}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="Ativo">Ativo</option>
+                        <option value="Inativo">Inativo</option>
+                        <option value="Esgotado">Esgotado</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleChange}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">URL da Imagem</label>
+                <input
+                    type="url"
+                    name="image_url"
+                    value={formData.image_url}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+            </div>
+            
+            {/* Features & Specifications Section */}
+            <div className="border-t pt-4 mt-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Recursos e Especificações Técnicas</h3>
+                
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Recursos (um por linha)</label>
+                        <textarea
+                            name="features"
+                            value={formData.features}
+                            onChange={handleChange}
+                            rows={4}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder="ex:&#10;Quadro de alumínio resistente&#10;Suspensão dianteira&#10;Freios a disco&#10;Pneus 29&quot; para melhor estabilidade"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Adicione cada recurso em uma nova linha</p>
+                    </div>
+                    
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Especificações Técnicas (formato: chave: valor, um por linha)</label>
+                        <textarea
+                            name="specifications"
+                            value={formData.specifications}
+                            onChange={handleChange}
+                            rows={4}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder="ex:&#10;Quadro: Alumínio 6061&#10;Garfo: Suspensão com 100mm de curso&#10;Freios: Disco hidráulico&#10;Marchas: 21 velocidades"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Use o formato: &quot;Nome da Especificação: Valor&quot;</p>
+                    </div>
+                </div>
+            </div>
+            
+            {/* Shipping & Warranty Section */}
+            <div className="border-t pt-4 mt-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Frete e Garantia</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="flex items-center space-x-2">
+                        <input
+                            type="checkbox"
+                            name="no_shipping"
+                            checked={formData.no_shipping}
+                            onChange={handleChange}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <label className="text-sm font-medium text-gray-700">Sem taxa de frete</label>
+                    </div>
+                    
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Meses para Devolução</label>
+                        <input
+                            type="number"
+                            name="devolution_months"
+                            value={formData.devolution_months}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder="ex: 3"
+                            min="0"
+                        />
+                    </div>
+                    
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Meses de Garantia</label>
+                        <input
+                            type="number"
+                            name="warranty_months"
+                            value={formData.warranty_months}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder="ex: 12"
+                            min="0"
+                        />
+                    </div>
+                </div>
+            </div>
+            
             <DialogFooter className="mt-6">
                 <button type="button" onClick={onCancel} className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400">
                     Cancelar
@@ -416,6 +719,64 @@ export default function Dashboard() {
         }
     }
 
+    const handleSaveProduct = async (formData: any) => {
+        try {
+            const productData = {
+                name: formData.name?.trim() || '',
+                description: formData.description?.trim() || undefined,
+                sku: formData.sku?.trim() || '',
+                category_id: formData.category_id && formData.category_id.trim() !== '' ? formData.category_id.trim() : undefined,
+                brand: formData.brand?.trim() || undefined,
+                price: formData.price ? parseFloat(String(formData.price)) : 0,
+                fake_price: formData.fake_price ? parseFloat(String(formData.fake_price)) : undefined,
+                stock_quantity: formData.stock_quantity ? parseInt(String(formData.stock_quantity)) : 0,
+                weight: formData.weight?.trim() || undefined,
+                dimensions: formData.dimensions?.trim() || undefined,
+                image_url: formData.image_url?.trim() || undefined,
+                color: formData.color?.trim() || undefined,
+                features: formData.features?.trim() || undefined,
+                specifications: formData.specifications?.trim() || undefined,
+                no_shipping: formData.no_shipping || false,
+                devolution_months: formData.devolution_months ? parseInt(String(formData.devolution_months)) : undefined,
+                warranty_months: formData.warranty_months ? parseInt(String(formData.warranty_months)) : undefined,
+                status: (formData.status || 'Ativo') as 'Ativo' | 'Inativo' | 'Esgotado',
+            };
+
+            // Validate required fields
+            if (!productData.name) {
+                alert('Nome do produto é obrigatório');
+                return;
+            }
+            if (!productData.sku) {
+                alert('SKU é obrigatório');
+                return;
+            }
+            if (productData.price <= 0) {
+                alert('Preço deve ser maior que zero');
+                return;
+            }
+
+            if (editingItem) {
+                await updateProduct(editingItem.id, productData)
+                alert('Produto atualizado com sucesso!')
+            } else {
+                // Generate random ID for new product
+                const randomId = crypto.randomUUID()
+                await createProduct({ ...productData, id: randomId } as Omit<Product, 'created_at' | 'updated_at'> & { id: string })
+                alert('Produto criado com sucesso!')
+            }
+            
+            // Reload products list
+            const updatedProducts = await getProducts()
+            setProducts(updatedProducts || [])
+            closeModal()
+        } catch (error: any) {
+            console.error('Erro ao salvar produto:', error)
+            const errorMessage = error?.message || error?.details || 'Erro ao salvar produto. Tente novamente.';
+            alert(`Erro: ${errorMessage}`)
+        }
+    }
+
     const handleSaveContent = async (id: string, value: string) => {
         try {
             await updateSiteContent(id, value)
@@ -497,8 +858,13 @@ export default function Dashboard() {
                 break
             case 'product':
                 modalTitle = isEdit ? 'Editar Produto' : 'Adicionar Novo Produto'
-                // Aqui você precisaria de um componente ProductForm
-                modalContent = <p>Formulário de Produto Pendente</p>
+                modalContent = (
+                    <ProductForm
+                        product={editingItem}
+                        onSave={handleSaveProduct}
+                        onCancel={closeModal}
+                    />
+                )
                 break
             case 'inventory':
                 modalTitle = isEdit ? 'Editar Movimentação' : 'Nova Movimentação de Estoque'
