@@ -171,16 +171,13 @@ export default function Header() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`relative px-3 py-2 transition-colors duration-200 font-medium ${
+                  className={`px-3 py-2 transition-colors duration-200 font-medium border-b-2 ${
                     isActive
-                      ? 'text-blue-600'
-                      : 'text-gray-600 hover:text-blue-900'
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-600 hover:text-blue-600'
                   }`}
                 >
                   {item.label}
-                  {isActive && (
-                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></span>
-                  )}
                 </Link>
               );
             })}
@@ -392,34 +389,28 @@ export default function Header() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`relative px-3 py-2 transition-colors duration-200 font-medium ${
+                    className={`px-3 py-2 transition-colors duration-200 font-medium border-l-4 ${
                       isActive
-                        ? 'text-blue-600'
-                        : 'text-gray-600 hover:text-blue-900'
+                        ? 'border-blue-600 text-blue-600'
+                        : 'border-transparent text-gray-600 hover:text-blue-600'
                     }`}
                     onClick={() => setIsMenuOpen(false)}
                   >
                     {item.label}
-                    {isActive && (
-                      <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-blue-600"></span>
-                    )}
                   </Link>
                 );
               })}
               <Link
                 href="/carrinho"
-                className={`relative flex items-center px-3 py-2 transition-colors duration-200 font-medium ${
+                className={`flex items-center px-3 py-2 rounded-md transition-colors duration-200 font-medium ${
                   pathname === '/carrinho'
-                    ? 'text-blue-600'
-                    : 'text-gray-600 hover:text-blue-900'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:text-blue-900 hover:bg-blue-50'
                 }`}
                 onClick={() => setIsMenuOpen(false)}
               >
                 <ShoppingCart className="w-5 h-5 mr-2" />
                 Carrinho {cartCount > 0 && `(${cartCount})`}
-                {pathname === '/carrinho' && (
-                  <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-blue-600"></span>
-                )}
               </Link>
               <button
                 onClick={() => {

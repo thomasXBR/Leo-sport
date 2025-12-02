@@ -4,7 +4,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Product } from '@/lib/products-data';
 
 interface ProductCardProps {
-    product: Product;
+    // Accept flexible product shape (mock products and Supabase products)
+    product: any;
     showStock?: boolean;
     showSKU?: boolean;
 }
@@ -48,10 +49,15 @@ export default function ProductCard({ product, showStock = true, showSKU = false
                         
                         {/* Preço com desconto */}
                         <div className="mb-3">
-                            {product.discountedPrice ? (
+                            {(
+                                product.discountedPrice ||
+                                product.fake_price ||
+                                product.fakePrice
+                            ) ? (
+                                // If discountedPrice exists, treat that as the current (lower) price and show original as line-through.
                                 <div className="flex items-baseline gap-2">
-                                    <p className="text-lg font-bold text-red-600">{product.discountedPrice}</p>
-                                    <p className="text-sm text-gray-400 line-through">{product.price}</p>
+                                    <p className="text-lg font-bold text-red-600">{product.discountedPrice ?? product.price}</p>
+                                    <p className="text-sm text-gray-400 line-through">{product.price ?? product.fake_price ?? product.fakePrice}</p>
                                 </div>
                             ) : (
                                 <p className="text-lg font-bold text-gray-900">{product.price}</p>

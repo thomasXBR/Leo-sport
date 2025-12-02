@@ -47,6 +47,7 @@ export type Product = {
   name: string;
   description?: string;
   sku: string;
+  content_id?: string;
   category_id?: string;
   brand?: string;
   price: number;
@@ -273,49 +274,6 @@ export async function deleteFAQ(id: string | number) {
   return true; 
 }
 
-export async function getCategories() {
-  try {
-    // Verificar se as variáveis de ambiente estão configuradas
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      console.warn('Supabase credentials not configured');
-      return [];
-    }
-
-    const { data, error } = await supabase
-      .from('categories')
-      .select('*')
-      .order('name', { ascending: true });
-    
-    if (error) {
-      console.error('Error fetching categories:', error);
-      // Capturar todos os tipos de erro relacionados a tabela não encontrada
-      const errorMessage = error.message?.toLowerCase() || '';
-      const errorCode = error.code?.toLowerCase() || '';
-      
-      if (
-        errorCode === 'pgrst116' || 
-        errorCode === '42p01' ||
-        errorMessage.includes('relation') || 
-        errorMessage.includes('does not exist') ||
-        errorMessage.includes('not found') ||
-        error.code === '404' ||
-        error.status === 404
-      ) {
-        console.warn('Categories table does not exist or is empty. Returning empty array.');
-        return [];
-      }
-      // Para outros erros, também retornar array vazio em vez de lançar
-      console.warn('Error loading categories, returning empty array:', error);
-      return [];
-    }
-    return data || [];
-  } catch (err: any) {
-    // Capturar qualquer erro, incluindo erros de rede, 404, etc.
-    console.warn('Error in getCategories, returning empty array:', err?.message || err);
-    return [];
-  }
-}
-
 export async function getProducts() {
   const { data, error } = await supabase
     .from('products')
@@ -340,13 +298,10 @@ export async function getProductById(id: string) {
   return data;
 }
 
-export async function createProduct(product: Omit<Product, 'id' | 'created_at' | 'updated_at'> & { id?: string }) {
-  // Generate random UUID if ID is not provided
-  const productId = product.id || crypto.randomUUID();
-  
+export async function createProduct(product: Omit<Product, 'id' | 'created_at' | 'updated_at'>) {
   // Filter out undefined values to avoid Supabase errors
   const cleanProduct = Object.fromEntries(
-    Object.entries({ ...product, id: productId }).filter(([_, value]) => value !== undefined && value !== null && value !== '')
+    Object.entries(product).filter(([_, value]) => value !== undefined && value !== null && value !== '')
   );
 
   const { data, error } = await supabase
