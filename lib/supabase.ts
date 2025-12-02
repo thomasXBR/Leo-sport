@@ -50,13 +50,34 @@ export type Product = {
   category_id?: string;
   brand?: string;
   price: number;
+  fake_price?: number;
   stock_quantity: number;
   weight?: string;
   dimensions?: string;
   image_url?: string;
+  color?: string;
+  features?: string;
+  specifications?: string;
+  no_shipping?: boolean;
+  devolution_months?: number;
+  warranty_months?: number;
   status: 'Ativo' | 'Inativo' | 'Esgotado';
   created_at: string;
   updated_at: string;
+};
+
+// --- Tipagem para reviews conforme oque está no Supabase:
+export type Review = {
+  id: number;
+  product_id: string;
+  user_id: string | null;
+  stars: number;
+  comment: string;
+  created_at: string;
+};
+
+export type ReviewWithUser = Review & {
+  user: { id: string; name: string; avatar_url?: string } | null
 };
 
 export type InventoryMovement = {
@@ -141,6 +162,160 @@ export type SiteContent = {
 // FUNÇÕES CRUD - PRODUTOS
 // ============================================
 
+/**
+ * 1. FUNÇÃO: getFAQs
+ * Objetivo: Obter todas as Perguntas e Respostas.
+ */
+export async function getFAQs() {
+  const { data, error } = await supabase
+    .from('perguntas_respostas') // Nome da Tabela
+    .select('id, perguntas_frequentes, respostas') // Colunas a serem selecionadas
+    .order('id', { ascending: true }); // Ordenar, por exemplo, por ID
+
+  if (error) {
+    console.error('Erro ao buscar FAQs:', error);
+    throw new Error('Não foi possível carregar as perguntas frequentes.');
+  }
+  
+  // Retorna os dados, ou um array vazio se não houver nada
+  return data || [];
+}
+
+export interface FAQ {
+  id: string; // CORREÇÃO
+  perguntas_frequentes: string;
+  respostas: string;
+}
+
+/**
+ * 2. FUNÇÃO: createFAQ
+ * Objetivo: Inserir uma nova Pergunta Frequente e Resposta.
+ * @param faq - Objeto contendo 'pergunta' e 'resposta'.
+ */
+interface NewFAQ {
+  pergunta: string;
+  resposta: string;
+}
+
+export async function createFAQ({ pergunta, resposta }: NewFAQ) {
+  const { data, error } = await supabase
+    .from('perguntas_respostas') // Nome da Tabela
+    .insert([
+      { 
+        perguntas_frequentes: pergunta, // Mapeamento para a coluna Supabase
+        respostas: resposta            // Mapeamento para a coluna Supabase
+      }
+    ])
+    .select() // Retorna o registro recém-criado
+    .single();
+
+  if (error) {
+    console.error('Erro ao criar FAQ:', error);
+    throw new Error('Não foi possível adicionar a nova pergunta.');
+  }
+
+  return data;
+}
+
+/**
+ * 3. FUNÇÃO: updateFAQ
+ * Objetivo: Atualizar uma Pergunta Frequente e Resposta existente.
+ * @param id - O ID (UUID ou INT) do registro a ser atualizado.
+ * @param updates - Objeto com os campos a serem atualizados (pergunta e/ou resposta).
+ */
+interface UpdatedFAQ {
+  pergunta?: string;
+  resposta?: string;
+}
+
+export async function updateFAQ(id: string | number, updates: UpdatedFAQ) {
+  // Cria o objeto de atualização com base nos nomes das colunas do Supabase
+  const updatePayload: Record<string, any> = {};
+  if (updates.pergunta !== undefined) {
+    updatePayload.perguntas_frequentes = updates.pergunta;
+  }
+  if (updates.resposta !== undefined) {
+    updatePayload.respostas = updates.resposta;
+  }
+
+  const { data, error } = await supabase
+    .from('perguntas_respostas')
+    .update(updatePayload)
+    .eq('id', id) // Condição de filtro para o registro correto
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Erro ao atualizar FAQ:', error);
+    throw new Error(`Não foi possível atualizar a pergunta com ID ${id}.`);
+  }
+
+  return data;
+}
+
+/**
+ * 4. FUNÇÃO: deleteFAQ
+ * Objetivo: Excluir uma Pergunta Frequente e Resposta pelo ID.
+ * @param id - O ID (UUID ou INT) do registro a ser excluído.
+ */
+export async function deleteFAQ(id: string | number) {
+  const { error } = await supabase
+    .from('perguntas_respostas')
+    .delete()
+    .eq('id', id); // Condição de filtro para o registro correto
+
+  if (error) {
+    console.error('Erro ao deletar FAQ:', error);
+    throw new Error(`Não foi possível deletar a pergunta com ID ${id}.`);
+  }
+  
+  // Retorna true em caso de sucesso (ou void/undefined, dependendo da sua preferência)
+  return true; 
+}
+
+export async function getCategories() {
+  try {
+    // Verificar se as variáveis de ambiente estão configuradas
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      console.warn('Supabase credentials not configured');
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .order('name', { ascending: true });
+    
+    if (error) {
+      console.error('Error fetching categories:', error);
+      // Capturar todos os tipos de erro relacionados a tabela não encontrada
+      const errorMessage = error.message?.toLowerCase() || '';
+      const errorCode = error.code?.toLowerCase() || '';
+      
+      if (
+        errorCode === 'pgrst116' || 
+        errorCode === '42p01' ||
+        errorMessage.includes('relation') || 
+        errorMessage.includes('does not exist') ||
+        errorMessage.includes('not found') ||
+        error.code === '404' ||
+        error.status === 404
+      ) {
+        console.warn('Categories table does not exist or is empty. Returning empty array.');
+        return [];
+      }
+      // Para outros erros, também retornar array vazio em vez de lançar
+      console.warn('Error loading categories, returning empty array:', error);
+      return [];
+    }
+    return data || [];
+  } catch (err: any) {
+    // Capturar qualquer erro, incluindo erros de rede, 404, etc.
+    console.warn('Error in getCategories, returning empty array:', err?.message || err);
+    return [];
+  }
+}
+
 export async function getProducts() {
   const { data, error } = await supabase
     .from('products')
@@ -152,9 +327,12 @@ export async function getProducts() {
 }
 
 export async function getProductById(id: string) {
+  // Se quiser incluir reviews ao buscar um produto, basta fazer um join:
+  // Exemplo:
+  // .select('*, categories(name, slug), reviews(*)')
   const { data, error } = await supabase
     .from('products')
-    .select('*, categories(name, slug)')
+    .select('*, categories(name, slug), reviews(*)')
     .eq('id', id)
     .single();
   
@@ -162,14 +340,25 @@ export async function getProductById(id: string) {
   return data;
 }
 
-export async function createProduct(product: Omit<Product, 'id' | 'created_at' | 'updated_at'>) {
+export async function createProduct(product: Omit<Product, 'id' | 'created_at' | 'updated_at'> & { id?: string }) {
+  // Generate random UUID if ID is not provided
+  const productId = product.id || crypto.randomUUID();
+  
+  // Filter out undefined values to avoid Supabase errors
+  const cleanProduct = Object.fromEntries(
+    Object.entries({ ...product, id: productId }).filter(([_, value]) => value !== undefined && value !== null && value !== '')
+  );
+
   const { data, error } = await supabase
     .from('products')
-    .insert([product])
+    .insert([cleanProduct])
     .select()
     .single();
   
-  if (error) throw error;
+  if (error) {
+    console.error('Error creating product:', error);
+    throw error;
+  }
   return data;
 }
 
@@ -191,6 +380,61 @@ export async function deleteProduct(id: string) {
     .delete()
     .eq('id', id);
   
+  if (error) throw error;
+}
+
+// ============================================
+// CRUD - REVIEWS
+// ============================================
+/**
+ * Obtém todos os reviews de um produto, incluindo dados do usuário se desejar
+ */
+export async function getReviewsByProduct(product_id: string) {
+  // Inclua user (perfil do usuário) no select se desejar mostrar nome/avatar
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('*, user:users(id, name, avatar_url)')
+    .eq('product_id', product_id)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as ReviewWithUser[];
+}
+
+/**
+ * Cria um novo review
+ */
+export async function createReview(review: Omit<Review, 'id' | 'created_at' | 'updated_at'>) {
+  const { data, error } = await supabase
+    .from('reviews')
+    .insert([review])
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Review;
+}
+
+/**
+ * Atualiza um review existente
+ */
+export async function updateReview(id: string, updates: Partial<Review>) {
+  const { data, error } = await supabase
+    .from('reviews')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Review;
+}
+
+/**
+ * Deleta um review
+ */
+export async function deleteReview(id: string) {
+  const { error } = await supabase
+    .from('reviews')
+    .delete()
+    .eq('id', id);
   if (error) throw error;
 }
 

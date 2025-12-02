@@ -3,11 +3,20 @@ import crypto from 'crypto';
 
 /**
  * Cliente Melhor Envio para cálculo de frete e criação de envios
+ * 
+ * Variáveis de ambiente necessárias:
+ * - MELHOR_ENVIO_TOKEN: Token de acesso do Melhor Envio
+ * - MELHOR_ENVIO_PRODUCTION: 'true' para produção, 'false' ou não definido para sandbox
+ * - MELHOR_ENVIO_WEBHOOK_SECRET: Secret para validação de webhooks (opcional)
  */
 
 const token = process.env.MELHOR_ENVIO_TOKEN || '';
 const isProduction = process.env.MELHOR_ENVIO_PRODUCTION === 'true';
 const webhookSecret = process.env.MELHOR_ENVIO_WEBHOOK_SECRET || '';
+
+if (!token && process.env.NODE_ENV === 'production') {
+  console.warn('[Melhor Envio] ATENÇÃO: MELHOR_ENVIO_TOKEN não configurado em produção!');
+}
 
 // URLs da API do Melhor Envio
 const BASE_URL = isProduction
@@ -25,6 +34,26 @@ const apiClient: AxiosInstance = axios.create({
   },
   timeout: 30000,
 });
+
+// Interceptor para tratamento de erros
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      // Erro da API do Melhor Envio
+      const errorMessage = error.response.data?.message || error.response.data?.error || error.message;
+      console.error('[Melhor Envio API Error]', {
+        status: error.response.status,
+        message: errorMessage,
+        data: error.response.data,
+      });
+    } else if (error.request) {
+      // Erro de rede
+      console.error('[Melhor Envio Network Error]', error.message);
+    }
+    return Promise.reject(error);
+  }
+);
 
 /**
  * Tipos para integração com Melhor Envio
@@ -239,6 +268,106 @@ export async function generateShippingLabel(shippingId: string): Promise<any> {
       `Erro ao gerar etiqueta: ${error.response?.data?.message || error.message}`
     );
   }
+}
+
+/**
+ * Cancelar um envio
+ */
+export async function cancelShipping(shippingId: string): Promise<any> {
+  try {
+    const response = await apiClient.delete(`/shipment/${shippingId}`);
+    return response.data;
+  } catch (error: any) {
+    console.error('[Melhor Envio] Erro ao cancelar envio:', error.response?.data || error.message);
+    throw new Error(
+      `Erro ao cancelar envio: ${error.response?.data?.message || error.message}`
+    );
+  }
+}
+
+/**
+ * Listar todos os envios
+ */
+export async function listShippings(filters?: {
+  status?: string;
+  service_id?: number;
+  created_at?: string;
+}): Promise<any[]> {
+  try {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.service_id) params.append('service_id', filters.service_id.toString());
+    if (filters?.created_at) params.append('created_at', filters.created_at);
+
+    const queryString = params.toString();
+    const url = queryString ? `/shipment?${queryString}` : '/shipment';
+    
+    const response = await apiClient.get(url);
+    return Array.isArray(response.data) ? response.data : [response.data];
+  } catch (error: any) {
+    console.error('[Melhor Envio] Erro ao listar envios:', error.response?.data || error.message);
+    throw new Error(
+      `Erro ao listar envios: ${error.response?.data?.message || error.message}`
+    );
+  }
+}
+
+/**
+ * Obter informações de um serviço de envio
+ */
+export async function getServiceInfo(serviceId: number): Promise<any> {
+  try {
+    const response = await apiClient.get(`/shipment/services/${serviceId}`);
+    return response.data;
+  } catch (error: any) {
+    console.error('[Melhor Envio] Erro ao buscar serviço:', error.response?.data || error.message);
+    throw new Error(
+      `Erro ao buscar serviço: ${error.response?.data?.message || error.message}`
+    );
+  }
+}
+
+/**
+ * Listar todos os serviços disponíveis
+ */
+export async function listServices(): Promise<any[]> {
+  try {
+    const response = await apiClient.get('/shipment/services');
+    return Array.isArray(response.data) ? response.data : [response.data];
+  } catch (error: any) {
+    console.error('[Melhor Envio] Erro ao listar serviços:', error.response?.data || error.message);
+    throw new Error(
+      `Erro ao listar serviços: ${error.response?.data?.message || error.message}`
+    );
+  }
+}
+
+/**
+ * Verificar se o envio está pago
+ */
+export function isShippingPaid(shipping: any): boolean {
+  return shipping?.status === 'paid' || shipping?.status === 'released';
+}
+
+/**
+ * Verificar se o envio foi enviado
+ */
+export function isShippingShipped(shipping: any): boolean {
+  return shipping?.status === 'shipped' || shipping?.status === 'released';
+}
+
+/**
+ * Verificar se o envio foi entregue
+ */
+export function isShippingDelivered(shipping: any): boolean {
+  return shipping?.status === 'delivered';
+}
+
+/**
+ * Verificar se o envio foi cancelado
+ */
+export function isShippingCancelled(shipping: any): boolean {
+  return shipping?.status === 'cancelled';
 }
 
 /**

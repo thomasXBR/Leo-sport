@@ -28,6 +28,11 @@ export default function ProductCard({ product, showStock = true, showSKU = false
                                 Esgotado
                             </div>
                         )}
+                        {product.discountPercentage && (
+                            <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                                -{product.discountPercentage}
+                            </div>
+                        )}
                     </div>
                     <div className="p-4">
                         <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2">{product.name}</h3>
@@ -40,7 +45,19 @@ export default function ProductCard({ product, showStock = true, showSKU = false
                                 Estoque: {product.stock} unidades
                             </p>
                         )}
-                        <p className="text-lg font-bold text-gray-900 mb-3">{product.price}</p>
+                        
+                        {/* Preço com desconto */}
+                        <div className="mb-3">
+                            {product.discountedPrice ? (
+                                <div className="flex items-baseline gap-2">
+                                    <p className="text-lg font-bold text-red-600">{product.discountedPrice}</p>
+                                    <p className="text-sm text-gray-400 line-through">{product.price}</p>
+                                </div>
+                            ) : (
+                                <p className="text-lg font-bold text-gray-900">{product.price}</p>
+                            )}
+                        </div>
+
                         <div className="flex items-center justify-between">
                             <span className="text-sm text-gray-500">{product.brand}</span>
                             <span className="text-xs text-gray-400">Ver detalhes →</span>
