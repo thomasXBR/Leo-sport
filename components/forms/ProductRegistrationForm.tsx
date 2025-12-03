@@ -44,12 +44,11 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
       ? ((initialData as any).features as string[]).join('\n')
       : typeof (initialData as any)?.features === 'string'
         ? (() => {
-            // Se for string JSON, tenta parsear
             try {
               const parsed = JSON.parse((initialData as any).features)
               if (Array.isArray(parsed)) return parsed.join('\n')
             } catch (e) {
-              // Se não for JSON, retorna como está (já está no formato correto)
+              // Se não for JSON, retorna como está
             }
             return (initialData as any).features ?? ''
           })()
@@ -57,7 +56,17 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
     specifications: typeof (initialData as any)?.specifications === 'object' && (initialData as any)?.specifications && !Array.isArray((initialData as any)?.specifications)
       ? Object.entries((initialData as any).specifications).map(([k, v]) => `${k}: ${v}`).join('\n')
       : typeof (initialData as any)?.specifications === 'string'
-        ? (initialData as any).specifications
+        ? (() => {
+            try {
+              const parsed = JSON.parse((initialData as any).specifications)
+              if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+                return Object.entries(parsed).map(([k, v]) => `${k}: ${v}`).join('\n')
+              }
+            } catch (e) {
+              // Se não for JSON, retorna como está (já está no formato correto)
+            }
+            return (initialData as any).specifications ?? ''
+          })()
         : '',
     no_shipping: (initialData as any)?.no_shipping ?? false,
     devolution_months: (initialData as any)?.devolution_months ? String((initialData as any).devolution_months) : '1',
@@ -67,7 +76,6 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
   useEffect(() => {
     const loadSports = async () => {
       try {
-        // Buscar categorias (esportes) diretamente do banco
         const { data, error } = await supabase
           .from('categories')
           .select('id, name')
@@ -180,11 +188,15 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
 
     setLoading(true);
     try {
+      // Converte specifications em JSON string
+      const specsObject = parseSpecifications(formData.specifications);
+      const specsJson = Object.keys(specsObject).length > 0 ? JSON.stringify(specsObject) : undefined;
+
       const productData: any = {
         name: formData.name,
         description: formData.description || undefined,
         sku: formData.sku,
-        category_id: formData.category_id || undefined, // Enviando o UUID do esporte
+        category_id: formData.category_id || undefined,
         brand: formData.brand || undefined,
         price: parseFloat(String(formData.price)),
         fake_price: formData.fake_price ? parseFloat(String(formData.fake_price)) : undefined,
@@ -194,10 +206,10 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
         image_url: formData.image_url || undefined,
         color: (formData as any).color || undefined,
         status: formData.status as 'Ativo' | 'Inativo' | 'Esgotado',
-        // Salvar features como string (array de strings separado por \n)
+        // Salvar features como JSON string de array
         features: formData.features ? JSON.stringify(parseFeatures(formData.features)) : undefined,
-        // Salvar specifications como string (formato chave:valor separado por \n, similar ao features)
-        specifications: formData.specifications ? formData.specifications : undefined,
+        // Salvar specifications como JSON string de objeto
+        specifications: specsJson,
         no_shipping: Boolean((formData as any).no_shipping),
         devolution_months: formData.devolution_months ? parseInt(formData.devolution_months, 10) : undefined,
         warranty_months: formData.warranty_months ? parseInt(formData.warranty_months, 10) : undefined,
