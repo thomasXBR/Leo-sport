@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   try {
     product = await getSupabaseProductById(id)
   } catch (error) {
-    product = getProductById(parseInt(id))
+    product = getProductById(parseInt(id, 10))
   }
 
   if (!product) {
@@ -75,20 +75,70 @@ export default async function ProductPage({ params }: ProductPageProps) {
       isSupabaseProduct = true
     }
   } catch (error) {
-    console.log('Supabase product not found, trying mock data')
-    product = getProductById(parseInt(id))
+    // console.log('Supabase product not found, trying mock data')
+  }
+
+  // fallback to mock product if supabase fails or returns null
+  if (!product) {
+    // tenta converter para inteiro para buscar nos mocks
+    let numericId = parseInt(id, 10)
+    if (isNaN(numericId)) {
+      notFound()
+      return
+    }
+    product = getProductById(numericId)
   }
 
   if (!product) {
     notFound()
+    return
   }
 
   // Normalize product data to work with both Supabase and mock products
+  const fakePrice = product.fake_price ? parseFloat(String(product.fake_price)) : 0
+  const realPrice = typeof product.price === 'number' ? product.price : parseFloat(String(product.price || 0))
+  const hasFakePrice = fakePrice > 0 && fakePrice > realPrice
+  
+  // Parse features: can be string (from Supabase) or array (from mock data)
+  const parseFeatures = (features: any): string[] => {
+    if (Array.isArray(features)) return features
+    if (typeof features === 'string' && features.trim()) {
+      return features.split('\n').map(f => f.trim()).filter(f => f.length > 0)
+    }
+    return []
+  }
+  
+  // Parse specifications: can be string (from Supabase) or object (from mock data)
+  const parseSpecifications = (specs: any): Record<string, string> => {
+    if (typeof specs === 'object' && specs !== null && !Array.isArray(specs)) {
+      return specs
+    }
+    if (typeof specs === 'string' && specs.trim()) {
+      const result: Record<string, string> = {}
+      specs.split('\n').forEach((line: string) => {
+        const parts = line.split(':')
+        if (parts.length >= 2) {
+          const key = parts[0].trim()
+          const value = parts.slice(1).join(':').trim()
+          if (key) result[key] = value
+        }
+      })
+      return result
+    }
+    return {}
+  }
+  
+  const normalizedFeatures = parseFeatures(product.features)
+  const normalizedSpecs = parseSpecifications(product.specifications)
+  
   const normalizedProduct = {
-    id: product.id.toString(),
-    name: product.name,
+    id: product.id?.toString?.() ?? '',
+    name: product.name ?? '',
     category: product.category || (product.categories?.name || 'Sem categoria'),
-    price: typeof product.price === 'string' ? product.price : `R$ ${parseFloat(product.price || 0).toFixed(2).replace('.', ',')}`,
+    price: typeof product.price === 'string'
+      ? product.price
+      : `R$ ${parseFloat(product.price || 0).toFixed(2).replace('.', ',')}`,
+    fake_price: hasFakePrice ? fakePrice : undefined,
     imageUrl: product.imageUrl || product.image_url || 'https://placehold.co/600x600?text=Sem+Imagem',
     description: product.description || '',
     stock: product.stock !== undefined ? product.stock : product.stock_quantity || 0,
@@ -97,8 +147,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
     weight: product.weight || '',
     dimensions: product.dimensions || '',
     status: product.status || 'Ativo',
-    features: product.features || [],
-    specifications: product.specifications || {},
+    features: normalizedFeatures,
+    specifications: normalizedSpecs,
   }
 
   // Carregar avaliações e calcular média
@@ -209,7 +259,24 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 )}
               </div>
 
-              <div className="text-3xl font-bold text-gray-900 mb-6">{normalizedProduct.price}</div>
+              {/* Price with fake_price support */}
+              <div className="mb-6">
+                {normalizedProduct.fake_price ? (
+                  <div className="space-y-2">
+                    <div className="text-2xl text-gray-400 line-through">
+                      R$ {normalizedProduct.fake_price.toFixed(2).replace('.', ',')}
+                    </div>
+                    <div className="text-3xl font-bold text-red-600">
+                      {normalizedProduct.price}
+                    </div>
+                    <div className="inline-block bg-red-600 text-white px-3 py-1 rounded font-bold text-sm">
+                      -{Math.round(((normalizedProduct.fake_price - realPrice) / normalizedProduct.fake_price) * 100)}% OFF
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-3xl font-bold text-gray-900">{normalizedProduct.price}</div>
+                )}
+              </div>
             </div>
 
             {/* Product Description */}
@@ -219,13 +286,13 @@ export default async function ProductPage({ params }: ProductPageProps) {
             </div>
 
             {/* Features */}
-            {product.features && product.features.length > 0 && (
+            {normalizedProduct.features && normalizedProduct.features.length > 0 && (
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">
                   Características
                 </h3>
                 <ul className="space-y-2">
-                  {product.features?.map((feature: string, index: number) => (
+                  {normalizedProduct.features.map((feature: string, index: number) => (
                     <li key={index} className="flex items-center gap-2 text-gray-700">
                       <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
                       {feature}
@@ -236,13 +303,13 @@ export default async function ProductPage({ params }: ProductPageProps) {
             )}
 
             {/* Specifications */}
-            {product.specifications && (
+            {normalizedProduct.specifications && Object.keys(normalizedProduct.specifications).length > 0 && (
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">
                   Especificações Técnicas
                 </h3>
                 <ul className="list-disc pl-5 space-y-2">
-                  {Object.entries(product.specifications).map(([key, value]) => (
+                  {Object.entries(normalizedProduct.specifications).map(([key, value]) => (
                     <li key={key} className="text-gray-900">
                       <span className="font-semibold text-gray-700">{key}:</span> {String(value)}
                     </li>
@@ -254,18 +321,18 @@ export default async function ProductPage({ params }: ProductPageProps) {
             {/* Stock Info */}
             <div className="bg-blue-50 p-4 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
-                <div className={`w-3 h-3 ${product.stock > 0 ? 'bg-green-500' : 'bg-red-500'} rounded-full`}></div>
+                <div className={`w-3 h-3 ${normalizedProduct.stock > 0 ? 'bg-green-500' : 'bg-red-500'} rounded-full`}></div>
                 <span className="text-sm font-medium text-gray-900">
-                  {product.stock > 0 ? `${product.stock} unidade${product.stock > 1 ? 's' : ''} em estoque` : 'Produto esgotado'}
+                  {normalizedProduct.stock > 0 ? `${normalizedProduct.stock} unidade${normalizedProduct.stock > 1 ? 's' : ''} em estoque` : 'Produto esgotado'}
                 </span>
               </div>
-              <p className="text-sm text-gray-600">SKU: {product.sku}</p>
+              <p className="text-sm text-gray-600">SKU: {normalizedProduct.sku}</p>
             </div>
 
             {/* Action Buttons */}
             <div className="space-y-4">
               <div className="flex gap-4">
-                <AddToCartButton product={product} />
+                <AddToCartButton product={normalizedProduct} />
                 <Button size="lg" variant="outline" aria-label="Favoritar">
                   <Heart size={20} />
                 </Button>
@@ -308,7 +375,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
           {/* Formulário de avaliação */}
           <div className="mb-8">
-            <ReviewForm productId={String(product.id)} />
+            <ReviewForm productId={normalizedProduct.id} />
           </div>
 
           {/* Lista de avaliações */}
