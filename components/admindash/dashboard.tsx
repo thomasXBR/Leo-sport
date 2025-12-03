@@ -276,6 +276,161 @@ const CouponForm = ({ initialData, onSave, onCancel }: { initialData: any, onSav
     )
 }
 
+// Componente de Formulário de Nota Fiscal
+const InvoiceForm = ({ initialData, onSave, onCancel }: { initialData: any, onSave: (data: any) => void, onCancel: () => void }) => {
+    const [invoiceNumber, setInvoiceNumber] = useState(initialData?.invoice_number || '')
+    const [orderId, setOrderId] = useState(initialData?.order_id || '')
+    const [customerName, setCustomerName] = useState(initialData?.customer_name || '')
+    const [customerEmail, setCustomerEmail] = useState(initialData?.customer_email || '')
+    const [customerCpfCnpj, setCustomerCpfCnpj] = useState(initialData?.customer_cpf_cnpj || '')
+    const [totalAmount, setTotalAmount] = useState<string>(initialData?.total_amount ? String(initialData.total_amount) : '')
+    const [status, setStatus] = useState<'Pendente' | 'Emitida' | 'Cancelada' | 'Rejeitada'>(initialData?.status || 'Pendente')
+    const [issueDate, setIssueDate] = useState(initialData?.issue_date || new Date().toISOString().split('T')[0])
+    const [dueDate, setDueDate] = useState(initialData?.due_date || '')
+    const [notes, setNotes] = useState(initialData?.notes || '')
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        onSave({
+            invoice_number: invoiceNumber,
+            order_id: orderId || undefined,
+            customer_name: customerName,
+            customer_email: customerEmail || undefined,
+            customer_cpf_cnpj: customerCpfCnpj || undefined,
+            total_amount: parseFloat(totalAmount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0,
+            status,
+            issue_date: issueDate,
+            due_date: dueDate || undefined,
+            notes: notes || undefined,
+        })
+    }
+
+    return (
+        <form onSubmit={handleSubmit}>
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Número da Nota Fiscal *</label>
+                    <input
+                        type="text"
+                        value={invoiceNumber}
+                        onChange={(e) => setInvoiceNumber(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        required
+                        placeholder="Ex: NF001234"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">ID do Pedido</label>
+                    <input
+                        type="text"
+                        value={orderId}
+                        onChange={(e) => setOrderId(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        placeholder="ID do pedido relacionado (opcional)"
+                    />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Nome do Cliente *</label>
+                        <input
+                            type="text"
+                            value={customerName}
+                            onChange={(e) => setCustomerName(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Email do Cliente</label>
+                        <input
+                            type="email"
+                            value={customerEmail}
+                            onChange={(e) => setCustomerEmail(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            placeholder="cliente@email.com"
+                        />
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">CPF/CNPJ</label>
+                    <input
+                        type="text"
+                        value={customerCpfCnpj}
+                        onChange={(e) => setCustomerCpfCnpj(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                    />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Valor Total (R$) *</label>
+                        <input
+                            type="text"
+                            value={totalAmount}
+                            onChange={(e) => setTotalAmount(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                            placeholder="0.00"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Status *</label>
+                        <select
+                            value={status}
+                            onChange={(e) => setStatus(e.target.value as 'Pendente' | 'Emitida' | 'Cancelada' | 'Rejeitada')}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                        >
+                            <option value="Pendente">Pendente</option>
+                            <option value="Emitida">Emitida</option>
+                            <option value="Cancelada">Cancelada</option>
+                            <option value="Rejeitada">Rejeitada</option>
+                        </select>
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Data de Emissão *</label>
+                        <input
+                            type="date"
+                            value={issueDate}
+                            onChange={(e) => setIssueDate(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Data de Vencimento</label>
+                        <input
+                            type="date"
+                            value={dueDate}
+                            onChange={(e) => setDueDate(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        />
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Observações</label>
+                    <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 h-20"
+                        placeholder="Observações adicionais (opcional)"
+                    />
+                </div>
+            </div>
+            <DialogFooter className="mt-6">
+                <button type="button" onClick={onCancel} className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400">
+                    Cancelar
+                </button>
+                <button type="submit" className="bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700">
+                    <Save size={20} className="inline mr-2" /> Salvar
+                </button>
+            </DialogFooter>
+        </form>
+    )
+}
+
 // Componente de Formulário de Compras (Placeholder)
 const PurchaseForm = ({ initialData, onSave, onCancel }: { initialData: any, onSave: (data: any) => void, onCancel: () => void }) => {
     const [supplier, setSupplier] = useState(initialData?.supplier_name || '')
@@ -566,15 +721,20 @@ export default function Dashboard() {
                 await updateInvoice(editingItem.id, formData)
                 setInvoices(invoices.map(i => i.id === editingItem.id ? { ...i, ...formData } : i))
             } else {
-                const invoiceNumber = `NF${Date.now().toString().slice(-6)}`
+                const invoiceNumber = formData.invoice_number || `NF${Date.now().toString().slice(-6)}`
                 const newInvoice = await createInvoice({
                     invoice_number: invoiceNumber,
                     order_id: formData.order_id || '',
                     customer_name: formData.customer_name,
                     customer_email: formData.customer_email || '',
-                    total_amount: parseFloat(formData.total_amount.toString().replace(/[^\d.,]/g, '').replace(',', '.')) || 0,
+                    customer_cpf_cnpj: formData.customer_cpf_cnpj || undefined,
+                    total_amount: typeof formData.total_amount === 'string' 
+                        ? parseFloat(formData.total_amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0
+                        : formData.total_amount || 0,
                     status: formData.status || 'Pendente',
                     issue_date: formData.issue_date || new Date().toISOString().split('T')[0],
+                    due_date: formData.due_date || undefined,
+                    notes: formData.notes || undefined,
                 })
                 setInvoices([newInvoice, ...invoices])
             }
@@ -765,8 +925,13 @@ export default function Dashboard() {
                 break
             case 'invoice':
                 modalTitle = isEdit ? 'Editar Nota Fiscal' : 'Emitir Nova Nota Fiscal'
-                // Aqui você precisaria de um componente InvoiceForm
-                modalContent = <p>Formulário de Nota Fiscal Pendente</p> 
+                modalContent = (
+                    <InvoiceForm
+                        initialData={editingItem}
+                        onSave={handleSaveInvoice}
+                        onCancel={closeModal}
+                    />
+                )
                 break
             case 'coupon':
                 modalTitle = isEdit ? 'Editar Cupom' : 'Adicionar Novo Cupom'
@@ -811,7 +976,7 @@ export default function Dashboard() {
 
         return (
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className={modalType === 'coupon' ? 'sm:max-w-[700px] max-h-[90vh]' : 'sm:max-w-[425px]'}>
+                <DialogContent className={modalType === 'coupon' || modalType === 'invoice' ? 'sm:max-w-[700px] max-h-[90vh]' : 'sm:max-w-[425px]'}>
                     <DialogHeader>
                         <DialogTitle>{modalTitle}</DialogTitle>
                     </DialogHeader>
@@ -988,8 +1153,59 @@ export default function Dashboard() {
                                 Emitir Nota Fiscal
                             </button>
                         </div>
-                        {/* Tabela de Notas Fiscais (Conteúdo omitido para brevidade, assumindo que está funcionando) */}
-                        <p className="text-gray-500">Tabela de Notas Fiscais...</p>
+                        {invoices.length === 0 ? (
+                            <p className="text-center py-8 text-gray-500">Nenhuma nota fiscal cadastrada.</p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full bg-white">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor Total</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data de Emissão</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {invoices.map((invoice) => (
+                                            <tr key={invoice.id}>
+                                                <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">{invoice.invoice_number}</td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">{invoice.customer_name}</td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">{invoice.customer_email || '-'}</td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
+                                                    R$ {Number(invoice.total_amount).toFixed(2).replace('.', ',')}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {new Date(invoice.issue_date).toLocaleDateString('pt-BR')}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap">
+                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(invoice.status)}`}>
+                                                        {invoice.status}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
+                                                    <button
+                                                        onClick={() => openModal('invoice', invoice)}
+                                                        className="text-cyan-600 hover:text-cyan-900 mr-3"
+                                                    >
+                                                        <Edit size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openDeleteDialog('invoice', invoice.id, invoice.invoice_number)}
+                                                        className="text-red-600 hover:text-red-900"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 );
             case 'partnerships':
