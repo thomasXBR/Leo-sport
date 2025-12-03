@@ -151,30 +151,100 @@ export default async function ProductPage({ params }: ProductPageProps) {
     const hasFakePrice = fakePrice > 0 && fakePrice > realPrice
     
     // Parse features: can be string (from Supabase) or array (from mock data)
+    // Handles double-stringified JSON arrays
     const parseFeatures = (features: any): string[] => {
-      if (Array.isArray(features)) return features
+      if (Array.isArray(features)) {
+        // If it's an array, check if it contains stringified JSON
+        if (features.length === 1 && typeof features[0] === 'string') {
+          try {
+            const parsed = JSON.parse(features[0])
+            if (Array.isArray(parsed)) return parsed
+          } catch (e) {
+            // If parsing fails, return the array as is
+            return features
+          }
+        }
+        return features
+      }
       if (typeof features === 'string' && features.trim()) {
-        return features.split('\n').map(f => f.trim()).filter(f => f.length > 0)
+        try {
+          // Try to parse as JSON first (handles stringified JSON)
+          const parsed = JSON.parse(features)
+          if (Array.isArray(parsed)) {
+            // Check if it's double-stringified
+            if (parsed.length === 1 && typeof parsed[0] === 'string') {
+              try {
+                const doubleParsed = JSON.parse(parsed[0])
+                if (Array.isArray(doubleParsed)) return doubleParsed
+              } catch (e) {
+                return parsed
+              }
+            }
+            return parsed
+          }
+        } catch (e) {
+          // If not JSON, try splitting by newlines (legacy format)
+          return features.split('\n').map(f => f.trim()).filter(f => f.length > 0)
+        }
       }
       return []
     }
     
     // Parse specifications: can be string (from Supabase) or object (from mock data)
+    // Handles double-stringified JSON objects
     const parseSpecifications = (specs: any): Record<string, string> => {
       if (typeof specs === 'object' && specs !== null && !Array.isArray(specs)) {
-        return specs
+        // Check if object values are stringified JSON
+        const result: Record<string, string> = {}
+        for (const [key, value] of Object.entries(specs)) {
+          if (typeof value === 'string') {
+            try {
+              // Try to parse the value as JSON
+              const parsed = JSON.parse(value)
+              result[key] = typeof parsed === 'string' ? parsed : String(parsed)
+            } catch (e) {
+              result[key] = value
+            }
+          } else {
+            result[key] = String(value)
+          }
+        }
+        return result
       }
       if (typeof specs === 'string' && specs.trim()) {
-        const result: Record<string, string> = {}
-        specs.split('\n').forEach((line: string) => {
-          const parts = line.split(':')
-          if (parts.length >= 2) {
-            const key = parts[0].trim()
-            const value = parts.slice(1).join(':').trim()
-            if (key) result[key] = value
+        try {
+          // Try to parse as JSON first (handles stringified JSON)
+          const parsed = JSON.parse(specs)
+          if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+            // Check if values are also stringified
+            const result: Record<string, string> = {}
+            for (const [key, value] of Object.entries(parsed)) {
+              if (typeof value === 'string') {
+                try {
+                  const doubleParsed = JSON.parse(value)
+                  result[key] = typeof doubleParsed === 'string' ? doubleParsed : String(doubleParsed)
+                } catch (e) {
+                  result[key] = value
+                }
+              } else {
+                result[key] = String(value)
+              }
+            }
+            return result
           }
-        })
-        return result
+        } catch (e) {
+          // If not JSON, try splitting by newlines (legacy format)
+          const result: Record<string, string> = {}
+          specs.split('\n').forEach((line: string) => {
+            const parts = line.split(':')
+            if (parts.length >= 2) {
+              const key = parts[0].trim()
+              const value = parts.slice(1).join(':').trim()
+              if (key) result[key] = value
+            }
+          })
+          return result
+        }
       }
       return {}
     }
