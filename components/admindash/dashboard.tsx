@@ -97,6 +97,184 @@ const FAQForm = ({ initialData, onSave, onCancel }: { initialData: any, onSave: 
         </form>
     )
 }
+// Componente de Formulário de Cupom
+const CouponForm = ({ initialData, onSave, onCancel }: { initialData: any, onSave: (data: any) => void, onCancel: () => void }) => {
+    const [code, setCode] = useState(initialData?.code || '')
+    const [description, setDescription] = useState(initialData?.description || '')
+    const [carouselText, setCarouselText] = useState(initialData?.carousel_text || '')
+    const [discountType, setDiscountType] = useState<'Percentual' | 'Fixo' | 'Especial'>(initialData?.discount_type || 'Percentual')
+    const [discountValue, setDiscountValue] = useState(initialData?.discount_value || '')
+    const [validFrom, setValidFrom] = useState(initialData?.valid_from || new Date().toISOString().split('T')[0])
+    const [validUntil, setValidUntil] = useState(initialData?.valid_until || '')
+    const [usageLimit, setUsageLimit] = useState<string>(initialData?.usage_limit ? String(initialData.usage_limit) : '')
+    const [minPurchaseAmount, setMinPurchaseAmount] = useState<string>(initialData?.min_purchase_amount ? String(initialData.min_purchase_amount) : '')
+    const [status, setStatus] = useState<'Ativo' | 'Inativo' | 'Expirado'>(initialData?.status || 'Ativo')
+    const [showInNavbar, setShowInNavbar] = useState(initialData?.show_in_navbar || false)
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        onSave({
+            code,
+            description,
+            carousel_text: carouselText,
+            discount_type: discountType,
+            discount_value: discountValue,
+            valid_from: validFrom,
+            valid_until: validUntil,
+            usage_limit: usageLimit ? parseInt(usageLimit) : undefined,
+            min_purchase_amount: minPurchaseAmount ? parseFloat(minPurchaseAmount) : undefined,
+            status,
+            show_in_navbar: showInNavbar,
+        })
+    }
+
+    return (
+        <form onSubmit={handleSubmit}>
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Código do Cupom *</label>
+                    <input
+                        type="text"
+                        value={code}
+                        onChange={(e) => setCode(e.target.value.toUpperCase())}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        required
+                        placeholder="EX: DESCONTO10"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Descrição</label>
+                    <textarea
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 h-20"
+                        placeholder="Descrição do cupom (opcional)"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Texto do Carrossel *</label>
+                    <input
+                        type="text"
+                        value={carouselText}
+                        onChange={(e) => setCarouselText(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        required
+                        placeholder="Ex: 🎉 Use o cupom DESCONTO10 e ganhe 10% OFF!"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">Este texto será exibido no carrossel do topo do site</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Tipo de Desconto *</label>
+                        <select
+                            value={discountType}
+                            onChange={(e) => setDiscountType(e.target.value as 'Percentual' | 'Fixo' | 'Especial')}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                        >
+                            <option value="Percentual">Percentual (%)</option>
+                            <option value="Fixo">Valor Fixo (R$)</option>
+                            <option value="Especial">Especial</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Valor do Desconto *</label>
+                        <input
+                            type="text"
+                            value={discountValue}
+                            onChange={(e) => setDiscountValue(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                            placeholder={discountType === 'Percentual' ? 'Ex: 10' : 'Ex: 50.00'}
+                        />
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Válido de *</label>
+                        <input
+                            type="date"
+                            value={validFrom}
+                            onChange={(e) => setValidFrom(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Válido até *</label>
+                        <input
+                            type="date"
+                            value={validUntil}
+                            onChange={(e) => setValidUntil(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                        />
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Limite de Uso</label>
+                        <input
+                            type="number"
+                            value={usageLimit}
+                            onChange={(e) => setUsageLimit(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            placeholder="Ex: 100 (opcional)"
+                            min="1"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Valor Mínimo de Compra (R$)</label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            value={minPurchaseAmount}
+                            onChange={(e) => setMinPurchaseAmount(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            placeholder="Ex: 100.00 (opcional)"
+                            min="0"
+                        />
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Status *</label>
+                        <select
+                            value={status}
+                            onChange={(e) => setStatus(e.target.value as 'Ativo' | 'Inativo' | 'Expirado')}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                        >
+                            <option value="Ativo">Ativo</option>
+                            <option value="Inativo">Inativo</option>
+                            <option value="Expirado">Expirado</option>
+                        </select>
+                    </div>
+                    <div className="flex items-end">
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={showInNavbar}
+                                onChange={(e) => setShowInNavbar(e.target.checked)}
+                                className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Exibir no Carrossel</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <DialogFooter className="mt-6">
+                <button type="button" onClick={onCancel} className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400">
+                    Cancelar
+                </button>
+                <button type="submit" className="bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700">
+                    <Save size={20} className="inline mr-2" /> Salvar
+                </button>
+            </DialogFooter>
+        </form>
+    )
+}
+
 // Componente de Formulário de Compras (Placeholder)
 const PurchaseForm = ({ initialData, onSave, onCancel }: { initialData: any, onSave: (data: any) => void, onCancel: () => void }) => {
     const [supplier, setSupplier] = useState(initialData?.supplier_name || '')
@@ -413,6 +591,7 @@ export default function Dashboard() {
             const couponData: any = {
                 code: formData.code,
                 description: formData.description || undefined,
+                carousel_text: formData.carousel_text || undefined,
                 discount_type: formData.discount_type,
                 discount_value: formData.discount_value,
                 valid_from: formData.valid_from || new Date().toISOString().split('T')[0],
@@ -430,7 +609,7 @@ export default function Dashboard() {
                 if (formData.show_in_navbar !== undefined) {
                     couponData.show_in_navbar = formData.show_in_navbar
                 }
-                const updatedCoupon = await updateCoupon(editingItem.id, couponData)
+                await updateCoupon(editingItem.id, couponData)
                 // Recarregar dados do Supabase para garantir sincronização
                 const updatedCoupons = await getCoupons()
                 setCoupons(updatedCoupons || [])
@@ -445,7 +624,7 @@ export default function Dashboard() {
                 if (formData.show_in_navbar !== undefined) {
                     newCouponData.show_in_navbar = formData.show_in_navbar
                 }
-                const newCoupon = await createCoupon(newCouponData)
+                await createCoupon(newCouponData)
                 // Recarregar dados do Supabase para garantir sincronização
                 const updatedCoupons = await getCoupons()
                 setCoupons(updatedCoupons || [])
@@ -514,6 +693,7 @@ export default function Dashboard() {
         try {
             await updateSiteContent(id, value)
             setSiteContent(siteContent.map(c => c.id === id ? { ...c, value } : c))
+            alert('Texto salvo com sucesso! As alterações serão visíveis após recarregar a página.')
         } catch (error) {
             console.error('Erro ao salvar conteúdo:', error)
             alert('Erro ao salvar. Tente novamente.')
@@ -526,7 +706,10 @@ export default function Dashboard() {
                 updateSiteContent(content.id, content.value)
             )
             await Promise.all(updates)
-            alert('Todas as alterações foram salvas!')
+            // Recarregar dados do Supabase para garantir sincronização
+            const updatedContent = await getSiteContent()
+            setSiteContent(updatedContent || [])
+            alert('Todas as alterações foram salvas com sucesso! As alterações serão visíveis após recarregar a página.')
         } catch (error) {
             console.error('Erro ao salvar conteúdo:', error)
             alert('Erro ao salvar. Tente novamente.')
@@ -586,8 +769,13 @@ export default function Dashboard() {
                 break
             case 'coupon':
                 modalTitle = isEdit ? 'Editar Cupom' : 'Adicionar Novo Cupom'
-                // Aqui você precisaria de um componente CouponForm
-                modalContent = <p>Formulário de Cupom Pendente</p>
+                modalContent = (
+                    <CouponForm
+                        initialData={editingItem}
+                        onSave={handleSaveCoupon}
+                        onCancel={closeModal}
+                    />
+                )
                 break
             case 'product':
                 modalTitle = isEdit ? 'Editar Produto' : 'Adicionar Novo Produto'
@@ -622,7 +810,7 @@ export default function Dashboard() {
 
         return (
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className={modalType === 'coupon' ? 'sm:max-w-[700px] max-h-[90vh]' : 'sm:max-w-[425px]'}>
                     <DialogHeader>
                         <DialogTitle>{modalTitle}</DialogTitle>
                     </DialogHeader>
@@ -839,11 +1027,84 @@ export default function Dashboard() {
                                 Adicionar Cupom
                             </button>
                         </div>
-                        {/* Tabela de Cupons (Conteúdo omitido para brevidade, assumindo que está funcionando) */}
-                        <p className="text-gray-500">Tabela de Cupons...</p>
+                        {coupons.length === 0 ? (
+                            <p className="text-center py-8 text-gray-500">Nenhum cupom cadastrado.</p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full bg-white">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Texto do Carrossel</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Desconto</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Válido até</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Carrossel</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {coupons.map((coupon) => (
+                                            <tr key={coupon.id}>
+                                                <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">{coupon.code}</td>
+                                                <td className="py-4 px-4 text-sm text-gray-600 max-w-xs truncate" title={coupon.carousel_text || coupon.description || 'Sem texto'}>
+                                                    {coupon.carousel_text || coupon.description || '-'}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {coupon.discount_type === 'Percentual' ? `${coupon.discount_value}%` : `R$ ${coupon.discount_value}`}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {new Date(coupon.valid_until).toLocaleDateString('pt-BR')}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap">
+                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(coupon.status)}`}>
+                                                        {coupon.status}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap">
+                                                    {coupon.show_in_navbar ? (
+                                                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                            Sim
+                                                        </span>
+                                                    ) : (
+                                                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                                            Não
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
+                                                    <button
+                                                        onClick={() => openModal('coupon', coupon)}
+                                                        className="text-cyan-600 hover:text-cyan-900 mr-3"
+                                                    >
+                                                        <Edit size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openDeleteDialog('coupon', coupon.id, coupon.code)}
+                                                        className="text-red-600 hover:text-red-900"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 );
             case 'content':
+                // Agrupar conteúdos por seção
+                const contentBySection = siteContent.reduce((acc: any, content) => {
+                    const section = content.section || 'Outros';
+                    if (!acc[section]) {
+                        acc[section] = [];
+                    }
+                    acc[section].push(content);
+                    return acc;
+                }, {});
+
                 return (
                     <div>
                         <div className="flex justify-between items-center mb-6">
@@ -859,8 +1120,63 @@ export default function Dashboard() {
                                 Salvar Tudo
                             </button>
                         </div>
-                        {/* Campos de Conteúdo do Site (Conteúdo omitido para brevidade, assumindo que está funcionando) */}
-                        <p className="text-gray-500">Campos de Conteúdo do Site...</p>
+                        {siteContent.length === 0 ? (
+                            <p className="text-center py-8 text-gray-500">Nenhum conteúdo encontrado. Os textos padrão serão usados.</p>
+                        ) : (
+                            <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+                                {Object.entries(contentBySection).map(([section, contents]: [string, any]) => (
+                                    <div key={section} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                        <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-300">
+                                            {section}
+                                        </h3>
+                                        <div className="space-y-4">
+                                            {contents.map((content: SupabaseSiteContent) => (
+                                                <div key={content.id} className="bg-white p-4 rounded border border-gray-200">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        {content.label || content.content_key}
+                                                    </label>
+                                                    {content.content_type === 'textarea' ? (
+                                                        <textarea
+                                                            value={content.value || ''}
+                                                            onChange={(e) => {
+                                                                const updated = siteContent.map(c =>
+                                                                    c.id === content.id ? { ...c, value: e.target.value } : c
+                                                                );
+                                                                setSiteContent(updated);
+                                                            }}
+                                                            className="w-full border border-gray-300 rounded-md shadow-sm p-2 h-24"
+                                                            placeholder={`Digite o ${content.label.toLowerCase()}...`}
+                                                        />
+                                                    ) : (
+                                                        <input
+                                                            type="text"
+                                                            value={content.value || ''}
+                                                            onChange={(e) => {
+                                                                const updated = siteContent.map(c =>
+                                                                    c.id === content.id ? { ...c, value: e.target.value } : c
+                                                                );
+                                                                setSiteContent(updated);
+                                                            }}
+                                                            className="w-full border border-gray-300 rounded-md shadow-sm p-2"
+                                                            placeholder={`Digite o ${content.label.toLowerCase()}...`}
+                                                        />
+                                                    )}
+                                                    <div className="mt-2 flex items-center justify-between">
+                                                        <span className="text-xs text-gray-500">Chave: {content.content_key}</span>
+                                                        <button
+                                                            onClick={() => handleSaveContent(content.id, content.value)}
+                                                            className="text-xs text-cyan-600 hover:text-cyan-800 font-medium"
+                                                        >
+                                                            Salvar este campo
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 );
             case 'faq': // <-- NOVO BLOCO IMPLEMENTADO

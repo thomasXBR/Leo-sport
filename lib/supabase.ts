@@ -143,6 +143,7 @@ export type Coupon = {
   min_purchase_amount?: number;
   status: 'Ativo' | 'Inativo' | 'Expirado';
   description?: string;
+  carousel_text?: string; // Texto personalizado para exibir no carrossel
   show_in_navbar?: boolean;
   created_at: string;
   updated_at: string;
