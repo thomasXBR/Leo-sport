@@ -192,96 +192,65 @@ export default async function ProductPage({ params }: ProductPageProps) {
     }
     
     // Parse specifications: can be string (from Supabase) or object (from mock data)
-    // Handles double-stringified JSON objects like {"{\"Teste\"": "\"3\"}"}
+    // Now saved as string format "chave: valor\nchave2: valor2" (similar to features)
     const parseSpecifications = (specs: any): Record<string, string> => {
+      // If it's already an object (from mock data), return as is
       if (typeof specs === 'object' && specs !== null && !Array.isArray(specs)) {
-        const result: Record<string, string> = {}
-        for (const [key, value] of Object.entries(specs)) {
-          // Handle case where key itself might be a stringified JSON object like "{\"Teste\""
-          let finalKey = key
-          let finalValue = value
-          
-          // Try to parse the key as JSON (handles "{\"Teste\"" -> extracts the object)
-          try {
-            const parsedKey = JSON.parse(key)
-            if (typeof parsedKey === 'object' && parsedKey !== null && !Array.isArray(parsedKey)) {
-              // If key is an object, merge its properties into result
-              for (const [k, v] of Object.entries(parsedKey)) {
-                result[k] = String(v)
-              }
-              // Also handle the value if it's part of the structure
-              if (typeof value === 'string') {
-                try {
-                  const parsedValue = JSON.parse(value)
-                  if (typeof parsedValue === 'object' && parsedValue !== null) {
-                    Object.assign(result, parsedValue)
-                  } else {
-                    // If value is also a stringified object, parse it
-                    Object.assign(result, { [Object.keys(parsedKey)[0] || 'value']: String(parsedValue) })
-                  }
-                } catch (e) {
-                  // Value is not JSON, use as is
-                }
-              }
-              continue
-            } else if (typeof parsedKey === 'string') {
-              finalKey = parsedKey
-            }
-          } catch (e) {
-            // Key is not JSON, use as is
-          }
-
-          // Handle value - can be double stringified like "\"3\""
-          if (typeof finalValue === 'string') {
-            try {
-              // First parse: "\"3\"" -> "3"
-              let parsed = JSON.parse(finalValue)
-              // If still a string, try parsing again: "3" -> 3 (if needed)
-              if (typeof parsed === 'string' && parsed.startsWith('"') && parsed.endsWith('"')) {
-                try {
-                  parsed = JSON.parse(parsed)
-                } catch (e) {
-                  // Already parsed
-                }
-              }
-              result[finalKey] = typeof parsed === 'string' ? parsed : String(parsed)
-            } catch (e) {
-              result[finalKey] = finalValue
-            }
-          } else {
-            result[finalKey] = String(finalValue)
-          }
-        }
-        return result
+        return specs
       }
+      
+      // If it's a string, parse it
       if (typeof specs === 'string' && specs.trim()) {
+        // First try to parse as JSON (for backward compatibility with old data)
         try {
-          // Try to parse as JSON first (handles stringified JSON)
           const parsed = JSON.parse(specs)
+          // If it's an array with one string element (double stringified), parse again
+          if (Array.isArray(parsed) && parsed.length === 1 && typeof parsed[0] === 'string') {
+            return parseSpecifications(parsed[0])
+          }
+          // If it's an object, return it
           if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-            // Recursively parse the object to handle nested stringification
-            return parseSpecifications(parsed)
+            return parsed
           }
         } catch (e) {
-          // If not JSON, try splitting by newlines (legacy format)
-          const result: Record<string, string> = {}
-          specs.split('\n').forEach((line: string) => {
-            const parts = line.split(':')
+          // Not JSON, continue with string parsing
+        }
+        
+        // Parse as string format "chave: valor\nchave2: valor2"
+        const result: Record<string, string> = {}
+        specs.split('\n').forEach((line: string) => {
+          const trimmedLine = line.trim()
+          if (trimmedLine) {
+            const parts = trimmedLine.split(':')
             if (parts.length >= 2) {
               const key = parts[0].trim()
               const value = parts.slice(1).join(':').trim()
               if (key) result[key] = value
             }
-          })
-          return result
-        }
+          }
+        })
+        return result
       }
+      
       return {}
     }
     
     const normalizedFeatures = parseFeatures(product.features)
     const normalizedSpecs = parseSpecifications(product.specifications)
     
+    // Função para converter meses em texto (similar ao formulário)
+    const monthsToText = (months: number | string | undefined): string => {
+      const m = typeof months === 'string' ? parseInt(months, 10) : months || 0
+      if (!m || isNaN(m)) return '0 meses'
+      if (m >= 12) {
+        const years = Math.floor(m / 12)
+        const rem = m % 12
+        if (rem === 0) return `${years} ${years > 1 ? 'anos' : 'ano'}`
+        return `${years} ${years > 1 ? 'anos' : 'ano'} e ${rem} meses`
+      }
+      return `${m} ${m > 1 ? 'meses' : 'mês'}`
+    }
+
     const normalizedProduct = {
       id: product.id?.toString?.() ?? '',
       name: product.name ?? 'Produto sem nome',
@@ -300,6 +269,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
       status: product.status || 'Ativo',
       features: normalizedFeatures,
       specifications: normalizedSpecs,
+      no_shipping: product.no_shipping || false,
+      warranty_months: product.warranty_months || 12,
+      devolution_months: product.devolution_months || 1,
+      warrantyText: monthsToText(product.warranty_months),
+      devolutionText: monthsToText(product.devolution_months),
     }
 
     // Reviews agora são carregadas dinamicamente pelo componente ReviewsSection
@@ -481,22 +455,26 @@ export default async function ProductPage({ params }: ProductPageProps) {
               <div className="flex items-center gap-3">
                 <Truck className="w-6 h-6 text-blue-600" />
                 <div>
-                  <p className="font-medium text-gray-900">Frete Grátis</p>
-                  <p className="text-sm text-gray-600">Acima de R$ 200</p>
+                  <p className="font-medium text-gray-900">
+                    {normalizedProduct.no_shipping ? 'Frete Grátis' : 'Frete Calculado'}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {normalizedProduct.no_shipping ? 'Para todo o Brasil' : 'Acima de R$ 200'}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <Shield className="w-6 h-6 text-blue-600" />
                 <div>
                   <p className="font-medium text-gray-900">Garantia</p>
-                  <p className="text-sm text-gray-600">1 ano</p>
+                  <p className="text-sm text-gray-600">{normalizedProduct.warrantyText}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <RotateCcw className="w-6 h-6 text-blue-600" />
                 <div>
                   <p className="font-medium text-gray-900">Devolução</p>
-                  <p className="text-sm text-gray-600">30 dias</p>
+                  <p className="text-sm text-gray-600">{normalizedProduct.devolutionText}</p>
                 </div>
               </div>
             </div>

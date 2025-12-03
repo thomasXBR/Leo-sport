@@ -42,10 +42,23 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
     color: (initialData as any)?.color ?? '',
     features: Array.isArray((initialData as any)?.features)
       ? ((initialData as any).features as string[]).join('\n')
-      : ((initialData as any)?.features ?? ''),
-    specifications: typeof (initialData as any)?.specifications === 'object' && (initialData as any)?.specifications
+      : typeof (initialData as any)?.features === 'string'
+        ? (() => {
+            // Se for string JSON, tenta parsear
+            try {
+              const parsed = JSON.parse((initialData as any).features)
+              if (Array.isArray(parsed)) return parsed.join('\n')
+            } catch (e) {
+              // Se não for JSON, retorna como está (já está no formato correto)
+            }
+            return (initialData as any).features ?? ''
+          })()
+        : '',
+    specifications: typeof (initialData as any)?.specifications === 'object' && (initialData as any)?.specifications && !Array.isArray((initialData as any)?.specifications)
       ? Object.entries((initialData as any).specifications).map(([k, v]) => `${k}: ${v}`).join('\n')
-      : ((initialData as any)?.specifications ?? ''),
+      : typeof (initialData as any)?.specifications === 'string'
+        ? (initialData as any).specifications
+        : '',
     no_shipping: (initialData as any)?.no_shipping ?? false,
     devolution_months: (initialData as any)?.devolution_months ? String((initialData as any).devolution_months) : '1',
     warranty_months: (initialData as any)?.warranty_months ? String((initialData as any).warranty_months) : '12',
@@ -181,8 +194,10 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
         image_url: formData.image_url || undefined,
         color: (formData as any).color || undefined,
         status: formData.status as 'Ativo' | 'Inativo' | 'Esgotado',
-        features: formData.features ? parseFeatures(formData.features) : undefined,
-        specifications: formData.specifications ? parseSpecifications(formData.specifications) : undefined,
+        // Salvar features como string (array de strings separado por \n)
+        features: formData.features ? JSON.stringify(parseFeatures(formData.features)) : undefined,
+        // Salvar specifications como string (formato chave:valor separado por \n, similar ao features)
+        specifications: formData.specifications ? formData.specifications : undefined,
         no_shipping: Boolean((formData as any).no_shipping),
         devolution_months: formData.devolution_months ? parseInt(formData.devolution_months, 10) : undefined,
         warranty_months: formData.warranty_months ? parseInt(formData.warranty_months, 10) : undefined,
