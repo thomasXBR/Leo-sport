@@ -33,7 +33,6 @@ export default function ProductCard({ product, showStock = true, showSKU = false
                             width={400}
                             height={300}
                             className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
-                            onError={(e) => {(e.currentTarget as HTMLImageElement).src = 'https://placehold.co/400x300'}}
                         />
                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity duration-300" />
                         
