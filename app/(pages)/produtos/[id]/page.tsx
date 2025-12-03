@@ -7,7 +7,7 @@ import { ArrowLeft, Heart, Share2, Star, Truck, Shield, RotateCcw } from 'lucide
 import ProductCard from '@/components/products/ProductCard'
 import AddToCartButton from '@/components/products/AddToCartButton'
 import { getProductById, getProducts, productsData } from '@/lib/products-data'
-import { getProductById as getSupabaseProductById } from '@/lib/supabase'
+import { getProductById as getSupabaseProductById, getProducts as getSupabaseProducts } from '@/lib/supabase'
 import { getReviews, computeAverage } from '@/lib/reviews'
 import ReviewForm from '@/components/reviews/review-form'
 
@@ -55,7 +55,7 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 // ---- Static Params ----
 export async function generateStaticParams() {
   try {
-    const supabaseProducts = await getProducts()
+    const supabaseProducts = await getSupabaseProducts()
     if (supabaseProducts && supabaseProducts.length > 0) {
       return supabaseProducts.map((product: any) => ({
         id: product.id.toString(),
@@ -87,13 +87,20 @@ export default async function ProductPage({ params }: ProductPageProps) {
       product = await getSupabaseProductById(id)
       if (product) {
         isSupabaseProduct = true
-      } else {
-        // UUID não encontrado no Supabase
+      }
+    } catch (error: any) {
+      // Verifica se é erro de produto não encontrado
+      const isNotFoundError = error?.code === 'PGRST116' || 
+                              error?.message?.includes('No rows') ||
+                              error?.message?.includes('not found')
+      
+      if (isNotFoundError) {
+        // Produto não encontrado - retorna 404
         notFound()
         return
       }
-    } catch (error: any) {
-      // Qualquer erro com UUID retorna 404 (não tenta mocks numéricos)
+      
+      // Outro tipo de erro (conexão, etc) - loga e retorna 404 também
       console.error('Error fetching UUID product from Supabase:', error?.message || error)
       notFound()
       return
@@ -107,7 +114,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
       }
     } catch (error: any) {
       // Se não encontrou no Supabase e não é UUID, tenta buscar nos mocks numéricos
-      console.log('Supabase product not found, trying mock data:', error?.message || error)
+      const isNotFoundError = error?.code === 'PGRST116' || 
+                              error?.message?.includes('No rows') ||
+                              error?.message?.includes('not found')
+      
+      if (!isNotFoundError) {
+        // Erro de conexão ou outro - loga o erro
+        console.error('Error fetching product from Supabase:', error?.message || error)
+      }
     }
 
     // Fallback para produtos mock numéricos apenas se não for UUID
