@@ -14,7 +14,7 @@ import {
 } from 'chart.js'
 import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload, Loader2, ChevronLeft, ChevronRight, ShoppingCart, Package, DollarSign } from 'lucide-react'
 import Image from 'next/image'
-import ProductsRegistrationForm from '@/components/forms/ProductsRegistrationForm'
+import ProductRegistrationForm from '@/components/forms/ProductRegistrationForm'
 import {
     Dialog,
     DialogContent,
@@ -975,7 +975,7 @@ export default function Dashboard() {
             case 'products':
                 modalTitle = isEdit ? 'Editar Produto' : 'Adicionar Novo Produto'
                 modalContent = (
-                    <ProductsRegistrationForm
+                    <ProductRegistrationForm
                         initialData={editingItem}
                         productsId={editingItem?.id ?? null}
                         onSuccess={() => {
