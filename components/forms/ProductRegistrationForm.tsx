@@ -272,6 +272,10 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
                     <Input id="sku" name="sku" value={formData.sku} onChange={handleInputChange} required />
                   </div>
                   <div>
+                    <Label htmlFor="brand" className="text-sm font-medium text-gray-700 mb-1">Marca</Label>
+                    <Input id="brand" name="brand" value={formData.brand} onChange={handleInputChange} />
+                  </div>
+                  <div>
                     <Label htmlFor="category_id" className="text-sm font-medium text-gray-700 mb-1">Esporte / Categoria</Label>
                     <select
                       id="category_id"
