@@ -75,60 +75,48 @@ export async function generateStaticParams() {
 export default async function ProductPage({ params }: ProductPageProps) {
   const { id } = await params
 
-  // Try Supabase first, then fall back to mock data
-  let product = null
-  let isSupabaseProduct = false
-
   // Verifica se é um UUID válido (formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
   const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
 
-  try {
-    product = await getSupabaseProductById(id)
-    if (product) {
-      isSupabaseProduct = true
-    }
-  } catch (error: any) {
-    // Se for um UUID válido mas não encontrado, retorna 404 diretamente
-    const isNotFoundError = 
-      error?.code === 'PGRST116' || 
-      error?.code === '23505' ||
-      error?.message?.includes('No rows') ||
-      error?.message?.includes('not found') ||
-      error?.message?.includes('Could not find')
-    
-    if (isUUID && isNotFoundError) {
-      notFound()
-      return
-    }
-    // Se for UUID mas erro diferente de "não encontrado", pode ser erro de conexão
-    // Nesse caso, também retorna 404 para evitar 500
-    if (isUUID && !isNotFoundError) {
-      console.error('Supabase error for UUID:', error?.message || error)
-      notFound()
-      return
-    }
-    // Se não for UUID, pode ser um produto mock, então continua o fluxo
-    if (!isUUID) {
-      console.log('Supabase error (trying mock fallback):', error?.message || error)
-    }
-  }
+  let product = null
+  let isSupabaseProduct = false
 
-  // fallback to mock product if supabase fails or returns null
-  if (!product) {
-    // Se for UUID válido mas não encontrado, já retornou 404 acima
-    if (isUUID) {
+  // Se for UUID, só busca no Supabase (não tenta mocks numéricos)
+  if (isUUID) {
+    try {
+      product = await getSupabaseProductById(id)
+      if (product) {
+        isSupabaseProduct = true
+      } else {
+        // UUID não encontrado no Supabase
+        notFound()
+        return
+      }
+    } catch (error: any) {
+      // Qualquer erro com UUID retorna 404 (não tenta mocks numéricos)
+      console.error('Error fetching UUID product from Supabase:', error?.message || error)
       notFound()
       return
     }
-    
-    // tenta converter para inteiro para buscar nos mocks
-    let numericId = parseInt(id, 10)
-    if (isNaN(numericId)) {
-      // Se não é um número nem UUID válido, retorna 404
-      notFound()
-      return
+  } else {
+    // Se não for UUID, tenta Supabase primeiro, depois mocks numéricos
+    try {
+      product = await getSupabaseProductById(id)
+      if (product) {
+        isSupabaseProduct = true
+      }
+    } catch (error: any) {
+      // Se não encontrou no Supabase e não é UUID, tenta buscar nos mocks numéricos
+      console.log('Supabase product not found, trying mock data:', error?.message || error)
     }
-    product = getProductById(numericId)
+
+    // Fallback para produtos mock numéricos apenas se não for UUID
+    if (!product) {
+      const numericId = parseInt(id, 10)
+      if (!isNaN(numericId)) {
+        product = getProductById(numericId)
+      }
+    }
   }
 
   if (!product) {
