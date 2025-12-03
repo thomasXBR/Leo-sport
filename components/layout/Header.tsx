@@ -1,4 +1,3 @@
-// src/components/Header.tsx (ou onde seu componente estiver)
 'use client';
 
 import Link from 'next/link';
@@ -145,9 +144,6 @@ export default function Header() {
   ];
 
   return (
-    // O RESTO DO SEU CÓDIGO JSX CONTINUA EXATAMENTE O MESMO
-    // ...
-    // Nenhuma alteração visual é necessária
     <header className="bg-white shadow-sm border-b sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
@@ -220,6 +216,8 @@ export default function Header() {
                 </>
               )}
             </Button>
+
+            {/* Removido botão "Criar Conta" do lado do de entrar */}
 
             {/* Mobile menu button */}
             <Button
@@ -316,6 +314,19 @@ export default function Header() {
                       {isSignUp ? "Entrar" : "Cadastre-se"}
                     </button>
                   </div>
+                  {/* Botão para acessar a página de criar conta também dentro do dropdown */}
+                  {!isSignUp && (
+                    <div className="mt-2 flex justify-center">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full bg-white text-blue-900 border-blue-900 hover:bg-blue-50"
+                        onClick={() => router.push("/cadastro")}
+                      >
+                        Criar Conta
+                      </Button>
+                    </div>
+                  )}
                 </form>
               </div>
             )}
@@ -412,6 +423,21 @@ export default function Header() {
                 <ShoppingCart className="w-5 h-5 mr-2" />
                 Carrinho {cartCount > 0 && `(${cartCount})`}
               </Link>
+
+              {/* Botão para acessar a página de criar conta no mobile */}
+              {!user && (
+                <Button
+                  type="button"
+                  className="text-gray-600 hover:text-blue-900 py-2 transition-colors duration-200 w-full text-left"
+                  onClick={() => {
+                    router.push("/cadastro");
+                    setIsMenuOpen(false);
+                  }}
+                >
+                  Criar Conta
+                </Button>
+              )}
+
               <button
                 onClick={() => {
                   handleAuthToggle();

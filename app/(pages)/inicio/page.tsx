@@ -35,6 +35,12 @@ export default function InicioPage() {
 
   return (
     <div className="space-y-16">
+      {/* Top Navigation Bar */}
+      <nav className="flex items-center gap-4 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Removido: Botões Home, Produtos e Contato */}
+        {/* Removido: Botões lado a lado: Entrar, Carrinho, Criar Conta */}
+      </nav>
+
       {/* Hero Section */}
       <section className="relative text-white overflow-hidden">
         {/* Background Image */}
@@ -52,7 +58,10 @@ export default function InicioPage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              {getContent('hero_title', 'Bem-vindo à')} <span className="text-blue-900 [text-shadow:_0_0_10px_#fff,_0_0_20px_#fff,_0_0_30px_#fff]">{getContent('hero_title_accent', 'LeoSport')}</span>
+              {getContent('hero_title', 'Bem-vindo à')}{' '}
+              <span className="text-blue-900 [text-shadow:_0_0_10px_#fff,_0_0_20px_#fff,_0_0_30px_#fff]">
+                {getContent('hero_title_accent', 'LeoSport')}
+              </span>
             </h1>
             <p className="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
               {getContent('hero_subtitle', 'O maior marketplace de produtos esportivos do Brasil.')}
@@ -61,10 +70,14 @@ export default function InicioPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button asChild size="lg" className="bg-blue-900 hover:bg-blue-950 text-white">
-                <Link href={getContent('hero_button_1_link', '/sobre')}>{getContent('hero_button_1_text', 'Conheça a LeoSport')}</Link>
+                <Link href={getContent('hero_button_1_link', '/sobre')}>
+                  {getContent('hero_button_1_text', 'Conheça a LeoSport')}
+                </Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="text-black bg-white hover:bg-zinc-400">
-                <Link href={getContent('hero_button_2_link', '/venda-na-leosport')}>{getContent('hero_button_2_text', 'Seja um Parceiro')}</Link>
+                <Link href={getContent('hero_button_2_link', '/venda-na-leosport')}>
+                  {getContent('hero_button_2_text', 'Seja um Parceiro')}
+                </Link>
               </Button>
             </div>
           </div>
@@ -126,13 +139,13 @@ export default function InicioPage() {
               {getContent('cta_description', 'Junte-se a milhares de atletas que já encontraram seus produtos ideais na LeoSport.')}
             </p>
             <Button asChild size="lg" className="bg-blue-900 hover:bg-blue-950">
-              <Link href={getContent('cta_button_link', '/contato')}>{getContent('cta_button_text', 'Entre em Contato')}</Link>
+              <Link href={getContent('cta_button_link', '/contato')}>
+                {getContent('cta_button_text', 'Entre em Contato')}
+              </Link>
             </Button>
           </div>
         </div>
       </section>
-
-
     </div>
   );
 }
