@@ -2,16 +2,21 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import { addReview } from "@/lib/reviews";
-import { Star } from "lucide-react";
+import { Star, Shield } from "lucide-react";
 
 export default function ReviewForm({ productId }: { productId: string }) {
   const router = useRouter();
+  const { user, profile } = useAuth();
   const [stars, setStars] = useState(0);
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Verificar se o usuário é admin
+  const isAdmin = profile?.user_type === 'admin';
 
   async function submit() {
     // Validação antes de enviar
@@ -33,7 +38,8 @@ export default function ReviewForm({ productId }: { productId: string }) {
     setError(null);
     setLoading(true);
 
-    const userId = null; // coloque o ID do user se usar Supabase Auth
+    // Usar o ID do usuário logado (se houver), incluindo admins
+    const userId = user?.id || null;
 
     try {
       const { error: reviewError, errorMessage } = await addReview({
@@ -78,7 +84,15 @@ export default function ReviewForm({ productId }: { productId: string }) {
 
   return (
     <div className="border p-4 rounded-lg bg-gray-50">
-      <h3 className="font-semibold mb-3">Deixar uma avaliação</h3>
+      <div className="flex items-center gap-2 mb-3">
+        <h3 className="font-semibold">Deixar uma avaliação</h3>
+        {isAdmin && (
+          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full">
+            <Shield className="w-3 h-3" />
+            Admin
+          </span>
+        )}
+      </div>
 
       {/* Mensagem de erro */}
       {error && (
