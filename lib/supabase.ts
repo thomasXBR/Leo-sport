@@ -316,6 +316,13 @@ export async function createProduct(product: Omit<Product, 'id' | 'created_at' |
     Object.entries(product).filter(([_, value]) => value !== undefined && value !== null && value !== '')
   );
 
+  // Log payload to help debugging when inserts fail
+  try {
+    console.debug('Creating product with payload:', cleanProduct);
+  } catch (e) {
+    // ignore logging errors
+  }
+
   const { data, error } = await supabase
     .from('products')
     .insert([cleanProduct])
@@ -323,13 +330,29 @@ export async function createProduct(product: Omit<Product, 'id' | 'created_at' |
     .single();
   
   if (error) {
-    console.error('Error creating product:', error);
+    // Log detailed error information to help debugging
+    try {
+      console.error('Error creating product:', {
+        message: error.message || error,
+        details: (error as any).details || null,
+        hint: (error as any).hint || null,
+        context: cleanProduct,
+      });
+    } catch (e) {
+      console.error('Error creating product (failed to serialize error):', error);
+    }
     throw error;
   }
   return data;
 }
 
 export async function updateProduct(id: string, updates: Partial<Product>) {
+  try {
+    console.debug('Updating product', id, updates);
+  } catch (e) {
+    /* ignore */
+  }
+
   const { data, error } = await supabase
     .from('products')
     .update(updates)
@@ -337,7 +360,10 @@ export async function updateProduct(id: string, updates: Partial<Product>) {
     .select()
     .single();
   
-  if (error) throw error;
+  if (error) {
+    console.error('Error updating product:', error);
+    throw error;
+  }
   return data;
 }
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createProduct, updateProduct, Product, getSiteContent } from '@/lib/supabase';
+import { getCategories } from '@/lib/products-data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -62,8 +63,21 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
           }
         });
         
-        console.log('Sports loaded:', Array.from(sportsSet));
-        setSports(Array.from(sportsSet).sort());
+        const loaded = Array.from(sportsSet).sort();
+        console.log('Sports loaded from site_content:', loaded);
+        if (loaded.length > 0) {
+          setSports(loaded);
+        } else {
+          // Fallback to categories from products-data if site_content has no esporte entries
+          try {
+            const cats = getCategories();
+            console.warn('No sports found in site_content — falling back to categories:', cats);
+            setSports(cats.sort());
+          } catch (err) {
+            console.error('Failed to load fallback categories:', err);
+            setSports([]);
+          }
+        }
       } catch (err) {
         console.error('Failed to load sports:', err);
         setSports([]);
@@ -221,9 +235,9 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
   const discount = calculateDiscount();
 
   return (
-    <div className="max-w-3xl mx-auto p-4 bg-white rounded-lg shadow-sm">
-      <h1 className="text-2xl font-semibold text-gray-900 mb-1">{productId ? 'Editar Produto' : 'Registrar Produto'}</h1>
-      <p className="text-sm text-gray-600 mb-4">{productId ? 'Atualize os campos do produto e salve as alterações' : 'Preencha os campos obrigatórios para adicionar um produto'}</p>
+    <div className="w-full max-w-screen-xl mx-auto p-6 bg-white rounded-lg shadow-lg ring-1 ring-gray-100">
+      <h1 className="text-3xl font-bold text-gray-900 mb-1">{productId ? 'Editar Produto' : 'Registrar Produto'}</h1>
+      <p className="text-sm text-gray-600 mb-6">{productId ? 'Atualize os campos do produto e salve as alterações' : 'Preencha os campos obrigatórios para adicionar um produto'}</p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
@@ -248,7 +262,8 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+              <div className="p-4 bg-gray-50 rounded-md">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
             <div>
               <Label htmlFor="name" className="text-sm font-medium text-gray-700 mb-1">Nome do Produto *</Label>
               <Input id="name" name="name" value={formData.name} onChange={handleInputChange} required />
@@ -261,24 +276,36 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
 
             <div>
               <Label htmlFor="category_id" className="text-sm font-medium text-gray-700 mb-1">Esporte / Categoria</Label>
-              <select id="category_id" name="category_id" value={formData.category_id} onChange={handleInputChange} className="w-full border rounded px-2 py-1" disabled={loadingContent}>
-                <option value="">{loadingContent ? 'Carregando esportes...' : 'Escolha um esporte...'}</option>
-                {sports.map((sport: string) => (
-                  <option key={sport} value={sport}>{sport}</option>
-                ))}
-              </select>
-            </div>
+            <select
+               id="category_id"
+               name="category_id"
+               value={formData.category_id}
+               onChange={handleInputChange}
+               className="w-full border rounded px-2 py-1"
+               disabled={loadingContent}
+            >
+          <option value="">
+            {loadingContent ? "Carregando esportes..." : "Escolha um esporte..."}
+          </option>
 
+        {sports.map((name: string) => (
+          <option key={name} value={name}>
+          {name}
+        </option>
+  ))}
+        </select>
+            </div>
             <div>
               <Label htmlFor="color" className="text-sm font-medium text-gray-700 mb-1">Cor</Label>
               <Input id="color" name="color" value={(formData as any).color} onChange={handleInputChange} />
             </div>
           </div>
 
-          <div className="mt-4">
+                <div className="mt-4">
             <Label htmlFor="description" className="text-sm font-medium text-gray-700 mb-1">Descrição</Label>
             <textarea id="description" name="description" value={formData.description} onChange={handleInputChange} rows={4} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
           </div>
+              </div>
             </CollapsibleContent>
           </div>
         </Collapsible>
@@ -291,7 +318,8 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="p-4 bg-gray-50 rounded-md">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="price" className="text-sm font-medium text-gray-700 mb-1">Preço Real (R$) *</Label>
               <Input id="price" name="price" type="number" step="0.01" value={formData.price} onChange={handleInputChange} required />
@@ -317,6 +345,7 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
               </div>
             </div>
           )}
+              </div>
             </CollapsibleContent>
           </div>
         </Collapsible>
@@ -329,7 +358,8 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="p-4 bg-gray-50 rounded-md">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="weight" className="text-sm font-medium text-gray-700 mb-1">Peso (kg)</Label>
               <Input id="weight" name="weight" value={formData.weight} onChange={handleInputChange} />
@@ -338,6 +368,7 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
               <Label htmlFor="dimensions" className="text-sm font-medium text-gray-700 mb-1">Dimensões (LxAxP em cm)</Label>
               <Input id="dimensions" name="dimensions" value={formData.dimensions} onChange={handleInputChange} />
             </div>
+                </div>
               </div>
             </CollapsibleContent>
           </div>
@@ -351,15 +382,17 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div>
-                <Label htmlFor="image_url" className="text-sm font-medium text-gray-700 mb-1">URL da Imagem</Label>
-                <Input id="image_url" name="image_url" value={formData.image_url} onChange={handleInputChange} />
-                {formData.image_url && (
-                  <div className="mt-3">
-                    <p className="text-sm text-gray-600 mb-2">Prévia:</p>
-                    <img src={formData.image_url} alt="Prévia" className="max-w-xs h-auto rounded-lg border" onError={(e) => {(e.target as HTMLImageElement).src = 'https://placehold.co/200x200';}} />
-                  </div>
-                )}
+              <div className="p-4 bg-gray-50 rounded-md">
+                <div>
+                  <Label htmlFor="image_url" className="text-sm font-medium text-gray-700 mb-1">URL da Imagem</Label>
+                  <Input id="image_url" name="image_url" value={formData.image_url} onChange={handleInputChange} />
+                  {formData.image_url && (
+                    <div className="mt-3">
+                      <p className="text-sm text-gray-600 mb-2">Prévia:</p>
+                      <img src={formData.image_url} alt="Prévia" className="max-w-sm h-auto rounded-lg border" onError={(e) => {(e.target as HTMLImageElement).src = 'https://placehold.co/200x200';}} />
+                    </div>
+                  )}
+                </div>
               </div>
             </CollapsibleContent>
           </div>
@@ -373,7 +406,8 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="grid grid-cols-1 gap-3">
+              <div className="p-4 bg-gray-50 rounded-md">
+                <div className="grid grid-cols-1 gap-3">
             <div>
               <Label htmlFor="features" className="text-sm font-medium text-gray-700 mb-1">Recursos (um por linha)</Label>
               <textarea id="features" name="features" value={formData.features} onChange={handleInputChange} rows={4} className="w-full px-3 py-2 border rounded-lg" placeholder="Quadro de alumínio&#10;Suspensão dianteira&#10;Freios a disco" />
@@ -403,6 +437,7 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
                 </div>
               )}
             </div>
+                </div>
               </div>
             </CollapsibleContent>
           </div>
@@ -416,8 +451,8 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-
-          <div className="space-y-4">
+              <div className="p-4 bg-gray-50 rounded-md">
+                <div className="space-y-4">
             <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
               <input id="no_shipping" name="no_shipping" type="checkbox" checked={Boolean((formData as any).no_shipping)} onChange={handleCheckboxChange} className="w-5 h-5 text-blue-600 rounded" />
               <Label htmlFor="no_shipping" className="text-sm font-medium text-gray-700 cursor-pointer">Frete Grátis</Label>
@@ -437,6 +472,7 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
               </div>
             </div>
           </div>
+              </div>
             </CollapsibleContent>
           </div>
         </Collapsible>
