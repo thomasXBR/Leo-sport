@@ -89,13 +89,27 @@ export default async function ProductPage({ params }: ProductPageProps) {
     }
   } catch (error: any) {
     // Se for um UUID válido mas não encontrado, retorna 404 diretamente
-    if (isUUID && (error?.code === 'PGRST116' || error?.message?.includes('No rows'))) {
+    const isNotFoundError = 
+      error?.code === 'PGRST116' || 
+      error?.code === '23505' ||
+      error?.message?.includes('No rows') ||
+      error?.message?.includes('not found') ||
+      error?.message?.includes('Could not find')
+    
+    if (isUUID && isNotFoundError) {
+      notFound()
+      return
+    }
+    // Se for UUID mas erro diferente de "não encontrado", pode ser erro de conexão
+    // Nesse caso, também retorna 404 para evitar 500
+    if (isUUID && !isNotFoundError) {
+      console.error('Supabase error for UUID:', error?.message || error)
       notFound()
       return
     }
     // Se não for UUID, pode ser um produto mock, então continua o fluxo
-    if (error?.code !== 'PGRST116' && !error?.message?.includes('No rows')) {
-      console.log('Supabase error:', error?.message || error)
+    if (!isUUID) {
+      console.log('Supabase error (trying mock fallback):', error?.message || error)
     }
   }
 
@@ -124,6 +138,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   // Normalize product data to work with both Supabase and mock products
   try {
+    // Validação básica do produto
+    if (!product || !product.id) {
+      notFound()
+      return
+    }
+
     const fakePrice = product.fake_price ? parseFloat(String(product.fake_price)) : 0
     const realPrice = typeof product.price === 'number' ? product.price : parseFloat(String(product.price || 0))
     const hasFakePrice = fakePrice > 0 && fakePrice > realPrice
@@ -162,11 +182,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
     
     const normalizedProduct = {
       id: product.id?.toString?.() ?? '',
-      name: product.name ?? '',
+      name: product.name ?? 'Produto sem nome',
       category: product.category || (product.categories?.name || 'Sem categoria'),
       price: typeof product.price === 'string'
         ? product.price
-        : `R$ ${parseFloat(product.price || 0).toFixed(2).replace('.', ',')}`,
+        : `R$ ${parseFloat(String(product.price || 0)).toFixed(2).replace('.', ',')}`,
       fake_price: hasFakePrice ? fakePrice : undefined,
       imageUrl: product.imageUrl || product.image_url || 'https://placehold.co/600x600?text=Sem+Imagem',
       description: product.description || '',
@@ -197,7 +217,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       .filter((p) => p.category === normalizedProduct.category && p.id.toString() !== normalizedProduct.id)
       .slice(0, 4)
 
-  return (
+    return (
     <div className="min-h-screen bg-gray-50">
       {/* Breadcrumb */}
       <div className="bg-white border-b">
@@ -306,9 +326,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     <div className="text-3xl font-bold text-red-600">
                       {normalizedProduct.price}
                     </div>
-                    <div className="inline-block bg-red-600 text-white px-3 py-1 rounded font-bold text-sm">
-                      -{Math.round(((normalizedProduct.fake_price - realPrice) / normalizedProduct.fake_price) * 100)}% OFF
-                    </div>
+                    {normalizedProduct.fake_price && realPrice && (
+                      <div className="inline-block bg-red-600 text-white px-3 py-1 rounded font-bold text-sm">
+                        -{Math.round(((normalizedProduct.fake_price - realPrice) / normalizedProduct.fake_price) * 100)}% OFF
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-3xl font-bold text-gray-900">{normalizedProduct.price}</div>
