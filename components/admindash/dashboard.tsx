@@ -1131,17 +1131,17 @@ export default function Dashboard() {
                                                 R$ {product.price.toFixed(2).replace('.', ',')}
                                             </p>
                                             <div className="mb-4">
-                                                {products.fake_price && products.fake_price > 0 ? (
+                                                {product.fake_price && product.fake_price > 0 ? (
                                                     <p className="text-sm text-gray-400 line-through">
-                                                        R$ {products.fake_price.toFixed(2).replace('.', ',')}
+                                                        R$ {product.fake_price.toFixed(2).replace('.', ',')}
                                                     </p>
                                                 ) : null}
                                                 <p className="text-xl font-extrabold text-red-600">
                                                     R$ {product.price.toFixed(2).replace('.', ',')}
                                                 </p>
-                                                {products.fake_price && products.fake_price > product.price ? (
+                                                {product.fake_price && product.fake_price > product.price ? (
                                                     <span className="inline-block mt-1 px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-800 rounded-full">
-                                                        {Math.round((1 - product.price / products.fake_price) * 100)}% OFF
+                                                        {Math.round((1 - product.price / product.fake_price) * 100)}% OFF
                                                     </span>
                                                 ) : null}
                                             </div>
