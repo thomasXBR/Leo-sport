@@ -1,5 +1,6 @@
 'use client'
 
+
 import { useState, useEffect, useRef } from 'react'
 import { Bar } from 'react-chartjs-2'
 import {
@@ -617,19 +618,22 @@ export default function Dashboard() {
                 modalContent = <p>Formulário de Parceria Pendente</p>
                 break
             default:
-                return null
-        }
+                break
+            }
 
-        return (
-            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle>{modalTitle}</DialogTitle>
-                    </DialogHeader>
-                    {modalContent}
-                </DialogContent>
-            </Dialog>
-        )
+            // Sempre renderiza o Dialog (controlado por `isModalOpen`) para evitar condições
+            // onde `isModalOpen` é true mas `modalType` ainda não foi atualizado, impedindo
+            // a abertura do modal. O conteúdo pode ser nulo enquanto o modalType é definido.
+            return (
+                <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                    <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                            <DialogTitle>{modalTitle}</DialogTitle>
+                        </DialogHeader>
+                        {modalContent}
+                    </DialogContent>
+                </Dialog>
+            )
     }
 
     function renderTabContent() {
@@ -744,23 +748,23 @@ export default function Dashboard() {
                                             <h3 className="font-semibold text-gray-800 truncate">{product.name}</h3>
                                             <p className="text-sm text-gray-600 mb-1">SKU: {product.sku}</p>
                                             <p className="text-sm text-gray-600 mb-2">Estoque: {product.stock_quantity}</p>
-                                            <p className="text-lg font-bold text-gray-900 mb-3">R$ {product.price.toFixed(2).replace('.', ',')}</p>
+                                            <p className="text-lg font-bold text-gray-900 mb-3">
+                                                R$ {product.price.toFixed(2).replace('.', ',')}
+                                            </p>
                                             <div className="mb-4">
-                                                <p className="text-sm text-gray-400 line-trough">
-                                                    R${
-                                                        (
-                                                            (Number(product.price) / 0.75)
-                                                                .toFixed(2)
-                                                                .replace('.', ',')
-                                                        )
-                                                    }
-                                                </p>
+                                                {product.fake_price && product.fake_price > 0 ? (
+                                                    <p className="text-sm text-gray-400 line-through">
+                                                        R$ {product.fake_price.toFixed(2).replace('.', ',')}
+                                                    </p>
+                                                ) : null}
                                                 <p className="text-xl font-extrabold text-red-600">
-                                                    R${product.price.toFixed(2).replace('.', ',')}
+                                                    R$ {product.price.toFixed(2).replace('.', ',')}
                                                 </p>
-                                                <span className="inline-block mt-1 px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-800 rounded-full">
-                                                    25% OFF
-                                                </span>
+                                                {product.fake_price && product.fake_price > product.price ? (
+                                                    <span className="inline-block mt-1 px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-800 rounded-full">
+                                                        {Math.round((1 - product.price / product.fake_price) * 100)}% OFF
+                                                    </span>
+                                                ) : null}
                                             </div>
                                             <div className="flex gap-2">
                                                 <button
