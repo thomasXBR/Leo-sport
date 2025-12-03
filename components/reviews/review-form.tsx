@@ -54,7 +54,11 @@ export default function ReviewForm({ productId }: { productId: string }) {
       } else {
         const message = errorMessage || "Erro ao enviar avaliação. Tente novamente.";
         setError(message);
-        console.error("Erro ao enviar avaliação:", reviewError);
+        console.error("Erro ao enviar avaliação:", {
+          error: reviewError,
+          message: errorMessage,
+          productId,
+        });
       }
     } catch (err: any) {
       setError("Erro inesperado ao enviar avaliação. Tente novamente.");

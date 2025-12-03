@@ -53,19 +53,71 @@ export async function addReview({
   }
 
   try {
-    // Usa o client importado diretamente
+    // Preparar o objeto de review
+    const reviewData: {
+      product_id: string;
+      stars: number;
+      comment: string;
+      user_id: string | null;
+    } = {
+      product_id: productId,
+      stars,
+      comment: comment.trim(),
+      user_id: userId,
+    };
+
+    console.log("Tentando inserir review:", reviewData);
+
+    // Tentar inserir diretamente no Supabase
     const { data, error } = await supabase
       .from("reviews")
-      .insert({
-        product_id: productId,
-        stars,
-        comment: comment.trim(),
-        user_id: userId,
-      })
-      .select();
+      .insert([reviewData])
+      .select()
+      .single();
 
     if (error) {
-      console.error("Erro ao inserir review:", error);
+      console.error("Erro ao inserir review diretamente:", {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        data: reviewData,
+      });
+
+      // Se for erro de permissão (RLS), tentar via API route
+      if (error.code === "42501" || error.code === "PGRST301") {
+        console.log("Tentando inserir via API route devido a problema de permissão...");
+        
+        try {
+          const apiResponse = await fetch("/api/reviews", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              productId,
+              stars,
+              comment: comment.trim(),
+              userId,
+            }),
+          });
+
+          const apiResult = await apiResponse.json();
+
+          if (!apiResponse.ok) {
+            return {
+              error: { message: apiResult.error || "Erro ao enviar avaliação" },
+              errorMessage: apiResult.error || "Erro ao enviar avaliação. Tente novamente.",
+            };
+          }
+
+          console.log("Review inserido com sucesso via API:", apiResult.data);
+          return { error: null, errorMessage: null, data: apiResult.data };
+        } catch (apiError: any) {
+          console.error("Erro ao usar API route:", apiError);
+          // Continuar com o erro original
+        }
+      }
       
       // Traduzir mensagens de erro comuns
       let errorMessage = "Erro ao enviar avaliação. Tente novamente.";
@@ -76,19 +128,26 @@ export async function addReview({
         errorMessage = "Você já avaliou este produto.";
       } else if (error.code === "42501") {
         errorMessage = "Sem permissão para enviar avaliação. Entre em contato com o suporte.";
+      } else if (error.code === "PGRST116") {
+        errorMessage = "Produto não encontrado.";
       } else if (error.message) {
-        errorMessage = error.message;
+        errorMessage = `Erro: ${error.message}`;
       }
 
       return { error, errorMessage };
     }
 
+    console.log("Review inserido com sucesso:", data);
     return { error: null, errorMessage: null, data };
   } catch (err: any) {
-    console.error("Erro inesperado ao adicionar review:", err);
+    console.error("Erro inesperado ao adicionar review:", {
+      error: err,
+      message: err?.message,
+      stack: err?.stack,
+    });
     return { 
       error: err, 
-      errorMessage: "Erro inesperado ao enviar avaliação. Tente novamente."
+      errorMessage: `Erro inesperado: ${err?.message || "Tente novamente."}`
     };
   }
 }
