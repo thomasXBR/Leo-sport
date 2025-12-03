@@ -10,7 +10,7 @@ import { useSiteContent } from '@/hooks/use-site-content';
 
 export default function InicioPage() {
   const { getContent, loading } = useSiteContent();
-  
+
   const featuredCategories = [
     { name: 'Futebol', image: 'https://images.pexels.com/photos/274506/pexels-photo-274506.jpeg?auto=compress&cs=tinysrgb&w=400', products: 150 },
     { name: 'Basquete', image: 'https://images.pexels.com/photos/358042/pexels-photo-358042.jpeg?auto=compress&cs=tinysrgb&w=400', products: 89 },
@@ -40,8 +40,8 @@ export default function InicioPage() {
         {/* Background Image */}
         <div className="absolute inset-0">
           <Image
-            src="/images/1920x1080-hd-sports-61oi85jh19u3ptld.jpg"
-            alt="Sports Background"
+            src="/images/INICIO.jpg"
+            alt="Sports Equipment on Grass"
             fill
             className="object-cover"
             priority

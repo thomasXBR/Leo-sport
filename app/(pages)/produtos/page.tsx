@@ -286,7 +286,7 @@ export default function ProductsPage() {
       <section className="relative text-white py-16 overflow-hidden">
         <div className="absolute inset-0">
           <Image
-            src="/images/1920x1080-hd-sports-61oi85jh19u3ptld.jpg"
+            src="/images/PRODUTOS.jpg"
             alt="Sports Background"
             fill
             className="object-cover"

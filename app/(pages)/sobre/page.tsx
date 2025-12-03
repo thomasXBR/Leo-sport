@@ -46,7 +46,7 @@ export default function SobrePage() {
         {/* Background Image */}
         <div className="absolute inset-0">
           <Image
-            src="/images/1920x1080-hd-sports-61oi85jh19u3ptld.jpg"
+            src="/images/SOBRE.jpg"
             alt="Sports Background"
             fill
             className="object-cover"
