@@ -50,9 +50,12 @@ export default function CouponCarousel() {
     }
 
     const formatCouponMessage = (coupon: Coupon) => {
-        const discount = coupon.discount_value;
+        // Usar o texto personalizado do admin se existir, senão usar o padrão
+        if (coupon.carousel_text) {
+            return coupon.carousel_text;
+        }
+        // Fallback para texto padrão se não houver texto personalizado
         const code = coupon.code;
-        const description = coupon.description ? ` - ${coupon.description}` : '';
         return `🎉 Ganhe descontos especiais usando o cupom: ${code}`;
     };
 
