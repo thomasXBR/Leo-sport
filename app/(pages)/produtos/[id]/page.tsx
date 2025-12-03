@@ -192,22 +192,64 @@ export default async function ProductPage({ params }: ProductPageProps) {
     }
     
     // Parse specifications: can be string (from Supabase) or object (from mock data)
-    // Handles double-stringified JSON objects
+    // Handles double-stringified JSON objects like {"{\"Teste\"": "\"3\"}"}
     const parseSpecifications = (specs: any): Record<string, string> => {
       if (typeof specs === 'object' && specs !== null && !Array.isArray(specs)) {
-        // Check if object values are stringified JSON
         const result: Record<string, string> = {}
         for (const [key, value] of Object.entries(specs)) {
-          if (typeof value === 'string') {
+          // Handle case where key itself might be a stringified JSON object like "{\"Teste\""
+          let finalKey = key
+          let finalValue = value
+          
+          // Try to parse the key as JSON (handles "{\"Teste\"" -> extracts the object)
+          try {
+            const parsedKey = JSON.parse(key)
+            if (typeof parsedKey === 'object' && parsedKey !== null && !Array.isArray(parsedKey)) {
+              // If key is an object, merge its properties into result
+              for (const [k, v] of Object.entries(parsedKey)) {
+                result[k] = String(v)
+              }
+              // Also handle the value if it's part of the structure
+              if (typeof value === 'string') {
+                try {
+                  const parsedValue = JSON.parse(value)
+                  if (typeof parsedValue === 'object' && parsedValue !== null) {
+                    Object.assign(result, parsedValue)
+                  } else {
+                    // If value is also a stringified object, parse it
+                    Object.assign(result, { [Object.keys(parsedKey)[0] || 'value']: String(parsedValue) })
+                  }
+                } catch (e) {
+                  // Value is not JSON, use as is
+                }
+              }
+              continue
+            } else if (typeof parsedKey === 'string') {
+              finalKey = parsedKey
+            }
+          } catch (e) {
+            // Key is not JSON, use as is
+          }
+
+          // Handle value - can be double stringified like "\"3\""
+          if (typeof finalValue === 'string') {
             try {
-              // Try to parse the value as JSON
-              const parsed = JSON.parse(value)
-              result[key] = typeof parsed === 'string' ? parsed : String(parsed)
+              // First parse: "\"3\"" -> "3"
+              let parsed = JSON.parse(finalValue)
+              // If still a string, try parsing again: "3" -> 3 (if needed)
+              if (typeof parsed === 'string' && parsed.startsWith('"') && parsed.endsWith('"')) {
+                try {
+                  parsed = JSON.parse(parsed)
+                } catch (e) {
+                  // Already parsed
+                }
+              }
+              result[finalKey] = typeof parsed === 'string' ? parsed : String(parsed)
             } catch (e) {
-              result[key] = value
+              result[finalKey] = finalValue
             }
           } else {
-            result[key] = String(value)
+            result[finalKey] = String(finalValue)
           }
         }
         return result
@@ -217,21 +259,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
           // Try to parse as JSON first (handles stringified JSON)
           const parsed = JSON.parse(specs)
           if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-            // Check if values are also stringified
-            const result: Record<string, string> = {}
-            for (const [key, value] of Object.entries(parsed)) {
-              if (typeof value === 'string') {
-                try {
-                  const doubleParsed = JSON.parse(value)
-                  result[key] = typeof doubleParsed === 'string' ? doubleParsed : String(doubleParsed)
-                } catch (e) {
-                  result[key] = value
-                }
-              } else {
-                result[key] = String(value)
-              }
-            }
-            return result
+            // Recursively parse the object to handle nested stringification
+            return parseSpecifications(parsed)
           }
         } catch (e) {
           // If not JSON, try splitting by newlines (legacy format)
