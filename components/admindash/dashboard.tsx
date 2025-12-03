@@ -14,7 +14,7 @@ import {
 } from 'chart.js'
 import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload, Loader2, ChevronLeft, ChevronRight, ShoppingCart, Package, DollarSign } from 'lucide-react'
 import Image from 'next/image'
-import ProductRegistrationForm from '@/components/forms/ProductRegistrationForm'
+import ProductsRegistrationForm from '@/components/forms/ProductsRegistrationForm'
 import {
     Dialog,
     DialogContent,
@@ -33,14 +33,14 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import {
-    getProducts, createProduct, updateProduct, deleteProduct,
+    getProductss, createProducts, updateProducts, deleteProducts,
     getInventoryItems, createInventoryMovement, deleteInventoryMovement,
     getSales, getSalesDataForChart,
     getInvoices, createInvoice, updateInvoice, deleteInvoice,
     getPartnerships, createPartnership, updatePartnership, deletePartnership,
     getCoupons, createCoupon, updateCoupon, deleteCoupon,
     getSiteContent, updateSiteContent, getFAQs, createFAQ, updateFAQ, deleteFAQ, getPurchases, createPurchase, updatePurchase, deletePurchase,
-    type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent, type FAQ, type Purchase,
+    type Products, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent, type FAQ, type Purchase,
 } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
 
@@ -483,7 +483,7 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true)
 
     // Estados dos dados
-    const [products, setProducts] = useState<Product[]>([])
+    const [productss, setProductss] = useState<Products[]>([])
     const [inventoryItems, setInventoryItems] = useState<any[]>([])
     const [sales, setSales] = useState<any[]>([])
     const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -523,7 +523,7 @@ export default function Dashboard() {
 
     // Estados dos modais
     const [isModalOpen, setIsModalOpen] = useState(false)
-    const [modalType, setModalType] = useState<'invoice' | 'partner' | 'coupon' | 'product' | 'inventory' | 'faq' | 'purchase' | null>(null)
+    const [modalType, setModalType] = useState<'invoice' | 'partner' | 'coupon' | 'products' | 'inventory' | 'faq' | 'purchase' | null>(null)
     const [editingItem, setEditingItem] = useState<any>(null)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [itemToDelete, setItemToDelete] = useState<{ type: string; id: string; name: string } | null>(null)
@@ -605,8 +605,8 @@ export default function Dashboard() {
     async function loadAllData() {
         try {
             setLoading(true)
-            const [productsData, inventoryData, salesData, invoicesData, partnersData, couponsData, contentData, faqsData, purchasesData] = await Promise.all([
-                getProducts().catch(() => []),
+            const [productssData, inventoryData, salesData, invoicesData, partnersData, couponsData, contentData, faqsData, purchasesData] = await Promise.all([
+                getProductss().catch(() => []),
                 getInventoryItems().catch(() => []),
                 getSales().catch(() => []),
                 getInvoices().catch(() => []),
@@ -617,7 +617,7 @@ export default function Dashboard() {
                 getPurchases().catch(() => []),
             ])
 
-            setProducts(productsData || [])
+            setProductss(productssData || [])
             setInventoryItems(inventoryData || [])
             setSales(salesData || [])
             setInvoices(invoicesData || [])
@@ -719,11 +719,11 @@ export default function Dashboard() {
                     await deleteInventoryMovement(itemToDelete.id)
                     loadAllData() // Recarregar para atualizar estoque
                     break
-                case 'product':
-                    await deleteProduct(itemToDelete.id)
+                case 'products':
+                    await deleteProducts(itemToDelete.id)
                     // Recarregar dados do Supabase
-                    const updatedProducts = await getProducts()
-                    setProducts(updatedProducts || [])
+                    const updatedProductss = await getProductss()
+                    setProductss(updatedProductss || [])
                     break
                 case 'partnership':
                     await deletePartnership(itemToDelete.id)
@@ -863,8 +863,8 @@ export default function Dashboard() {
     const handleSaveInventory = async (formData: any) => {
         try {
             await createInventoryMovement({
-                product_id: formData.product_id,
-                product_name: '',
+                products_id: formData.products_id,
+                products_name: '',
                 movement_type: formData.movement_type,
                 quantity: parseInt(formData.quantity),
                 previous_quantity: 0,
@@ -972,14 +972,14 @@ export default function Dashboard() {
                     />
                 )
                 break
-            case 'product':
+            case 'products':
                 modalTitle = isEdit ? 'Editar Produto' : 'Adicionar Novo Produto'
                 modalContent = (
-                    <ProductRegistrationForm
+                    <ProductsRegistrationForm
                         initialData={editingItem}
-                        productId={editingItem?.id ?? null}
+                        productsId={editingItem?.id ?? null}
                         onSuccess={() => {
-                            // reload products and close modal after success
+                            // reload productss and close modal after success
                             loadAllData()
                             closeModal()
                         }}
@@ -1095,13 +1095,13 @@ export default function Dashboard() {
                         <p className="text-gray-600">Gestão de usuários através da tabela profiles no Supabase.</p>
                     </div>
                 );
-            case 'products':
+            case 'productss':
                 return (
                     <div>
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-semibold text-gray-700">Gestão de Produtos</h2>
                             <button
-                                onClick={() => openModal('product')}
+                                onClick={() => openModal('products')}
                                 className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
                             >
                                 <PlusCircle size={20} className="mr-2" />
@@ -1109,51 +1109,51 @@ export default function Dashboard() {
                             </button>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {products.length === 0 ? (
+                            {productss.length === 0 ? (
                                 <div className="col-span-full text-center py-8 text-gray-500">
                                     Nenhum produto cadastrado
                                 </div>
                             ) : (
-                                products.map(product => (
-                                    <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden group">
+                                productss.map(products => (
+                                    <div key={products.id} className="bg-white rounded-lg shadow-md overflow-hidden group">
                                         <Image
-                                            src={product.image_url || 'https://placehold.co/400x400/e2e8f0/334155?text=Produto'}
-                                            alt={product.name}
+                                            src={products.image_url || 'https://placehold.co/400x400/e2e8f0/334155?text=Produto'}
+                                            alt={products.name}
                                             width={400}
                                             height={160}
                                             className="w-full h-40 object-cover group-hover:opacity-80 transition-opacity"
                                         />
                                         <div className="p-4">
-                                            <h3 className="font-semibold text-gray-800 truncate">{product.name}</h3>
-                                            <p className="text-sm text-gray-600 mb-1">SKU: {product.sku}</p>
-                                            <p className="text-sm text-gray-600 mb-2">Estoque: {product.stock_quantity}</p>
+                                            <h3 className="font-semibold text-gray-800 truncate">{products.name}</h3>
+                                            <p className="text-sm text-gray-600 mb-1">SKU: {products.sku}</p>
+                                            <p className="text-sm text-gray-600 mb-2">Estoque: {products.stock_quantity}</p>
                                             <p className="text-lg font-bold text-gray-900 mb-3">
-                                                R$ {product.price.toFixed(2).replace('.', ',')}
+                                                R$ {products.price.toFixed(2).replace('.', ',')}
                                             </p>
                                             <div className="mb-4">
-                                                {product.fake_price && product.fake_price > 0 ? (
+                                                {products.fake_price && products.fake_price > 0 ? (
                                                     <p className="text-sm text-gray-400 line-through">
-                                                        R$ {product.fake_price.toFixed(2).replace('.', ',')}
+                                                        R$ {products.fake_price.toFixed(2).replace('.', ',')}
                                                     </p>
                                                 ) : null}
                                                 <p className="text-xl font-extrabold text-red-600">
-                                                    R$ {product.price.toFixed(2).replace('.', ',')}
+                                                    R$ {products.price.toFixed(2).replace('.', ',')}
                                                 </p>
-                                                {product.fake_price && product.fake_price > product.price ? (
+                                                {products.fake_price && products.fake_price > products.price ? (
                                                     <span className="inline-block mt-1 px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-800 rounded-full">
-                                                        {Math.round((1 - product.price / product.fake_price) * 100)}% OFF
+                                                        {Math.round((1 - products.price / products.fake_price) * 100)}% OFF
                                                     </span>
                                                 ) : null}
                                             </div>
                                             <div className="flex gap-2">
                                                 <button
-                                                    onClick={() => openModal('product', product)}
+                                                    onClick={() => openModal('products', products)}
                                                     className="flex-1 bg-cyan-600 text-white py-2 rounded-lg hover:bg-cyan-700 transition-colors font-semibold text-sm"
                                                 >
                                                     <Edit size={16} className="mx-auto" />
                                                 </button>
                                                 <button
-                                                    onClick={() => openDeleteDialog('product', product.id, product.name)}
+                                                    onClick={() => openDeleteDialog('products', products.id, products.name)}
                                                     className="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors"
                                                 >
                                                     <Trash2 size={16} />
@@ -1585,7 +1585,7 @@ export default function Dashboard() {
                     <button onClick={() => setActiveTab('sales')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'sales' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Vendas</button>
                     <button onClick={() => setActiveTab('inventory')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'inventory' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Estoque</button>
                     <button onClick={() => setActiveTab('users')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'users' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Usuários</button>
-                    <button onClick={() => setActiveTab('products')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'products' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Produtos</button>
+                    <button onClick={() => setActiveTab('productss')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'productss' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Produtos</button>
                     <button onClick={() => setActiveTab('invoices')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'invoices' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Notas Fiscais</button>
                     <button onClick={() => setActiveTab('partnerships')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'partnerships' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Parcerias</button>
                     <button onClick={() => setActiveTab('coupons')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'coupons' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Cupons</button>
