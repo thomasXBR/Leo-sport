@@ -51,12 +51,30 @@ export async function POST(request: NextRequest) {
     // Também aceitar o flag isAdmin do body se fornecido
     const isAdmin = body.isAdmin || userIsAdmin;
 
-    // Preparar dados
+    // Validar UUID se userId for fornecido
+    let validUserId: string | null = null;
+    if (body.userId) {
+      // Validar formato UUID
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (uuidRegex.test(body.userId)) {
+        validUserId = body.userId;
+      } else {
+        console.warn('[API Reviews] userId fornecido não é um UUID válido:', body.userId);
+        // Se não for UUID válido, pode ser problema, mas deixar null
+        validUserId = null;
+      }
+    }
+
+    // Preparar dados conforme schema do Supabase:
+    // - product_id: text
+    // - user_id: uuid (FK para auth.users.id) ou null
+    // - stars: int4 (integer)
+    // - comment: text
     const reviewData = {
-      product_id: body.productId,
-      stars: body.stars,
-      comment: body.comment.trim(),
-      user_id: body.userId || null,
+      product_id: String(body.productId).trim(),
+      stars: parseInt(String(body.stars), 10),
+      comment: String(body.comment).trim(),
+      user_id: validUserId,
     };
 
     console.log('[API Reviews] Tentando inserir review:', { ...reviewData, isAdmin });
@@ -96,16 +114,41 @@ export async function POST(request: NextRequest) {
 
       let errorMessage = 'Erro ao enviar avaliação.';
       
+      // Códigos de erro do PostgreSQL/Supabase:
       if (error.code === '23503') {
-        errorMessage = 'Produto não encontrado.';
-      } else if (error.code === '23505') {
-        errorMessage = 'Você já avaliou este produto.';
-      } else if (error.code === '42501' || error.code === 'PGRST301') {
-        if (isAdmin) {
-          errorMessage = 'Erro de permissão mesmo sendo admin. Entre em contato com o suporte técnico.';
+        // Foreign key violation
+        if (error.details?.includes('user_id')) {
+          errorMessage = 'Usuário não encontrado. Faça login novamente.';
+        } else if (error.details?.includes('product_id')) {
+          errorMessage = 'Produto não encontrado.';
         } else {
-          errorMessage = 'Sem permissão para enviar avaliação.';
+          errorMessage = 'Referência inválida. Verifique os dados.';
         }
+      } else if (error.code === '23505') {
+        // Unique violation - usuário já avaliou
+        errorMessage = 'Você já avaliou este produto.';
+      } else if (error.code === '23514') {
+        // Check constraint violation
+        if (error.details?.includes('stars')) {
+          errorMessage = 'A avaliação deve estar entre 1 e 5 estrelas.';
+        } else if (error.details?.includes('comment')) {
+          errorMessage = 'O comentário não pode estar vazio.';
+        } else {
+          errorMessage = 'Dados inválidos. Verifique os campos.';
+        }
+      } else if (error.code === '42501' || error.code === 'PGRST301') {
+        // Permission denied (RLS)
+        if (isAdmin) {
+          errorMessage = 'Erro de permissão mesmo sendo admin. Verifique as políticas RLS no Supabase.';
+        } else {
+          errorMessage = 'Sem permissão para enviar avaliação. Faça login ou entre em contato.';
+        }
+      } else if (error.code === 'PGRST116') {
+        // No rows returned
+        errorMessage = 'Produto ou usuário não encontrado.';
+      } else if (error.code === '22P02') {
+        // Invalid UUID format
+        errorMessage = 'Formato de ID inválido.';
       } else if (error.message) {
         errorMessage = error.message;
       }

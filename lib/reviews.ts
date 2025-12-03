@@ -55,17 +55,34 @@ export async function addReview({
   }
 
   try {
-    // Preparar o objeto de review
+    // Validar UUID se userId for fornecido (schema: user_id é UUID FK para auth.users.id)
+    let validUserId: string | null = null;
+    if (userId) {
+      // Validar formato UUID
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (uuidRegex.test(userId)) {
+        validUserId = userId;
+      } else {
+        console.warn('userId fornecido não é um UUID válido:', userId);
+        validUserId = null;
+      }
+    }
+
+    // Preparar o objeto de review conforme schema do Supabase:
+    // - product_id: text
+    // - user_id: uuid (FK para auth.users.id) ou null
+    // - stars: int4 (integer)
+    // - comment: text
     const reviewData: {
       product_id: string;
       stars: number;
       comment: string;
       user_id: string | null;
     } = {
-      product_id: productId,
-      stars,
-      comment: comment.trim(),
-      user_id: userId,
+      product_id: String(productId).trim(),
+      stars: parseInt(String(stars), 10),
+      comment: String(comment).trim(),
+      user_id: validUserId,
     };
 
     console.log("Tentando inserir review:", reviewData);
@@ -125,14 +142,37 @@ export async function addReview({
       // Traduzir mensagens de erro comuns
       let errorMessage = "Erro ao enviar avaliação. Tente novamente.";
       
+      // Códigos de erro do PostgreSQL/Supabase:
       if (error.code === "23503") {
-        errorMessage = "Produto não encontrado.";
+        // Foreign key violation
+        if (error.details?.includes("user_id")) {
+          errorMessage = "Usuário não encontrado. Faça login novamente.";
+        } else if (error.details?.includes("product_id")) {
+          errorMessage = "Produto não encontrado.";
+        } else {
+          errorMessage = "Referência inválida. Verifique os dados.";
+        }
       } else if (error.code === "23505") {
+        // Unique violation
         errorMessage = "Você já avaliou este produto.";
-      } else if (error.code === "42501") {
+      } else if (error.code === "23514") {
+        // Check constraint violation
+        if (error.details?.includes("stars")) {
+          errorMessage = "A avaliação deve estar entre 1 e 5 estrelas.";
+        } else if (error.details?.includes("comment")) {
+          errorMessage = "O comentário não pode estar vazio.";
+        } else {
+          errorMessage = "Dados inválidos. Verifique os campos.";
+        }
+      } else if (error.code === "42501" || error.code === "PGRST301") {
+        // Permission denied (RLS)
         errorMessage = "Sem permissão para enviar avaliação. Entre em contato com o suporte.";
       } else if (error.code === "PGRST116") {
+        // No rows returned
         errorMessage = "Produto não encontrado.";
+      } else if (error.code === "22P02") {
+        // Invalid UUID format
+        errorMessage = "Formato de ID inválido.";
       } else if (error.message) {
         errorMessage = `Erro: ${error.message}`;
       }
