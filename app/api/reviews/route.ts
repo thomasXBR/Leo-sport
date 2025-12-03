@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
       } else if (error.code === '42501' || error.code === 'PGRST301') {
         // Permission denied (RLS)
         if (isAdmin) {
-          errorMessage = 'Erro de permissão mesmo sendo admin. Verifique as políticas RLS no Supabase.';
+          errorMessage = 'Erro de permissão mesmo sendo admin. É necessário configurar as políticas RLS no Supabase. Execute o arquivo "EXECUTAR_ISSO_NO_SUPABASE.sql" no SQL Editor do Supabase.';
         } else {
           errorMessage = 'Sem permissão para enviar avaliação. Faça login ou entre em contato.';
         }
