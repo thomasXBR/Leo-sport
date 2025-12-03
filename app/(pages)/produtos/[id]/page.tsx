@@ -368,16 +368,16 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">
                   Especificações Técnicas
                 </h3>
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <dl className="space-y-3">
-                    {Object.entries(normalizedProduct.specifications).map(([key, value]) => (
-                      <div key={key} className="flex justify-between gap-4">
-                        <dt className="font-semibold text-gray-700">{key}:</dt>
-                        <dd className="text-gray-900">{String(value)}</dd>
+                <ul className="space-y-2">
+                  {Object.entries(normalizedProduct.specifications).map(([key, value]) => (
+                    <li key={key} className="flex items-start gap-2 text-gray-700">
+                      <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
+                      <div>
+                        <span className="font-semibold text-gray-900">{key}:</span> {String(value)}
                       </div>
-                    ))}
-                  </dl>
-                </div>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 

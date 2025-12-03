@@ -125,12 +125,19 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
 
   const parseSpecifications = (specText: string): Record<string, string> => {
     const specs: Record<string, string> = {};
+    if (!specText || !specText.trim()) return specs;
+    
     specText.split('\n').forEach((line) => {
-      const parts = line.split(':');
-      if (parts.length >= 2) {
-        const key = parts[0].trim();
-        const value = parts.slice(1).join(':').trim();
-        if (key) specs[key] = value;
+      const trimmedLine = line.trim();
+      if (trimmedLine) {
+        const colonIndex = trimmedLine.indexOf(':');
+        if (colonIndex > -1) {
+          const key = trimmedLine.substring(0, colonIndex).trim();
+          const value = trimmedLine.substring(colonIndex + 1).trim();
+          if (key && value) {
+            specs[key] = value;
+          }
+        }
       }
     });
     return specs;
@@ -330,6 +337,20 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
                   <div>
                     <Label htmlFor="color" className="text-sm font-medium text-gray-700 mb-1">Cor</Label>
                     <Input id="color" name="color" value={(formData as any).color} onChange={handleInputChange} />
+                  </div>
+                  <div>
+                    <Label htmlFor="status" className="text-sm font-medium text-gray-700 mb-1">Status</Label>
+                    <select
+                      id="status"
+                      name="status"
+                      value={formData.status}
+                      onChange={handleInputChange}
+                      className="w-full border rounded px-2 py-1"
+                    >
+                      <option value="Ativo">Ativo</option>
+                      <option value="Inativo">Inativo</option>
+                      <option value="Esgotado">Esgotado</option>
+                    </select>
                   </div>
                 </div>
                 <div className="mt-4">
