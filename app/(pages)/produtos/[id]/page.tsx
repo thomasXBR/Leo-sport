@@ -26,8 +26,14 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   let product = null
   try {
     product = await getSupabaseProductById(id)
-  } catch (error) {
-    product = getProductById(parseInt(id, 10))
+  } catch (error: any) {
+    // Se não encontrou no Supabase, tenta buscar nos mocks
+    if (error?.code === 'PGRST116' || error?.message?.includes('No rows')) {
+      const numericId = parseInt(id, 10)
+      if (!isNaN(numericId)) {
+        product = getProductById(numericId)
+      }
+    }
   }
 
   if (!product) {
@@ -39,7 +45,7 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   return {
     title: `${product.name} - LeoSport`,
     description: product.description || '',
-    keywords: [product.name, product.category, product.brand, 'produtos esportivos'],
+    keywords: [product.name, product.category || '', product.brand || '', 'produtos esportivos'],
   }
 }
 
@@ -52,10 +58,11 @@ export async function generateStaticParams() {
         id: product.id.toString(),
       }))
     }
-  } catch (error) {
-    console.log('Using mock products for static generation')
+  } catch (error: any) {
+    console.log('Using mock products for static generation:', error?.message || error)
   }
 
+  // Fallback para produtos mock
   return productsData.map((product) => ({
     id: product.id.toString(),
   }))
@@ -74,8 +81,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
     if (product) {
       isSupabaseProduct = true
     }
-  } catch (error) {
-    // console.log('Supabase product not found, trying mock data')
+  } catch (error: any) {
+    // Se o erro for "PGRST116" (not found), tenta buscar nos mocks
+    // Outros erros também são tratados tentando buscar nos mocks
+    if (error?.code !== 'PGRST116') {
+      console.log('Supabase error:', error?.message || error)
+    }
   }
 
   // fallback to mock product if supabase fails or returns null
@@ -83,6 +94,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
     // tenta converter para inteiro para buscar nos mocks
     let numericId = parseInt(id, 10)
     if (isNaN(numericId)) {
+      // Se não é um número, pode ser um UUID do Supabase que não foi encontrado
+      // Nesse caso, retorna 404
       notFound()
       return
     }

@@ -297,12 +297,10 @@ export async function getProducts() {
 }
 
 export async function getProductById(id: string) {
-  // Se quiser incluir reviews ao buscar um produto, basta fazer um join:
-  // Exemplo:
-  // .select('*, categories(name, slug), reviews(*)')
+  // Busca produto com categoria, mas não inclui reviews (são carregadas separadamente)
   const { data, error } = await supabase
     .from('products')
-    .select('*, categories(name, slug), reviews(*)')
+    .select('*, categories(name, slug)')
     .eq('id', id)
     .single();
   
