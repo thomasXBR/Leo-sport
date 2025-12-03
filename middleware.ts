@@ -8,6 +8,7 @@ export function middleware(request: NextRequest) {
   // Rotas públicas que NUNCA devem ser bloqueadas (webhooks externos)
   const publicWebhookRoutes = [
     '/api/shipping/webhook',
+    '/api/webhook/melhorenvio',
     '/api/payments/webhook',
     '/api/webhooks',
   ];
