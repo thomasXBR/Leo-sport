@@ -24,11 +24,13 @@ export async function addReview({
   stars,
   comment,
   userId,
+  isAdmin,
 }: {
   productId: string;
   stars: number;
   comment: string;
   userId: string | null;
+  isAdmin?: boolean;
 }) {
   // Validação básica
   if (!productId) {
@@ -99,6 +101,7 @@ export async function addReview({
               stars,
               comment: comment.trim(),
               userId,
+              isAdmin: isAdmin || false,
             }),
           });
 

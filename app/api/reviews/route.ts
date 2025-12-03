@@ -31,6 +31,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Verificar se o usuário é admin (se userId foi fornecido)
+    let userIsAdmin = false;
+    if (body.userId) {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('user_type')
+          .eq('id', body.userId)
+          .single();
+        
+        userIsAdmin = profile?.user_type === 'admin';
+        console.log('[API Reviews] Verificação de admin:', { userId: body.userId, isAdmin: userIsAdmin });
+      } catch (profileError) {
+        console.error('[API Reviews] Erro ao verificar perfil:', profileError);
+      }
+    }
+
+    // Também aceitar o flag isAdmin do body se fornecido
+    const isAdmin = body.isAdmin || userIsAdmin;
+
     // Preparar dados
     const reviewData = {
       product_id: body.productId,
@@ -39,14 +59,30 @@ export async function POST(request: NextRequest) {
       user_id: body.userId || null,
     };
 
-    console.log('[API Reviews] Tentando inserir review:', reviewData);
+    console.log('[API Reviews] Tentando inserir review:', { ...reviewData, isAdmin });
 
-    // Inserir review
-    const { data, error } = await supabase
+    // Se for admin e houver erro de permissão, tentar múltiplas vezes ou usar estratégia diferente
+    let data, error;
+    
+    // Primeira tentativa
+    ({ data, error } = await supabase
       .from('reviews')
       .insert([reviewData])
       .select()
-      .single();
+      .single());
+
+    // Se houver erro de permissão e for admin, tentar uma segunda vez
+    // (às vezes o RLS pode ter cache ou delay)
+    if (error && (error.code === '42501' || error.code === 'PGRST301') && isAdmin) {
+      console.log('[API Reviews] Erro de permissão detectado para admin, tentando novamente...');
+      await new Promise(resolve => setTimeout(resolve, 100)); // Pequeno delay
+      
+      ({ data, error } = await supabase
+        .from('reviews')
+        .insert([reviewData])
+        .select()
+        .single());
+    }
 
     if (error) {
       console.error('[API Reviews] Erro ao inserir:', {
@@ -54,6 +90,8 @@ export async function POST(request: NextRequest) {
         code: error.code,
         details: error.details,
         hint: error.hint,
+        isAdmin,
+        userId: body.userId,
       });
 
       let errorMessage = 'Erro ao enviar avaliação.';
@@ -62,8 +100,12 @@ export async function POST(request: NextRequest) {
         errorMessage = 'Produto não encontrado.';
       } else if (error.code === '23505') {
         errorMessage = 'Você já avaliou este produto.';
-      } else if (error.code === '42501') {
-        errorMessage = 'Sem permissão para enviar avaliação.';
+      } else if (error.code === '42501' || error.code === 'PGRST301') {
+        if (isAdmin) {
+          errorMessage = 'Erro de permissão mesmo sendo admin. Entre em contato com o suporte técnico.';
+        } else {
+          errorMessage = 'Sem permissão para enviar avaliação.';
+        }
       } else if (error.message) {
         errorMessage = error.message;
       }
