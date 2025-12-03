@@ -11,6 +11,9 @@ import { getProductById as getSupabaseProductById } from '@/lib/supabase'
 import { getReviews, computeAverage } from '@/lib/reviews'
 import ReviewForm from '@/components/reviews/review-form'
 
+// Permitir renderização dinâmica para produtos UUID não gerados estaticamente
+export const dynamicParams = true
+
 // ---- Types ----
 interface ProductPageProps {
   params: Promise<{
@@ -76,26 +79,38 @@ export default async function ProductPage({ params }: ProductPageProps) {
   let product = null
   let isSupabaseProduct = false
 
+  // Verifica se é um UUID válido (formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+
   try {
     product = await getSupabaseProductById(id)
     if (product) {
       isSupabaseProduct = true
     }
   } catch (error: any) {
-    // Se o erro for "PGRST116" (not found), tenta buscar nos mocks
-    // Outros erros também são tratados tentando buscar nos mocks
-    if (error?.code !== 'PGRST116') {
+    // Se for um UUID válido mas não encontrado, retorna 404 diretamente
+    if (isUUID && (error?.code === 'PGRST116' || error?.message?.includes('No rows'))) {
+      notFound()
+      return
+    }
+    // Se não for UUID, pode ser um produto mock, então continua o fluxo
+    if (error?.code !== 'PGRST116' && !error?.message?.includes('No rows')) {
       console.log('Supabase error:', error?.message || error)
     }
   }
 
   // fallback to mock product if supabase fails or returns null
   if (!product) {
+    // Se for UUID válido mas não encontrado, já retornou 404 acima
+    if (isUUID) {
+      notFound()
+      return
+    }
+    
     // tenta converter para inteiro para buscar nos mocks
     let numericId = parseInt(id, 10)
     if (isNaN(numericId)) {
-      // Se não é um número, pode ser um UUID do Supabase que não foi encontrado
-      // Nesse caso, retorna 404
+      // Se não é um número nem UUID válido, retorna 404
       notFound()
       return
     }
@@ -108,70 +123,79 @@ export default async function ProductPage({ params }: ProductPageProps) {
   }
 
   // Normalize product data to work with both Supabase and mock products
-  const fakePrice = product.fake_price ? parseFloat(String(product.fake_price)) : 0
-  const realPrice = typeof product.price === 'number' ? product.price : parseFloat(String(product.price || 0))
-  const hasFakePrice = fakePrice > 0 && fakePrice > realPrice
-  
-  // Parse features: can be string (from Supabase) or array (from mock data)
-  const parseFeatures = (features: any): string[] => {
-    if (Array.isArray(features)) return features
-    if (typeof features === 'string' && features.trim()) {
-      return features.split('\n').map(f => f.trim()).filter(f => f.length > 0)
+  try {
+    const fakePrice = product.fake_price ? parseFloat(String(product.fake_price)) : 0
+    const realPrice = typeof product.price === 'number' ? product.price : parseFloat(String(product.price || 0))
+    const hasFakePrice = fakePrice > 0 && fakePrice > realPrice
+    
+    // Parse features: can be string (from Supabase) or array (from mock data)
+    const parseFeatures = (features: any): string[] => {
+      if (Array.isArray(features)) return features
+      if (typeof features === 'string' && features.trim()) {
+        return features.split('\n').map(f => f.trim()).filter(f => f.length > 0)
+      }
+      return []
     }
-    return []
-  }
-  
-  // Parse specifications: can be string (from Supabase) or object (from mock data)
-  const parseSpecifications = (specs: any): Record<string, string> => {
-    if (typeof specs === 'object' && specs !== null && !Array.isArray(specs)) {
-      return specs
+    
+    // Parse specifications: can be string (from Supabase) or object (from mock data)
+    const parseSpecifications = (specs: any): Record<string, string> => {
+      if (typeof specs === 'object' && specs !== null && !Array.isArray(specs)) {
+        return specs
+      }
+      if (typeof specs === 'string' && specs.trim()) {
+        const result: Record<string, string> = {}
+        specs.split('\n').forEach((line: string) => {
+          const parts = line.split(':')
+          if (parts.length >= 2) {
+            const key = parts[0].trim()
+            const value = parts.slice(1).join(':').trim()
+            if (key) result[key] = value
+          }
+        })
+        return result
+      }
+      return {}
     }
-    if (typeof specs === 'string' && specs.trim()) {
-      const result: Record<string, string> = {}
-      specs.split('\n').forEach((line: string) => {
-        const parts = line.split(':')
-        if (parts.length >= 2) {
-          const key = parts[0].trim()
-          const value = parts.slice(1).join(':').trim()
-          if (key) result[key] = value
-        }
-      })
-      return result
+    
+    const normalizedFeatures = parseFeatures(product.features)
+    const normalizedSpecs = parseSpecifications(product.specifications)
+    
+    const normalizedProduct = {
+      id: product.id?.toString?.() ?? '',
+      name: product.name ?? '',
+      category: product.category || (product.categories?.name || 'Sem categoria'),
+      price: typeof product.price === 'string'
+        ? product.price
+        : `R$ ${parseFloat(product.price || 0).toFixed(2).replace('.', ',')}`,
+      fake_price: hasFakePrice ? fakePrice : undefined,
+      imageUrl: product.imageUrl || product.image_url || 'https://placehold.co/600x600?text=Sem+Imagem',
+      description: product.description || '',
+      stock: product.stock !== undefined ? product.stock : product.stock_quantity || 0,
+      sku: product.sku || '',
+      brand: product.brand || '',
+      weight: product.weight || '',
+      dimensions: product.dimensions || '',
+      status: product.status || 'Ativo',
+      features: normalizedFeatures,
+      specifications: normalizedSpecs,
     }
-    return {}
-  }
-  
-  const normalizedFeatures = parseFeatures(product.features)
-  const normalizedSpecs = parseSpecifications(product.specifications)
-  
-  const normalizedProduct = {
-    id: product.id?.toString?.() ?? '',
-    name: product.name ?? '',
-    category: product.category || (product.categories?.name || 'Sem categoria'),
-    price: typeof product.price === 'string'
-      ? product.price
-      : `R$ ${parseFloat(product.price || 0).toFixed(2).replace('.', ',')}`,
-    fake_price: hasFakePrice ? fakePrice : undefined,
-    imageUrl: product.imageUrl || product.image_url || 'https://placehold.co/600x600?text=Sem+Imagem',
-    description: product.description || '',
-    stock: product.stock !== undefined ? product.stock : product.stock_quantity || 0,
-    sku: product.sku || '',
-    brand: product.brand || '',
-    weight: product.weight || '',
-    dimensions: product.dimensions || '',
-    status: product.status || 'Ativo',
-    features: normalizedFeatures,
-    specifications: normalizedSpecs,
-  }
 
-  // Carregar avaliações e calcular média
-  const reviews = await getReviews(normalizedProduct.id)
-  const avg = computeAverage(reviews)
+    // Carregar avaliações e calcular média
+    let reviews: any[] = []
+    let avg: number | null = null
+    try {
+      reviews = await getReviews(normalizedProduct.id)
+      avg = computeAverage(reviews)
+    } catch (error: any) {
+      console.error('Error loading reviews:', error?.message || error)
+      reviews = []
+      avg = null
+    }
 
-  // Produtos relacionados
-  const relatedProducts = productsData
-    .filter((p) => p.category === normalizedProduct.category && p.id.toString() !== normalizedProduct.id)
-    .slice(0, 4)
+    // Produtos relacionados
+    const relatedProducts = productsData
+      .filter((p) => p.category === normalizedProduct.category && p.id.toString() !== normalizedProduct.id)
+      .slice(0, 4)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -425,5 +449,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
         )}
       </div>
     </div>
-  )
+    )
+  } catch (error: any) {
+    console.error('Error normalizing product data:', error?.message || error)
+    notFound()
+    return
+  }
 }
