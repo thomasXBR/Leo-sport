@@ -2,14 +2,45 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Trophy, Users, ShoppingBag, Star } from 'lucide-react';
 import Ondas from '@/components/onda/ondas';
 import { useSiteContent } from '@/hooks/use-site-content';
+import { supabase } from '@/lib/supabase'; // Supondo que já existe este client
+
+type Product = {
+  id: string;
+  name: string;
+  image_url: string;
+  price: number;
+  sales_count?: number;
+};
 
 export default function InicioPage() {
   const { getContent, loading } = useSiteContent();
+
+  const [bestSellers, setBestSellers] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchBestSellers() {
+      setProductsLoading(true);
+      // Aqui supomos que há uma coluna "sales_count" para ranquear os produtos mais vendidos
+      const { data, error } = await supabase
+        .from('products')
+        .select('id,name,image_url,price,sales_count')
+        .order('sales_count', { ascending: false })
+        .limit(4);
+
+      if (!error && data) {
+        setBestSellers(data);
+      }
+      setProductsLoading(false);
+    }
+    fetchBestSellers();
+  }, []);
 
   const featuredCategories = [
     { name: 'Futebol', image: 'https://images.pexels.com/photos/274506/pexels-photo-274506.jpeg?auto=compress&cs=tinysrgb&w=400', products: 150 },
@@ -97,6 +128,47 @@ export default function InicioPage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* MAIS VENDIDOS - Produtos em destaque */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            {getContent('bestsellers_title', 'Mais Vendidos')}
+          </h2>
+          <p className="text-lg text-gray-600">
+            {getContent('bestsellers_subtitle', 'Confira os produtos mais vendidos na LeoSport')}
+          </p>
+        </div>
+        {productsLoading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {bestSellers.map((product) => (
+              <Card key={product.id} className="group cursor-pointer hover:shadow-lg transition-shadow duration-300">
+                <CardContent className="p-0">
+                  <Link href={`/produtos/${product.id}`}>
+                    <div className="relative overflow-hidden rounded-t-lg">
+                      <img
+                        src={product.image_url}
+                        alt={product.name}
+                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-10 group-hover:bg-opacity-20 transition-opacity duration-300" />
+                    </div>
+                    <div className="p-4">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">{product.name}</h3>
+                      <p className="text-blue-900 font-bold text-xl mb-1">{product.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                      <p className="text-xs text-gray-600">{product.sales_count ?? 0} vendidos</p>
+                    </div>
+                  </Link>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Featured Categories */}
