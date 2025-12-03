@@ -8,8 +8,9 @@ import ProductCard from '@/components/products/ProductCard'
 import AddToCartButton from '@/components/products/AddToCartButton'
 import { getProductById, getProducts, productsData } from '@/lib/products-data'
 import { getProductById as getSupabaseProductById, getProducts as getSupabaseProducts } from '@/lib/supabase'
-import { getReviews, computeAverage } from '@/lib/reviews'
 import ReviewForm from '@/components/reviews/review-form'
+import ReviewsSection from '@/components/reviews/reviews-section'
+import ProductRating from '@/components/reviews/product-rating'
 
 // Permitir renderização dinâmica para produtos UUID não gerados estaticamente
 export const dynamicParams = true
@@ -272,17 +273,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
       specifications: normalizedSpecs,
     }
 
-    // Carregar avaliações e calcular média
-    let reviews: any[] = []
-    let avg: number | null = null
-    try {
-      reviews = await getReviews(normalizedProduct.id)
-      avg = computeAverage(reviews)
-    } catch (error: any) {
-      console.error('Error loading reviews:', error?.message || error)
-      reviews = []
-      avg = null
-    }
+    // Reviews agora são carregadas dinamicamente pelo componente ReviewsSection
+    // Não precisa mais carregar aqui para evitar cache
 
     // Produtos relacionados
     const relatedProducts = productsData
@@ -365,27 +357,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-4">{normalizedProduct.name}</h1>
 
-              {/* Rating */}
-              <div className="flex items-center gap-2 mb-4">
-                <div className="flex items-center">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      size={16}
-                      className={`${avg && star <= Math.round(avg)
-                        ? 'text-yellow-400 fill-current'
-                        : 'text-gray-300'
-                        }`}
-                    />
-                  ))}
-                </div>
-                {reviews.length > 0 ? (
-                  <span className="text-sm text-gray-600">
-                    ({avg?.toFixed?.(1) ?? '0.0'}) • {reviews.length} avaliação{reviews.length > 1 && 's'}
-                  </span>
-                ) : (
-                  <span className="text-sm text-gray-500">(sem avaliações)</span>
-                )}
+              {/* Rating - Componente dinâmico que atualiza automaticamente */}
+              <div className="mb-4">
+                <ProductRating productId={normalizedProduct.id} />
               </div>
 
               {/* Price with fake_price support */}
@@ -500,35 +474,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
           </div>
         </div>
 
-        {/* Avaliações */}
-        <div className="mt-16 max-w-2xl mx-auto">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8">Avaliações</h2>
-
-          {/* Formulário de avaliação */}
-          <div className="mb-8">
-            <ReviewForm productId={normalizedProduct.id} />
-          </div>
-
-          {/* Lista de avaliações */}
-          {reviews.length === 0 && <p className="text-gray-700">Nenhuma avaliação ainda.</p>}
-
-          {reviews.map((r: any) => (
-            <div key={r.id} className="border rounded-xl p-4 mb-4">
-              <div className="flex gap-1">
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <Star
-                    key={n}
-                    className={`w-4 h-4 ${n <= r.stars ? 'text-yellow-500' : 'text-gray-300'}`}
-                  />
-                ))}
-              </div>
-              <p className="mt-2">{r.comment}</p>
-              <p className="text-xs text-gray-500 mt-1">
-                {new Date(r.created_at).toLocaleDateString()}
-              </p>
-            </div>
-          ))}
-        </div>
+        {/* Avaliações - Componente dinâmico que atualiza automaticamente */}
+        <ReviewsSection productId={normalizedProduct.id} />
 
         {/* Related Products */}
         {relatedProducts.length > 0 && (

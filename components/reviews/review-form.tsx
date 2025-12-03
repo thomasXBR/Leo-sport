@@ -54,7 +54,9 @@ export default function ReviewForm({ productId }: { productId: string }) {
         setDone(true);
         setComment("");
         setStars(0);
-        // Recarrega a página após 2 segundos para mostrar a nova avaliação
+        // Dispara evento para recarregar a lista de reviews
+        window.dispatchEvent(new Event("reviewAdded"));
+        // Recarrega a página após 2 segundos para garantir
         setTimeout(() => {
           router.refresh();
         }, 2000);
