@@ -30,15 +30,67 @@ export async function addReview({
   comment: string;
   userId: string | null;
 }) {
-  // Usa o client importado diretamente
-  const { error } = await supabase.from("reviews").insert({
-    product_id: productId,
-    stars,
-    comment,
-    user_id: userId,
-  });
+  // Validação básica
+  if (!productId) {
+    return { 
+      error: { message: "ID do produto é obrigatório" },
+      errorMessage: "ID do produto inválido."
+    };
+  }
 
-  return { error };
+  if (!stars || stars < 1 || stars > 5) {
+    return { 
+      error: { message: "Avaliação deve estar entre 1 e 5 estrelas" },
+      errorMessage: "Por favor, selecione uma avaliação entre 1 e 5 estrelas."
+    };
+  }
+
+  if (!comment || !comment.trim()) {
+    return { 
+      error: { message: "Comentário é obrigatório" },
+      errorMessage: "Por favor, escreva um comentário."
+    };
+  }
+
+  try {
+    // Usa o client importado diretamente
+    const { data, error } = await supabase
+      .from("reviews")
+      .insert({
+        product_id: productId,
+        stars,
+        comment: comment.trim(),
+        user_id: userId,
+      })
+      .select();
+
+    if (error) {
+      console.error("Erro ao inserir review:", error);
+      
+      // Traduzir mensagens de erro comuns
+      let errorMessage = "Erro ao enviar avaliação. Tente novamente.";
+      
+      if (error.code === "23503") {
+        errorMessage = "Produto não encontrado.";
+      } else if (error.code === "23505") {
+        errorMessage = "Você já avaliou este produto.";
+      } else if (error.code === "42501") {
+        errorMessage = "Sem permissão para enviar avaliação. Entre em contato com o suporte.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      return { error, errorMessage };
+    }
+
+    return { error: null, errorMessage: null, data };
+  } catch (err: any) {
+    console.error("Erro inesperado ao adicionar review:", err);
+    return { 
+      error: err, 
+      errorMessage: "Erro inesperado ao enviar avaliação. Tente novamente."
+    };
+  }
 }
 
 export function computeAverage(reviews: { stars: number }[]) {
