@@ -520,6 +520,8 @@ export default function Dashboard() {
     const [itemToDelete, setItemToDelete] = useState<{ type: string; id: string; name: string } | null>(null)
     const fileInputRef = useRef<HTMLInputElement | null>(null)
     const [uploadingPurchaseId, setUploadingPurchaseId] = useState<string | null>(null)
+    const [uploadingInvoiceId, setUploadingInvoiceId] = useState<string | null>(null)
+    const [uploadingFileType, setUploadingFileType] = useState<'purchase' | 'invoice' | null>(null)
     const [uploading, setUploading] = useState(false)
 
     const chartOptions = {
@@ -531,8 +533,13 @@ export default function Dashboard() {
         },
     }
 
-    const openFileSelector = (purchaseId: string) => {
-        setUploadingPurchaseId(purchaseId)
+    const openFileSelector = (id: string, type: 'purchase' | 'invoice') => {
+        if (type === 'purchase') {
+            setUploadingPurchaseId(id)
+        } else {
+            setUploadingInvoiceId(id)
+        }
+        setUploadingFileType(type)
         // trigger native file selector
         fileInputRef.current?.click()
     }
@@ -540,22 +547,33 @@ export default function Dashboard() {
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         const purchaseId = uploadingPurchaseId
-        if (!file || !purchaseId) return
+        const invoiceId = uploadingInvoiceId
+        const fileType = uploadingFileType
+        if (!file || (!purchaseId && !invoiceId) || !fileType) return
         setUploading(true)
         try {
-            // Upload to Supabase Storage - ensure you have a bucket named 'purchases-pdfs'
-            const path = `purchases/${purchaseId}/${Date.now()}_${file.name}`
-            const { error: uploadError } = await supabase.storage.from('purchases-pdfs').upload(path, file, { upsert: true })
+            const id = fileType === 'purchase' ? purchaseId : invoiceId
+            if (!id) return
+
+            // Upload to Supabase Storage
+            const bucketName = fileType === 'purchase' ? 'purchases-pdfs' : 'invoices-pdfs'
+            const folderName = fileType === 'purchase' ? 'purchases' : 'invoices'
+            const path = `${folderName}/${id}/${Date.now()}_${file.name}`
+            const { error: uploadError } = await supabase.storage.from(bucketName).upload(path, file, { upsert: true })
             if (uploadError) throw uploadError
 
             // Get public URL (or use createSignedUrl for private buckets)
-            const { data: urlData } = supabase.storage.from('purchases-pdfs').getPublicUrl(path)
+            const { data: urlData } = supabase.storage.from(bucketName).getPublicUrl(path)
             const publicUrl = urlData.publicUrl
 
-            // Save URL on purchase record (updatePurchase accepts partial)
-            await updatePurchase(purchaseId, { pdf_url: publicUrl } as any)
+            // Save URL on record
+            if (fileType === 'purchase') {
+                await updatePurchase(id, { pdf_url: publicUrl } as any)
+            } else {
+                await updateInvoice(id, { pdf_url: publicUrl } as any)
+            }
 
-            // Reload purchases
+            // Reload data
             await loadAllData()
             alert('PDF anexado com sucesso.')
         } catch (err) {
@@ -564,6 +582,8 @@ export default function Dashboard() {
         } finally {
             setUploading(false)
             setUploadingPurchaseId(null)
+            setUploadingInvoiceId(null)
+            setUploadingFileType(null)
             if (fileInputRef.current) fileInputRef.current.value = ''
         }
     }
@@ -1166,6 +1186,7 @@ export default function Dashboard() {
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor Total</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data de Emissão</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PDF</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                                         </tr>
                                     </thead>
@@ -1186,19 +1207,41 @@ export default function Dashboard() {
                                                         {invoice.status}
                                                     </span>
                                                 </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm">
+                                                    {invoice.pdf_url ? (
+                                                        <a href={invoice.pdf_url} target="_blank" rel="noreferrer" className="text-cyan-600 hover:underline">
+                                                            Visualizar PDF
+                                                        </a>
+                                                    ) : (
+                                                        <span className="text-gray-400">-</span>
+                                                    )}
+                                                </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
-                                                    <button
-                                                        onClick={() => openModal('invoice', invoice)}
-                                                        className="text-cyan-600 hover:text-cyan-900 mr-3"
-                                                    >
-                                                        <Edit size={18} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => openDeleteDialog('invoice', invoice.id, invoice.invoice_number)}
-                                                        className="text-red-600 hover:text-red-900"
-                                                    >
-                                                        <Trash2 size={18} />
-                                                    </button>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => openFileSelector(invoice.id, 'invoice')}
+                                                            className="flex items-center gap-1 bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                                                            title="Adicionar/Atualizar PDF"
+                                                        >
+                                                            {uploading && uploadingFileType === 'invoice' && uploadingInvoiceId === invoice.id ? (
+                                                                <Loader2 className="animate-spin" size={14} />
+                                                            ) : (
+                                                                <Package size={14} />
+                                                            )}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => openModal('invoice', invoice)}
+                                                            className="text-cyan-600 hover:text-cyan-900"
+                                                        >
+                                                            <Edit size={18} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => openDeleteDialog('invoice', invoice.id, invoice.invoice_number)}
+                                                            className="text-red-600 hover:text-red-900"
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -1494,11 +1537,11 @@ export default function Dashboard() {
                                         </div>
                                         <div className="flex space-x-2 flex-shrink-0">
                                             <button
-                                                onClick={() => openFileSelector(purchase.id)}
+                                                onClick={() => openFileSelector(purchase.id, 'purchase')}
                                                 className="flex items-center gap-2 bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700"
                                                 title="Adicionar/Atualizar PDF"
                                             >
-                                                {uploading && uploadingPurchaseId === purchase.id ? (
+                                                {uploading && uploadingFileType === 'purchase' && uploadingPurchaseId === purchase.id ? (
                                                     <Loader2 className="animate-spin" size={16} />
                                                 ) : (
                                                     <Package size={16} />
