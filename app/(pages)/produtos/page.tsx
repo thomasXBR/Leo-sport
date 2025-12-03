@@ -32,10 +32,9 @@ function convertProduct(
       height = match[2] || '';
     }
   }
-  // Os campos color e sport não existem no tipo Product.
-  // Portanto, mantemos os valores como string vazia para evitar erro de tipo.
 
   const originalPrice = typeof supabaseProduct.price === 'number' ? supabaseProduct.price : 0;
+  const fakePrice = typeof supabaseProduct.fake_price === 'number' ? supabaseProduct.fake_price : 0;
   
   // Calcular preço com desconto se houver cupom ativo
   const discountCalculation = calculateDiscountedPrice(
@@ -48,21 +47,25 @@ function convertProduct(
     id: supabaseProduct.id,
     name: supabaseProduct.name,
     category: supabaseProduct.categories?.name ?? 'Sem categoria',
-    price:
-      originalPrice > 0
-        ? `R$ ${originalPrice.toFixed(2).replace('.', ',')}`
-        : 'R$ 0,00',
+    // IMPORTANTE: Retornar price como NÚMERO, não string
+    price: originalPrice > 0 ? originalPrice : 0,
+    // Retornar fake_price como NÚMERO
+    fake_price: fakePrice > 0 ? fakePrice : undefined,
     discountedPrice: discountCalculation.hasDiscount
       ? `R$ ${discountCalculation.finalPrice.toFixed(2).replace('.', ',')}`
       : null,
     discountPercentage: discountCalculation.hasDiscount
       ? `${discountCalculation.discountPercentage}%`
       : null,
+    image_url:
+      supabaseProduct.image_url ||
+      'https://placehold.co/400x400/e2e8f0/334155?text=Produto',
     imageUrl:
       supabaseProduct.image_url ||
       'https://placehold.co/400x400/e2e8f0/334155?text=Produto',
     description: supabaseProduct.description ?? '',
     stock: supabaseProduct.stock_quantity ?? 0,
+    stock_quantity: supabaseProduct.stock_quantity ?? 0,
     sku: supabaseProduct.sku ?? '',
     brand: supabaseProduct.brand ?? '',
     weight: supabaseProduct.weight ?? '',
@@ -254,21 +257,11 @@ export default function ProductsPage() {
     );
   } else if (sortBy === 'price_asc') {
     filteredProducts = filteredProducts.slice().sort((a, b) => {
-      const parsePrice = (valor: string) => {
-        if (!valor) return 0;
-        let n = valor.replace(/[^\d,.-]/g, '').replace('.', '').replace(',', '.');
-        return Number(n);
-      };
-      return parsePrice(a.price) - parsePrice(b.price);
+      return (a.price ?? 0) - (b.price ?? 0);
     });
   } else if (sortBy === 'price_desc') {
     filteredProducts = filteredProducts.slice().sort((a, b) => {
-      const parsePrice = (valor: string) => {
-        if (!valor) return 0;
-        let n = valor.replace(/[^\d,.-]/g, '').replace('.', '').replace(',', '.');
-        return Number(n);
-      };
-      return parsePrice(b.price) - parsePrice(a.price);
+      return (b.price ?? 0) - (a.price ?? 0);
     });
   }
 
