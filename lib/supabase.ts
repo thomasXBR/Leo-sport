@@ -47,7 +47,6 @@ export type Product = {
   name: string;
   description?: string;
   sku: string;
-  content_id?: string;
   category_id?: string;
   brand?: string;
   price: number;
