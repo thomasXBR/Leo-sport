@@ -13,6 +13,7 @@ import {
 } from 'chart.js'
 import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload, Loader2, ChevronLeft, ChevronRight, ShoppingCart, Package, DollarSign } from 'lucide-react'
 import Image from 'next/image'
+import ProductRegistrationForm from '@/components/forms/ProductRegistrationForm'
 import {
     Dialog,
     DialogContent,
@@ -590,10 +591,6 @@ export default function Dashboard() {
                 break
             case 'product':
                 modalTitle = isEdit ? 'Editar Produto' : 'Adicionar Novo Produto'
-<<<<<<< HEAD
-                // Aqui você precisaria de um componente ProductForm
-                modalContent = <p>Formulário de Produto Pendente</p>
-=======
                 modalContent = (
                     <ProductRegistrationForm
                         initialData={editingItem}
@@ -608,7 +605,6 @@ export default function Dashboard() {
                         }}
                     />
                 )
->>>>>>> 551d8329c535a6d7f4370a697241a00838b263e1
                 break
             case 'inventory':
                 modalTitle = isEdit ? 'Editar Movimentação' : 'Nova Movimentação de Estoque'
@@ -857,7 +853,7 @@ export default function Dashboard() {
                             </h2>
                             <button
                                 onClick={handleSaveAllContent}
-                                className="flex items-center bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                                className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors"
                             >
                                 <Save size={20} className="mr-2" />
                                 Salvar Tudo
