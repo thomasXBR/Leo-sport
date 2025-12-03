@@ -502,6 +502,15 @@ export default function Dashboard() {
         currentPage * FAQS_PER_PAGE
     )
 
+    // Ajusta a página atual caso a lista de FAQs mude (ex.: exclusão/adição)
+    useEffect(() => {
+        if (calculatedTotalPages === 0) {
+            setCurrentPage(1)
+        } else if (currentPage > calculatedTotalPages) {
+            setCurrentPage(calculatedTotalPages)
+        }
+    }, [faqs, calculatedTotalPages])
+
     const [salesData, setSalesData] = useState({
         labels: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho'],
         datasets: [{
