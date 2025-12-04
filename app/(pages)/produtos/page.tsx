@@ -18,10 +18,13 @@ function convertProduct(
 ) {
   let width = '';
   let height = '';
-  let color = '';
-  let sport = '';
+  let color = (supabaseProduct as any).color || '';
+  let sport = supabaseProduct.categories?.name || '';
 
-  if (supabaseProduct.dimensions) {
+  // Priorizar campos width/height diretos, depois tentar extrair de dimensions
+  if ((supabaseProduct as any).width !== undefined && (supabaseProduct as any).width !== null) {
+    width = String((supabaseProduct as any).width);
+  } else if (supabaseProduct.dimensions) {
     // Suporta string "30x45x15" (LxAxP)
     const regex = /(\d+(?:[.,]\d+)?)[^\d]+(\d+(?:[.,]\d+)?)/;
     const match =
@@ -32,6 +35,10 @@ function convertProduct(
       width = match[1] || '';
       height = match[2] || '';
     }
+  }
+
+  if ((supabaseProduct as any).height !== undefined && (supabaseProduct as any).height !== null) {
+    height = String((supabaseProduct as any).height);
   }
 
   const originalPrice = typeof supabaseProduct.price === 'number' ? supabaseProduct.price : 0;
@@ -76,7 +83,7 @@ function convertProduct(
     color,
     sport,
     status: supabaseProduct.status,
-    relevance: "relevance" in supabaseProduct ? (supabaseProduct as any).relevance : 0,
+    relevance: (supabaseProduct as any).relevance ?? 0,
   };
 }
 
@@ -118,6 +125,7 @@ export default function ProductsPage() {
   const [selectedColor, setSelectedColor] = useState('all');
   const [widthRange, setWidthRange] = useState<[number, number]>([0, 0]);
   const [heightRange, setHeightRange] = useState<[number, number]>([0, 0]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 0]);
   const [sortBy, setSortBy] = useState('relevance');
 
   // Para mostrar/esconder filtros em mobile
@@ -160,14 +168,17 @@ export default function ProductsPage() {
         );
         setProducts(prods);
 
-        // Atualiza automatico min/max largura/altura
+        // Atualiza automatico min/max largura/altura/preço
         if (prods.length) {
           const allWidths = prods.map((p) => parseFloat(p.width)).filter((v) => !isNaN(v));
           const allHeights = prods.map((p) => parseFloat(p.height)).filter((v) => !isNaN(v));
+          const allPrices = prods.map((p) => p.price ?? 0).filter((v) => v > 0);
           if (allWidths.length)
             setWidthRange([Math.min(...allWidths), Math.max(...allWidths)]);
           if (allHeights.length)
             setHeightRange([Math.min(...allHeights), Math.max(...allHeights)]);
+          if (allPrices.length)
+            setPriceRange([Math.min(...allPrices), Math.max(...allPrices)]);
         }
       } catch (error) {
         console.error('Erro ao carregar produtos (conexão/base?):', error);
@@ -202,6 +213,14 @@ export default function ProductsPage() {
     const values = products.map((p) => parseFloat(p.height)).filter((v) => !isNaN(v));
     return values.length ? Math.max(...values) : 0;
   })();
+  const minPrice = (() => {
+    const values = products.map((p) => p.price ?? 0).filter((v) => v > 0);
+    return values.length ? Math.min(...values) : 0;
+  })();
+  const maxPrice = (() => {
+    const values = products.map((p) => p.price ?? 0).filter((v) => v > 0);
+    return values.length ? Math.max(...values) : 0;
+  })();
 
   // Filtro combinando todas regras
   let filteredProducts = products.filter((product) => {
@@ -221,6 +240,8 @@ export default function ProductsPage() {
 
     let matchesWidth = true;
     let matchesHeight = true;
+    let matchesPrice = true;
+    
     if (
       !isNaN(widthRange[0]) &&
       !isNaN(widthRange[1]) &&
@@ -241,6 +262,15 @@ export default function ProductsPage() {
         ? true
         : h >= heightRange[0] && h <= heightRange[1];
     }
+    if (
+      !isNaN(priceRange[0]) &&
+      !isNaN(priceRange[1]) &&
+      priceRange[0] > 0 &&
+      priceRange[1] > 0
+    ) {
+      const p = product.price ?? 0;
+      matchesPrice = p >= priceRange[0] && p <= priceRange[1];
+    }
 
     return (
       matchesSearch &&
@@ -248,7 +278,8 @@ export default function ProductsPage() {
       matchesSport &&
       matchesColor &&
       matchesWidth &&
-      matchesHeight
+      matchesHeight &&
+      matchesPrice
     );
   });
 
@@ -441,11 +472,11 @@ export default function ProductsPage() {
               </div>
             </div>
 
-            {/* Filtros da direita (largura/altura/ordenação), ocupa resto do espaço */}
+            {/* Filtros da direita (largura/altura/preço/ordenação), ocupa resto do espaço */}
             <div className="md:col-span-8 xl:col-span-9">
-              <div className="flex flex-col sm:flex-row gap-4 md:gap-6 bg-gray-50 border rounded-xl p-4 shadow-sm items-end">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 bg-gray-50 border rounded-xl p-4 shadow-sm">
                 {/* Largura */}
-                <div className="flex flex-col gap-1 mb-2 flex-1 max-w-xs">
+                <div className="flex flex-col gap-1">
                   <label className="text-sm font-medium text-blue-800">
                     Largura (cm):
                   </label>
@@ -480,7 +511,7 @@ export default function ProductsPage() {
                 </div>
 
                 {/* Altura */}
-                <div className="flex flex-col gap-1 mb-2 flex-1 max-w-xs">
+                <div className="flex flex-col gap-1">
                   <label className="text-sm font-medium text-blue-800">
                     Altura (cm):
                   </label>
@@ -514,8 +545,45 @@ export default function ProductsPage() {
                   </div>
                 </div>
 
+                {/* Preço */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-blue-800">
+                    Preço (R$):
+                  </label>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="number"
+                      min={minPrice}
+                      max={maxPrice}
+                      step="0.01"
+                      value={priceRange[0]}
+                      onChange={(e) => {
+                        let v = Number(e.target.value);
+                        setPriceRange([v, priceRange[1]]);
+                      }}
+                      className="w-24 rounded-lg border-blue-300 focus:ring-blue-500 px-2.5"
+                    />
+                    <span className="text-blue-900">à</span>
+                    <input
+                      type="number"
+                      min={minPrice}
+                      max={maxPrice}
+                      step="0.01"
+                      value={priceRange[1]}
+                      onChange={(e) => {
+                        let v = Number(e.target.value);
+                        setPriceRange([priceRange[0], v]);
+                      }}
+                      className="w-24 rounded-lg border-blue-300 focus:ring-blue-500 px-2.5"
+                    />
+                  </div>
+                  <div className="text-xs text-blue-500 mt-1">
+                    Mín: R$ {minPrice.toFixed(2).replace('.', ',')} &nbsp; Máx: R$ {maxPrice.toFixed(2).replace('.', ',')}
+                  </div>
+                </div>
+
                 {/* Ordenação */}
-                <div className="flex flex-col gap-1 mb-2 min-w-[130px]">
+                <div className="flex flex-col gap-1">
                   <label className="text-sm font-medium text-blue-800">
                     Ordenar por
                   </label>

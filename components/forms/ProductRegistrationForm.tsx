@@ -37,9 +37,12 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
     stock_quantity: (initialData as any)?.stock_quantity ? String((initialData as any).stock_quantity) : '',
     weight: (initialData as any)?.weight ?? '',
     dimensions: (initialData as any)?.dimensions ?? '',
+    width: (initialData as any)?.width ? String((initialData as any).width) : '',
+    height: (initialData as any)?.height ? String((initialData as any).height) : '',
     image_url: (initialData as any)?.image_url ?? '',
     status: (initialData as any)?.status ?? 'Ativo',
     color: (initialData as any)?.color ?? '',
+    relevance: (initialData as any)?.relevance ? String((initialData as any).relevance) : '0',
     features: Array.isArray((initialData as any)?.features)
       ? ((initialData as any).features as string[]).join('\n')
       : typeof (initialData as any)?.features === 'string'
@@ -210,8 +213,11 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
         stock_quantity: parseInt(String(formData.stock_quantity)),
         weight: formData.weight || undefined,
         dimensions: formData.dimensions || undefined,
+        width: formData.width ? parseFloat(String(formData.width)) : undefined,
+        height: formData.height ? parseFloat(String(formData.height)) : undefined,
         image_url: formData.image_url || undefined,
         color: (formData as any).color || undefined,
+        relevance: formData.relevance ? parseFloat(String(formData.relevance)) : undefined,
         status: formData.status as 'Ativo' | 'Inativo' | 'Esgotado',
         // Salvar features como JSON string de array
         features: formData.features ? JSON.stringify(parseFeatures(formData.features)) : undefined,
@@ -241,9 +247,12 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
           stock_quantity: '',
           weight: '',
           dimensions: '',
+          width: '',
+          height: '',
           image_url: '',
           status: 'Ativo',
           color: '',
+          relevance: '0',
           features: '',
           specifications: '',
           no_shipping: false,
@@ -339,6 +348,11 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
                     <Input id="color" name="color" value={(formData as any).color} onChange={handleInputChange} />
                   </div>
                   <div>
+                    <Label htmlFor="relevance" className="text-sm font-medium text-gray-700 mb-1">Relevância (0-100)</Label>
+                    <Input id="relevance" name="relevance" type="number" min="0" max="100" value={formData.relevance} onChange={handleInputChange} />
+                    <p className="text-xs text-gray-500 mt-1">Quanto maior, mais relevante o produto aparecerá</p>
+                  </div>
+                  <div>
                     <Label htmlFor="status" className="text-sm font-medium text-gray-700 mb-1">Status</Label>
                     <select
                       id="status"
@@ -415,7 +429,15 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
                   </div>
                   <div>
                     <Label htmlFor="dimensions" className="text-sm font-medium text-gray-700 mb-1">Dimensões (LxAxP em cm)</Label>
-                    <Input id="dimensions" name="dimensions" value={formData.dimensions} onChange={handleInputChange} />
+                    <Input id="dimensions" name="dimensions" value={formData.dimensions} onChange={handleInputChange} placeholder="30x45x15" />
+                  </div>
+                  <div>
+                    <Label htmlFor="width" className="text-sm font-medium text-gray-700 mb-1">Largura (cm)</Label>
+                    <Input id="width" name="width" type="number" step="0.01" value={formData.width} onChange={handleInputChange} />
+                  </div>
+                  <div>
+                    <Label htmlFor="height" className="text-sm font-medium text-gray-700 mb-1">Altura (cm)</Label>
+                    <Input id="height" name="height" type="number" step="0.01" value={formData.height} onChange={handleInputChange} />
                   </div>
                 </div>
               </div>
@@ -525,7 +547,7 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
 
         <div className="border-t pt-4 flex gap-3 justify-end">
           <Button type="button" variant="outline" onClick={() => setFormData({
-            name: '', description: '', sku: '', category_id: '', brand: '', price: '', fake_price: '', stock_quantity: '', weight: '', dimensions: '', image_url: '', status: 'Ativo', color: '', features: '', specifications: '', no_shipping: false, devolution_months: '1', warranty_months: '12'
+            name: '', description: '', sku: '', category_id: '', brand: '', price: '', fake_price: '', stock_quantity: '', weight: '', dimensions: '', width: '', height: '', image_url: '', status: 'Ativo', color: '', relevance: '0', features: '', specifications: '', no_shipping: false, devolution_months: '1', warranty_months: '12'
           })} className="px-4 py-1 text-sm">Limpar</Button>
           <Button type="submit" disabled={loading} className="px-4 py-1 text-sm bg-blue-600 text-white hover:bg-blue-700">{loading ? (productId ? 'Atualizando...' : 'Registrando...') : (productId ? 'Atualizar Produto' : 'Registrar Produto')}</Button>
         </div>

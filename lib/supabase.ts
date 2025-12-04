@@ -55,10 +55,13 @@ export type Product = {
   stock_quantity: number;
   weight?: string;
   dimensions?: string;
+  width?: number;
+  height?: number;
   image_url?: string;
   color?: string;
   features?: string;
   specifications?: string;
+  relevance?: number;
   no_shipping?: boolean;
   devolution_months?: number;
   warranty_months?: number;
@@ -711,13 +714,43 @@ export async function getPartnerships() {
 }
 
 export async function createPartnership(partnership: Omit<Partnership, 'id' | 'created_at' | 'updated_at'>) {
+  // Limpar campos undefined/null para evitar erros
+  const cleanPartnership = Object.fromEntries(
+    Object.entries(partnership).filter(([_, value]) => value !== undefined && value !== null)
+  ) as Omit<Partnership, 'id' | 'created_at' | 'updated_at'>;
+  
+  // Garantir que campos obrigatórios existam
+  if (!cleanPartnership.company_name) {
+    cleanPartnership.company_name = 'Não informado';
+  }
+  if (!cleanPartnership.contact_email) {
+    throw new Error('Email é obrigatório');
+  }
+  if (!cleanPartnership.status) {
+    cleanPartnership.status = 'Pendente';
+  }
+  if (!cleanPartnership.partnership_date) {
+    cleanPartnership.partnership_date = new Date().toISOString().split('T')[0];
+  }
+  
   const { data, error } = await supabase
     .from('partnerships')
-    .insert([partnership])
+    .insert([cleanPartnership])
     .select()
     .single();
   
-  if (error) throw error;
+  if (error) {
+    console.error('Erro ao criar parceria no Supabase:', {
+      error,
+      partnership: cleanPartnership,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code
+    });
+    throw error;
+  }
+  
   return data;
 }
 
@@ -1072,4 +1105,60 @@ export async function deleteSiteImage(id: string) {
   if (error) throw error;
 }
 
+
+// Buscar pedidos de um usuário específico
+export async function getUserOrders(userId: string) {
+  const { data: orders, error } = await supabase
+    .from('sales')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  
+  if (error) throw error;
+  
+  // Buscar items de cada pedido
+  const ordersWithItems = await Promise.all(
+    (orders || []).map(async (order) => {
+      try {
+        const { data: orderItems } = await supabase
+          .from('order_items')
+          .select('*, products(*)')
+          .eq('order_id', order.id);
+        
+        return {
+          ...order,
+          items: orderItems || []
+        };
+      } catch {
+        return {
+          ...order,
+          items: []
+        };
+      }
+    })
+  );
+  
+  return ordersWithItems;
+}
+
+// Buscar notas fiscais de um usuário (por email ou user_id)
+export async function getUserInvoices(userId?: string, userEmail?: string) {
+  let query = supabase
+    .from('invoices')
+    .select('*')
+    .order('created_at', { ascending: false });
+  
+  if (userId) {
+    // Se houver user_id na tabela invoices, buscar por ele
+    query = query.eq('user_id', userId);
+  } else if (userEmail) {
+    // Buscar por email do cliente
+    query = query.eq('customer_email', userEmail);
+  }
+  
+  const { data: invoices, error } = await query;
+  
+  if (error) throw error;
+  return invoices || [];
+}
 

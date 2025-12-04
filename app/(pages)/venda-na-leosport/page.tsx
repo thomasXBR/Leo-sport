@@ -68,22 +68,78 @@ export default function VendaNaLeoSportPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Construir payload para supabase
+    // Função auxiliar para validar campo
+    const isValidField = (value: string | undefined): boolean => {
+      return value !== undefined && value !== null && typeof value === 'string' && value.trim().length > 0
+    }
+
+    // Validar campos obrigatórios
+    let missingFields: string[] = []
+
+    if (activeForm === 'fornecedor') {
+      if (!isValidField(formData.nomeEmpresa)) missingFields.push('Nome da empresa')
+      if (!isValidField(formData.email)) missingFields.push('Email')
+      if (!isValidField(formData.anosMercado)) missingFields.push('Anos no mercado')
+      if (!isValidField(formData.oQueFabrica)) missingFields.push('O que fabrica')
+      if (!isValidField(formData.canaisVendaAtuais)) missingFields.push('Canais de venda atuais')
+    } else {
+      if (!isValidField(formData.email)) missingFields.push('Email')
+      if (!isValidField(formData.localAtuacao)) missingFields.push('Área de atuação')
+      if (!isValidField(formData.produtoRevender)) missingFields.push('Produto a revender')
+      if (!isValidField(formData.estrategiasVenda)) missingFields.push('Estratégias de venda')
+    }
+
+    if (missingFields.length > 0) {
+      alert(`Por favor, preencha todos os campos obrigatórios:\n\n${missingFields.join('\n')}`)
+      return
+    }
+
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const emailTrimmed = formData.email.trim()
+    if (!emailRegex.test(emailTrimmed)) {
+      alert('Por favor, insira um email válido.')
+      return
+    }
+
+    // Construir payload para supabase com valores já validados
+    const companyName = activeForm === 'fornecedor' 
+      ? (formData.nomeEmpresa?.trim() || 'Não informado')
+      : (formData.nome?.trim() || emailTrimmed.split('@')[0] || 'Não informado')
+    
     const payload: any = {
-      company_name: formData.nomeEmpresa || formData.nome || null,
-      contact_email: formData.email || null,
-      contact_phone: formData.telefone || null,
+      company_name: companyName,
+      contact_email: emailTrimmed,
+      contact_phone: formData.telefone?.trim() || null,
       status: 'Pendente',
       partnership_date: new Date().toISOString().split('T')[0],
       form_type: activeForm,
-      form_payload: JSON.stringify(formData),
+      form_payload: JSON.stringify({
+        ...formData,
+        activeForm, // Garantir que activeForm está no payload
+        submittedAt: new Date().toISOString()
+      }),
       // fallback: some schemas expect `notes` field — keep it for compatibility
-      notes: JSON.stringify(formData),
+      notes: `Solicitação de ${activeForm === 'fornecedor' ? 'Fornecedor' : 'Representante'} - ${new Date().toLocaleDateString('pt-BR')}`,
+    }
+
+    // Validação final do payload antes de enviar
+    if (!payload.company_name || payload.company_name === 'Não informado') {
+      alert('Por favor, preencha o nome da empresa ou seu nome completo.')
+      return
+    }
+    
+    if (!payload.contact_email || !emailRegex.test(payload.contact_email)) {
+      alert('Por favor, insira um email válido.')
+      return
     }
 
     try {
-      await createPartnership(payload)
-      alert(`Solicitação de ${activeForm === 'fornecedor' ? 'Fornecedor' : 'Representante'} enviada com sucesso! Entraremos em contato em breve.`)
+      console.log('Enviando payload:', payload)
+      const result = await createPartnership(payload)
+      console.log('Parceria criada com sucesso:', result)
+      
+      alert(`✅ Solicitação de ${activeForm === 'fornecedor' ? 'Fornecedor' : 'Representante'} enviada com sucesso!\n\nNossa equipe entrará em contato em breve através do email ${emailTrimmed}.`)
 
       // Limpar formulário
       setFormData({
@@ -98,14 +154,47 @@ export default function VendaNaLeoSportPage() {
         produtoRevender: '',
         estrategiasVenda: ''
       })
-    } catch (err) {
-      console.error('Erro ao enviar solicitação de parceria:', err)
-      alert('Erro ao enviar solicitação. Tente novamente mais tarde.')
+    } catch (err: any) {
+      console.error('Erro completo ao enviar solicitação de parceria:', err)
+      console.error('Detalhes do erro:', {
+        message: err?.message,
+        details: err?.details,
+        hint: err?.hint,
+        code: err?.code,
+        error: err
+      })
+      
+      // Extrair mensagem de erro mais detalhada
+      let errorMessage = 'Erro desconhecido ao enviar solicitação'
+      
+      if (err?.message) {
+        errorMessage = err.message
+      } else if (err?.details) {
+        errorMessage = err.details
+      } else if (err?.hint) {
+        errorMessage = err.hint
+      } else if (typeof err === 'string') {
+        errorMessage = err
+      }
+      
+      // Mensagens mais amigáveis para erros comuns
+      if (errorMessage.includes('null value') || errorMessage.includes('violates not-null constraint')) {
+        errorMessage = 'Alguns campos obrigatórios não foram preenchidos corretamente. Por favor, verifique todos os campos.'
+      } else if (errorMessage.includes('duplicate key') || errorMessage.includes('unique constraint')) {
+        errorMessage = 'Já existe uma solicitação com este email. Por favor, use outro email ou aguarde o processamento da solicitação anterior.'
+      } else if (errorMessage.includes('permission') || errorMessage.includes('RLS')) {
+        errorMessage = 'Erro de permissão. Por favor, verifique se você está logado ou entre em contato com o suporte.'
+      }
+      
+      alert(`❌ Erro ao enviar solicitação:\n\n${errorMessage}\n\nPor favor, verifique os dados e tente novamente. Se o problema persistir, entre em contato conosco.`)
     }
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+      return updated;
+    });
   };
 
   const handleFormTypeChange = (type: 'fornecedor' | 'representante') => {
@@ -196,6 +285,11 @@ export default function VendaNaLeoSportPage() {
             <p className="text-gray-600 text-center">
               {getContent('seller_form_subtitle', 'Preencha o formulário abaixo e nossa equipe entrará em contato')}
             </p>
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800 text-center">
+                <strong>ℹ️ Informação:</strong> Sua solicitação será analisada pela nossa equipe. Você receberá uma resposta por email em até 48 horas úteis.
+              </p>
+            </div>
 
             {/* Choice Chips */}
             <div className="flex justify-center mt-6">
@@ -223,9 +317,36 @@ export default function VendaNaLeoSportPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Campos comuns para ambos os tipos */}
+              <div className="border-b pb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Informações de Contato</h3>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  placeholder="seu@email.com"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="telefone">Telefone</Label>
+                <Input
+                  id="telefone"
+                  type="tel"
+                  value={formData.telefone}
+                  onChange={(e) => handleInputChange('telefone', e.target.value)}
+                  placeholder="(00) 00000-0000"
+                />
+              </div>
+
               {activeForm === 'fornecedor' ? (
                 <>
-                  <div className="border-b pb-6">
+                  <div className="border-b pb-6 mt-6">
                     <h3 className="text-lg font-semibold text-gray-900">Informações da Empresa</h3>
                   </div>
 
@@ -236,7 +357,6 @@ export default function VendaNaLeoSportPage() {
                       value={formData.nomeEmpresa}
                       onChange={(e) => handleInputChange('nomeEmpresa', e.target.value)}
                       placeholder="Nome da sua empresa"
-                      required
                     />
                   </div>
 
@@ -248,7 +368,6 @@ export default function VendaNaLeoSportPage() {
                       value={formData.anosMercado}
                       onChange={(e) => handleInputChange('anosMercado', e.target.value)}
                       placeholder="Ex: 5"
-                      required
                     />
                   </div>
 
@@ -260,7 +379,6 @@ export default function VendaNaLeoSportPage() {
                       onChange={(e) => handleInputChange('oQueFabrica', e.target.value)}
                       placeholder="Descreva os produtos que sua empresa fabrica..."
                       rows={4}
-                      required
                     />
                   </div>
 
@@ -272,14 +390,23 @@ export default function VendaNaLeoSportPage() {
                       onChange={(e) => handleInputChange('canaisVendaAtuais', e.target.value)}
                       placeholder="Ex: Loja física, e-commerce próprio, revendedores, marketplaces..."
                       rows={4}
-                      required
                     />
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="border-b pb-6">
+                  <div className="border-b pb-6 mt-6">
                     <h3 className="text-lg font-semibold text-gray-900">Informações sobre a Atuação</h3>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="nome">Nome completo</Label>
+                    <Input
+                      id="nome"
+                      value={formData.nome}
+                      onChange={(e) => handleInputChange('nome', e.target.value)}
+                      placeholder="Seu nome completo"
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -290,7 +417,6 @@ export default function VendaNaLeoSportPage() {
                       onChange={(e) => handleInputChange('localAtuacao', e.target.value)}
                       placeholder="Ex: São Paulo, SP - Região Metropolitana"
                       rows={3}
-                      required
                     />
                   </div>
 
@@ -302,7 +428,6 @@ export default function VendaNaLeoSportPage() {
                       onChange={(e) => handleInputChange('produtoRevender', e.target.value)}
                       placeholder="Descreva os produtos que deseja revender..."
                       rows={4}
-                      required
                     />
                   </div>
 
@@ -314,7 +439,6 @@ export default function VendaNaLeoSportPage() {
                       onChange={(e) => handleInputChange('estrategiasVenda', e.target.value)}
                       placeholder="Ex: Redes sociais, loja física, venda direta, nicho específico, eventos esportivos..."
                       rows={4}
-                      required
                     />
                   </div>
                 </>
