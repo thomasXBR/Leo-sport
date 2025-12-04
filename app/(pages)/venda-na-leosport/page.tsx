@@ -68,32 +68,46 @@ export default function VendaNaLeoSportPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Função auxiliar para validar campo
+    const isValidField = (value: string | undefined): boolean => {
+      return value !== undefined && value !== null && typeof value === 'string' && value.trim().length > 0
+    }
+
     // Validar campos obrigatórios
+    let missingFields: string[] = []
+
     if (activeForm === 'fornecedor') {
-      if (!formData.nomeEmpresa?.trim() || !formData.email?.trim() || !formData.anosMercado?.trim() || !formData.oQueFabrica?.trim() || !formData.canaisVendaAtuais?.trim()) {
-        alert('Por favor, preencha todos os campos obrigatórios marcados com (*).')
-        return
-      }
+      if (!isValidField(formData.nomeEmpresa)) missingFields.push('Nome da empresa')
+      if (!isValidField(formData.email)) missingFields.push('Email')
+      if (!isValidField(formData.anosMercado)) missingFields.push('Anos no mercado')
+      if (!isValidField(formData.oQueFabrica)) missingFields.push('O que fabrica')
+      if (!isValidField(formData.canaisVendaAtuais)) missingFields.push('Canais de venda atuais')
     } else {
-      if (!formData.email?.trim() || !formData.localAtuacao?.trim() || !formData.produtoRevender?.trim() || !formData.estrategiasVenda?.trim()) {
-        alert('Por favor, preencha todos os campos obrigatórios marcados com (*).')
-        return
-      }
+      if (!isValidField(formData.email)) missingFields.push('Email')
+      if (!isValidField(formData.localAtuacao)) missingFields.push('Área de atuação')
+      if (!isValidField(formData.produtoRevender)) missingFields.push('Produto a revender')
+      if (!isValidField(formData.estrategiasVenda)) missingFields.push('Estratégias de venda')
+    }
+
+    if (missingFields.length > 0) {
+      alert(`Por favor, preencha todos os campos obrigatórios:\n\n${missingFields.join('\n')}`)
+      return
     }
 
     // Validar formato de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(formData.email.trim())) {
+    const emailTrimmed = formData.email.trim()
+    if (!emailRegex.test(emailTrimmed)) {
       alert('Por favor, insira um email válido.')
       return
     }
 
-    // Construir payload para supabase
+    // Construir payload para supabase com valores já validados
     const payload: any = {
       company_name: activeForm === 'fornecedor' 
-        ? (formData.nomeEmpresa || 'Não informado')
-        : (formData.nome || formData.email.split('@')[0] || 'Não informado'),
-      contact_email: formData.email.trim(),
+        ? (formData.nomeEmpresa?.trim() || 'Não informado')
+        : (formData.nome?.trim() || emailTrimmed.split('@')[0] || 'Não informado'),
+      contact_email: emailTrimmed,
       contact_phone: formData.telefone?.trim() || null,
       status: 'Pendente',
       partnership_date: new Date().toISOString().split('T')[0],
@@ -132,7 +146,10 @@ export default function VendaNaLeoSportPage() {
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+      return updated;
+    });
   };
 
   const handleFormTypeChange = (type: 'fornecedor' | 'representante') => {
@@ -268,7 +285,6 @@ export default function VendaNaLeoSportPage() {
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   placeholder="seu@email.com"
-                  required
                 />
               </div>
 
@@ -296,7 +312,6 @@ export default function VendaNaLeoSportPage() {
                       value={formData.nomeEmpresa}
                       onChange={(e) => handleInputChange('nomeEmpresa', e.target.value)}
                       placeholder="Nome da sua empresa"
-                      required
                     />
                   </div>
 
@@ -308,7 +323,6 @@ export default function VendaNaLeoSportPage() {
                       value={formData.anosMercado}
                       onChange={(e) => handleInputChange('anosMercado', e.target.value)}
                       placeholder="Ex: 5"
-                      required
                     />
                   </div>
 
@@ -320,7 +334,6 @@ export default function VendaNaLeoSportPage() {
                       onChange={(e) => handleInputChange('oQueFabrica', e.target.value)}
                       placeholder="Descreva os produtos que sua empresa fabrica..."
                       rows={4}
-                      required
                     />
                   </div>
 
@@ -332,7 +345,6 @@ export default function VendaNaLeoSportPage() {
                       onChange={(e) => handleInputChange('canaisVendaAtuais', e.target.value)}
                       placeholder="Ex: Loja física, e-commerce próprio, revendedores, marketplaces..."
                       rows={4}
-                      required
                     />
                   </div>
                 </>
@@ -360,7 +372,6 @@ export default function VendaNaLeoSportPage() {
                       onChange={(e) => handleInputChange('localAtuacao', e.target.value)}
                       placeholder="Ex: São Paulo, SP - Região Metropolitana"
                       rows={3}
-                      required
                     />
                   </div>
 
@@ -372,7 +383,6 @@ export default function VendaNaLeoSportPage() {
                       onChange={(e) => handleInputChange('produtoRevender', e.target.value)}
                       placeholder="Descreva os produtos que deseja revender..."
                       rows={4}
-                      required
                     />
                   </div>
 
@@ -384,7 +394,6 @@ export default function VendaNaLeoSportPage() {
                       onChange={(e) => handleInputChange('estrategiasVenda', e.target.value)}
                       placeholder="Ex: Redes sociais, loja física, venda direta, nicho específico, eventos esportivos..."
                       rows={4}
-                      required
                     />
                   </div>
                 </>
