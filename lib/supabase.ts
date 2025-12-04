@@ -982,3 +982,59 @@ export async function getSaleById(id: string) {
   }
 }
 
+// Buscar pedidos de um usuário específico
+export async function getUserOrders(userId: string) {
+  const { data: orders, error } = await supabase
+    .from('sales')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  
+  if (error) throw error;
+  
+  // Buscar items de cada pedido
+  const ordersWithItems = await Promise.all(
+    (orders || []).map(async (order) => {
+      try {
+        const { data: orderItems } = await supabase
+          .from('order_items')
+          .select('*, products(*)')
+          .eq('order_id', order.id);
+        
+        return {
+          ...order,
+          items: orderItems || []
+        };
+      } catch {
+        return {
+          ...order,
+          items: []
+        };
+      }
+    })
+  );
+  
+  return ordersWithItems;
+}
+
+// Buscar notas fiscais de um usuário (por email ou user_id)
+export async function getUserInvoices(userId?: string, userEmail?: string) {
+  let query = supabase
+    .from('invoices')
+    .select('*')
+    .order('created_at', { ascending: false });
+  
+  if (userId) {
+    // Se houver user_id na tabela invoices, buscar por ele
+    query = query.eq('user_id', userId);
+  } else if (userEmail) {
+    // Buscar por email do cliente
+    query = query.eq('customer_email', userEmail);
+  }
+  
+  const { data: invoices, error } = await query;
+  
+  if (error) throw error;
+  return invoices || [];
+}
+
