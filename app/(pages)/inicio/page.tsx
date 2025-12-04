@@ -4,7 +4,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Trophy, Users, ShoppingBag, Star } from 'lucide-react';
 import { useSiteContent } from '@/hooks/use-site-content';
 import { useSiteImages } from '@/hooks/use-site-images';
@@ -25,7 +24,7 @@ type Product = {
 
 export default function InicioPage() {
   const { getContent, loading } = useSiteContent();
-  const { getImage, loading: imagesLoading } = useSiteImages();
+  const { getImage } = useSiteImages();
 
   const [bestSellers, setBestSellers] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
@@ -69,13 +68,6 @@ export default function InicioPage() {
     }
     fetchBestSellers();
   }, []);
-
-  const featuredCategories = [
-    { name: 'Futebol', image: 'https://images.pexels.com/photos/274506/pexels-photo-274506.jpeg?auto=compress&cs=tinysrgb&w=400', products: 150 },
-    { name: 'Basquete', image: 'https://images.pexels.com/photos/358042/pexels-photo-358042.jpeg?auto=compress&cs=tinysrgb&w=400', products: 89 },
-    { name: 'Tênis', image: 'https://images.pexels.com/photos/2529148/pexels-photo-2529148.jpeg?auto=compress&cs=tinysrgb&w=400', products: 200 },
-    { name: 'Natação', image: 'https://images.pexels.com/photos/863988/pexels-photo-863988.jpeg?auto=compress&cs=tinysrgb&w=400', products: 67 },
-  ];
 
   const stats = [
     { icon: Trophy, label: getContent('stats_products_label', 'Produtos Disponíveis'), value: getContent('stats_products_value', '500+') },
@@ -203,35 +195,6 @@ export default function InicioPage() {
             </div>
           </>
         )}
-      </section>
-
-      {/* Featured Categories */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">{getContent('categories_title', 'Categorias em Destaque')}</h2>
-          <p className="text-lg text-gray-600">{getContent('categories_subtitle', 'Descubra produtos para seu esporte favorito')}</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {featuredCategories.map((category, index) => (
-            <Card key={index} className="group cursor-pointer hover:shadow-lg transition-shadow duration-300">
-              <CardContent className="p-0">
-                <div className="relative overflow-hidden rounded-t-lg">
-                  <img
-                    src={category.image}
-                    alt={category.name}
-                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute inset-0 bg-black bg-opacity-20 group-hover:bg-opacity-30 transition-opacity duration-300" />
-                </div>
-                <div className="p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{category.name}</h3>
-                  <p className="text-gray-600">{category.products} produtos disponíveis</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
       </section>
 
       {/* CTA Section */}
