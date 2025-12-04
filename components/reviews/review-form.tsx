@@ -47,7 +47,6 @@ export default function ReviewForm({ productId }: { productId: string }) {
         stars,
         comment: comment.trim(),
         userId,
-        isAdmin: isAdmin,
       });
 
       if (!reviewError) {
