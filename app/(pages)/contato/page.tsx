@@ -9,9 +9,11 @@ import { Label } from '@/components/ui/label';
 import { MapPin, Phone, Mail, Clock } from 'lucide-react';
 import Image from 'next/image';
 import { useSiteContent } from '@/hooks/use-site-content';
+import { useSiteImages } from '@/hooks/use-site-images';
 
 export default function ContatoPage() {
   const { getContent, loading } = useSiteContent();
+  const { getImage } = useSiteImages();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -69,7 +71,7 @@ export default function ContatoPage() {
         {/* Background Image */}
         <div className="absolute inset-0">
           <Image
-            src="/images/CONTATO.jpg"
+            src={getImage('contato_background', '/images/CONTATO.jpg')}
             alt="Sports Background"
             fill
             className="object-cover"

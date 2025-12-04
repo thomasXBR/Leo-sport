@@ -12,7 +12,7 @@ import {
     Tooltip,
     Legend,
 } from 'chart.js'
-import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload, Loader2, ChevronLeft, ChevronRight, ShoppingCart, Package, DollarSign } from 'lucide-react'
+import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload, Loader2, ChevronLeft, ChevronRight, ShoppingCart, Package, DollarSign, Image as ImageIcon } from 'lucide-react'
 import Image from 'next/image'
 import ProductRegistrationForm from '@/components/forms/ProductRegistrationForm'
 import {
@@ -40,7 +40,8 @@ import {
     getPartnerships, createPartnership, updatePartnership, deletePartnership,
     getCoupons, createCoupon, updateCoupon, deleteCoupon,
     getSiteContent, updateSiteContent, getFAQs, createFAQ, updateFAQ, deleteFAQ, getPurchases, createPurchase, updatePurchase, deletePurchase,
-    type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent, type FAQ, type Purchase,
+    getSiteImages, createSiteImage, updateSiteImage, deleteSiteImage,
+    type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent, type FAQ, type Purchase, type SiteImage,
 } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
 
@@ -492,6 +493,7 @@ export default function Dashboard() {
     const [siteContent, setSiteContent] = useState<SupabaseSiteContent[]>([])
     const [faqs, setFaqs] = useState<FAQ[]>([])
     const [purchases, setPurchases] = useState<Purchase[]>([])
+    const [siteImages, setSiteImages] = useState<SiteImage[]>([])
     
     const FAQS_PER_PAGE = 2
     const [currentPage, setCurrentPage] = useState(1)
@@ -530,8 +532,10 @@ export default function Dashboard() {
     const fileInputRef = useRef<HTMLInputElement | null>(null)
     const [uploadingPurchaseId, setUploadingPurchaseId] = useState<string | null>(null)
     const [uploadingInvoiceId, setUploadingInvoiceId] = useState<string | null>(null)
-    const [uploadingFileType, setUploadingFileType] = useState<'purchase' | 'invoice' | null>(null)
+    const [uploadingFileType, setUploadingFileType] = useState<'purchase' | 'invoice' | 'site-image' | null>(null)
     const [uploading, setUploading] = useState(false)
+    const [uploadingImageId, setUploadingImageId] = useState<string | null>(null)
+    const imageInputRef = useRef<HTMLInputElement | null>(null)
 
     const chartOptions = {
         responsive: true,
@@ -542,15 +546,21 @@ export default function Dashboard() {
         },
     }
 
-    const openFileSelector = (id: string, type: 'purchase' | 'invoice') => {
+    const openFileSelector = (id: string, type: 'purchase' | 'invoice' | 'site-image') => {
         if (type === 'purchase') {
             setUploadingPurchaseId(id)
-        } else {
+        } else if (type === 'invoice') {
             setUploadingInvoiceId(id)
+        } else if (type === 'site-image') {
+            setUploadingImageId(id)
         }
         setUploadingFileType(type)
         // trigger native file selector
-        fileInputRef.current?.click()
+        if (type === 'site-image') {
+            imageInputRef.current?.click()
+        } else {
+            fileInputRef.current?.click()
+        }
     }
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -558,7 +568,7 @@ export default function Dashboard() {
         const purchaseId = uploadingPurchaseId
         const invoiceId = uploadingInvoiceId
         const fileType = uploadingFileType
-        if (!file || (!purchaseId && !invoiceId) || !fileType) return
+        if (!file || (!purchaseId && !invoiceId) || !fileType || fileType === 'site-image') return
         setUploading(true)
         try {
             const id = fileType === 'purchase' ? purchaseId : invoiceId
@@ -597,6 +607,64 @@ export default function Dashboard() {
         }
     }
 
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        const imageId = uploadingImageId
+        if (!file || !imageId || uploadingFileType !== 'site-image') return
+        
+        // Validar tipo de arquivo
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+        if (!validTypes.includes(file.type)) {
+            alert('Por favor, selecione uma imagem válida (JPG, PNG ou WEBP)')
+            return
+        }
+
+        // Validar tamanho (máximo 5MB)
+        const maxSize = 5 * 1024 * 1024 // 5MB
+        if (file.size > maxSize) {
+            alert('A imagem deve ter no máximo 5MB')
+            return
+        }
+
+        setUploading(true)
+        try {
+            // Upload to Supabase Storage
+            const bucketName = 'site-images'
+            const imageRecord = siteImages.find(img => img.id === imageId)
+            const fileName = imageRecord ? `${imageRecord.image_key}_${Date.now()}.${file.name.split('.').pop()}` : `${Date.now()}_${file.name}`
+            const path = `images/${fileName}`
+            
+            const { error: uploadError } = await supabase.storage.from(bucketName).upload(path, file, { 
+                upsert: true,
+                cacheControl: '3600'
+            })
+            if (uploadError) throw uploadError
+
+            // Get public URL
+            const { data: urlData } = supabase.storage.from(bucketName).getPublicUrl(path)
+            const publicUrl = urlData.publicUrl
+
+            // Update image record
+            await updateSiteImage(imageId, { image_url: publicUrl })
+
+            // Reload data
+            await loadAllData()
+            alert('Imagem enviada com sucesso!')
+        } catch (err: any) {
+            console.error('Erro ao enviar imagem:', err)
+            if (err.message?.includes('Bucket not found')) {
+                alert('Erro: O bucket "site-images" não existe. Por favor, crie-o no Supabase Dashboard > Storage.')
+            } else {
+                alert('Erro ao enviar imagem. Verifique o console.')
+            }
+        } finally {
+            setUploading(false)
+            setUploadingImageId(null)
+            setUploadingFileType(null)
+            if (imageInputRef.current) imageInputRef.current.value = ''
+        }
+    }
+
     // Carregar dados do Supabase
     useEffect(() => {
         loadAllData()
@@ -605,7 +673,7 @@ export default function Dashboard() {
     async function loadAllData() {
         try {
             setLoading(true)
-            const [productsData, inventoryData, salesData, invoicesData, partnersData, couponsData, contentData, faqsData, purchasesData] = await Promise.all([
+            const [productsData, inventoryData, salesData, invoicesData, partnersData, couponsData, contentData, faqsData, purchasesData, imagesData] = await Promise.all([
                 getProducts().catch(() => []),
                 getInventoryItems().catch(() => []),
                 getSales().catch(() => []),
@@ -615,6 +683,7 @@ export default function Dashboard() {
                 getSiteContent().catch(() => []),
                 getFAQs().catch(() => []),
                 getPurchases().catch(() => []),
+                getSiteImages().catch(() => []),
             ])
 
             setProducts(productsData || [])
@@ -625,7 +694,8 @@ export default function Dashboard() {
             setCoupons(couponsData || [])
             setSiteContent(contentData || [])
             setFaqs(faqsData || [])
-             setPurchases(purchasesData || [])
+            setPurchases(purchasesData || [])
+            setSiteImages(imagesData || [])
 
             // Carregar dados do gráfico
             const chartSalesData = await getSalesDataForChart().catch(() => [])
@@ -733,6 +803,10 @@ export default function Dashboard() {
                     break
                 case 'faq':
                     await deleteFAQ(itemToDelete.id)
+                    loadAllData() // Recarregar para atualizar a lista
+                    break
+                case 'site-image':
+                    await deleteSiteImage(itemToDelete.id)
                     loadAllData() // Recarregar para atualizar a lista
                     break
             }
@@ -1514,6 +1588,105 @@ export default function Dashboard() {
                         )}
                     </div>
                 );
+            case 'images':
+                // Agrupar imagens por seção
+                const imagesBySection = siteImages.reduce((acc: any, image) => {
+                    const section = image.section || 'Outros';
+                    if (!acc[section]) {
+                        acc[section] = [];
+                    }
+                    acc[section].push(image);
+                    return acc;
+                }, {});
+
+                return (
+                    <div>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-semibold text-gray-700 flex items-center">
+                                <ImageIcon className="mr-2" size={24} />
+                                Edição de Imagens do Site
+                            </h2>
+                        </div>
+                        {siteImages.length === 0 ? (
+                            <p className="text-center py-8 text-gray-500">Nenhuma imagem encontrada. As imagens padrão serão usadas.</p>
+                        ) : (
+                            <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+                                {Object.entries(imagesBySection).map(([section, images]: [string, any]) => (
+                                    <div key={section} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                        <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-300">
+                                            {section}
+                                        </h3>
+                                        <div className="space-y-4">
+                                            {images.map((image: SiteImage) => (
+                                                <div key={image.id} className="bg-white p-4 rounded border border-gray-200">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        {image.label}
+                                                    </label>
+                                                    <div className="mb-3">
+                                                        {image.image_url ? (
+                                                            <div className="relative w-full max-w-md h-48 border border-gray-300 rounded-lg overflow-hidden">
+                                                                <img
+                                                                    src={image.image_url}
+                                                                    alt={image.alt_text || image.label}
+                                                                    className="w-full h-full object-contain"
+                                                                />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="w-full max-w-md h-48 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
+                                                                <p className="text-gray-500">Nenhuma imagem carregada</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <button
+                                                            onClick={() => openFileSelector(image.id, 'site-image')}
+                                                            disabled={uploading && uploadingImageId === image.id}
+                                                            className="flex items-center gap-2 bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        >
+                                                            {uploading && uploadingImageId === image.id ? (
+                                                                <>
+                                                                    <Loader2 className="animate-spin" size={16} />
+                                                                    <span>Enviando...</span>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <Upload size={16} />
+                                                                    <span>{image.image_url ? 'Trocar Imagem' : 'Upload Imagem'}</span>
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                        {image.image_url && (
+                                                            <a
+                                                                href={image.image_url}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                                                            >
+                                                                Visualizar
+                                                            </a>
+                                                        )}
+                                                        <button
+                                                            onClick={() => openDeleteDialog('site-image', image.id, image.label)}
+                                                            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                    <div className="mt-2">
+                                                        <span className="text-xs text-gray-500">Chave: {image.image_key}</span>
+                                                        {image.description && (
+                                                            <p className="text-xs text-gray-500 mt-1">{image.description}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                );
             case 'purchases':
                 return (
                     <div>
@@ -1581,7 +1754,7 @@ export default function Dashboard() {
             <main className="flex-grow p-4 sm:p-6">
                 <h1 className="text-3xl font-bold text-gray-800 mb-8">Painel Administrativo</h1>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-3 mb-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-10 gap-3 mb-6">
                     <button onClick={() => setActiveTab('sales')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'sales' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Vendas</button>
                     <button onClick={() => setActiveTab('inventory')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'inventory' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Estoque</button>
                     <button onClick={() => setActiveTab('users')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'users' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Usuários</button>
@@ -1590,6 +1763,7 @@ export default function Dashboard() {
                     <button onClick={() => setActiveTab('partnerships')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'partnerships' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Parcerias</button>
                     <button onClick={() => setActiveTab('coupons')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'coupons' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Cupons</button>
                     <button onClick={() => setActiveTab('content')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'content' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Textos do Site</button>
+                    <button onClick={() => setActiveTab('images')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'images' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Imagens</button>
                     <button onClick={() => setActiveTab('faq')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'faq' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>FAQ </button>
 
 
@@ -1601,6 +1775,8 @@ export default function Dashboard() {
 
                 {/* hidden file input used for attaching PDFs to purchases */}
                 <input ref={fileInputRef} type="file" accept="application/pdf" className="hidden" onChange={handleFileChange} />
+                {/* hidden file input used for uploading site images */}
+                <input ref={imageInputRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden" onChange={handleImageUpload} />
 
                 {/* Modais de Edição */}
                 {renderModals()}

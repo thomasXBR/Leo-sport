@@ -159,6 +159,18 @@ export type SiteContent = {
   updated_at: string;
 };
 
+export type SiteImage = {
+  id: string;
+  image_key: string;
+  section: string;
+  label: string;
+  image_url?: string;
+  alt_text?: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Purchase = {
   id: string;
   purchase_number?: string;
@@ -826,4 +838,60 @@ export async function deletePurchase(id: string) {
   if (error) throw error;
 }
 
+// ============================================
+// FUNÇÕES CRUD - IMAGENS DO SITE
+// ============================================
+
+export async function getSiteImages() {
+  const { data, error } = await supabase
+    .from('site_images')
+    .select('*')
+    .order('section, image_key');
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function getSiteImageByKey(imageKey: string) {
+  const { data, error } = await supabase
+    .from('site_images')
+    .select('*')
+    .eq('image_key', imageKey)
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function createSiteImage(image: Omit<SiteImage, 'id' | 'created_at' | 'updated_at'>) {
+  const { data, error } = await supabase
+    .from('site_images')
+    .insert([image])
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function updateSiteImage(id: string, updates: Partial<SiteImage>) {
+  const { data, error } = await supabase
+    .from('site_images')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteSiteImage(id: string) {
+  const { error } = await supabase
+    .from('site_images')
+    .delete()
+    .eq('id', id);
+  
+  if (error) throw error;
+}
 

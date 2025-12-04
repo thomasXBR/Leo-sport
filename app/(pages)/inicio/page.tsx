@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Trophy, Users, ShoppingBag, Star } from 'lucide-react';
 import Ondas from '@/components/onda/ondas';
 import { useSiteContent } from '@/hooks/use-site-content';
+import { useSiteImages } from '@/hooks/use-site-images';
 import { supabase } from '@/lib/supabase'; // Supondo que já existe este client
 
 type Product = {
@@ -20,6 +21,7 @@ type Product = {
 
 export default function InicioPage() {
   const { getContent, loading } = useSiteContent();
+  const { getImage, loading: imagesLoading } = useSiteImages();
 
   const [bestSellers, setBestSellers] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
@@ -77,7 +79,7 @@ export default function InicioPage() {
         {/* Background Image */}
         <div className="absolute inset-0">
           <Image
-            src="/images/INICIO.jpg"
+            src={getImage('hero_background', '/images/INICIO.jpg')}
             alt="Sports Equipment on Grass"
             fill
             className="object-cover"

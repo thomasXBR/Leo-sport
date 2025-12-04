@@ -9,9 +9,11 @@ import { Label } from '@/components/ui/label';
 import { CheckCircle, Store, TrendingUp, Users, Shield } from 'lucide-react';
 import Image from 'next/image';
 import { useSiteContent } from '@/hooks/use-site-content';
+import { useSiteImages } from '@/hooks/use-site-images';
 
 export default function VendaNaLeoSportPage() {
   const { getContent, loading } = useSiteContent();
+  const { getImage } = useSiteImages();
   const [activeForm, setActiveForm] = useState<'fornecedor' | 'representante'>('fornecedor');
   const [formData, setFormData] = useState({
     // Campos comuns
@@ -119,7 +121,7 @@ export default function VendaNaLeoSportPage() {
         {/* Background Image */}
         <div className="absolute inset-0">
           <Image
-            src="/images/VENDA.jpg"
+            src={getImage('venda_background', '/images/VENDA.jpg')}
             alt="Sports Background"
             fill
             className="object-cover"

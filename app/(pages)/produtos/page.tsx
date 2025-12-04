@@ -6,6 +6,7 @@ import type { Product as SupabaseProduct } from '@/lib/supabase';
 import ProductCard from '@/components/products/ProductCard';
 import { Search, Filter } from 'lucide-react';
 import Image from 'next/image';
+import { useSiteImages } from '@/hooks/use-site-images';
 import { useSiteContent } from '@/hooks/use-site-content';
 import { Loader2 } from 'lucide-react';
 import { calculateDiscountedPrice } from '@/lib/utils';
@@ -107,6 +108,7 @@ function ColorBadge({ color }: { color: string }) {
 }
 
 export default function ProductsPage() {
+  const { getImage } = useSiteImages();
   const { getContent, loading: contentLoading } = useSiteContent();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -279,7 +281,7 @@ export default function ProductsPage() {
       <section className="relative text-white py-16 overflow-hidden">
         <div className="absolute inset-0">
           <Image
-            src="/images/PRODUTOS.jpg"
+            src={getImage('produtos_background', '/images/PRODUTOS.jpg')}
             alt="Sports Background"
             fill
             className="object-cover"
