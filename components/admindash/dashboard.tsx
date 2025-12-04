@@ -524,29 +524,29 @@ export default function Dashboard() {
         }],
     })
 
-    // Accept a pending partnership request: convert it into an active partner
-    const handleAcceptPartnership = (requestId: number) => {
-        const req = partnershipRequests.find(r => r.id === requestId)
-        if (!req) return
-
-        const newId = partnersList && partnersList.length ? Math.max(...partnersList.map(p => (p.id as number) || 0)) + 1 : Date.now()
-        const newPartner: any = {
-            id: newId,
-            company_name: req.nomeEmpresa || req.nome || req.company_name || '—',
-            contact_email: req.email || req.contact_email || '',
-            contact_phone: req.telefone || req.contact_phone || '',
-            status: 'Ativo'
+    // Accept a pending partnership request: update status to 'Ativo' in Supabase
+    const handleAcceptPartnership = async (requestId: string) => {
+        try {
+            await updatePartnership(requestId, { status: 'Ativo' })
+            // Recarregar dados para manter sincronização
+            await loadAllData()
+            alert('Parceria aceita e ativada com sucesso.')
+        } catch (err) {
+            console.error('Erro ao aceitar parceria:', err)
+            alert('Erro ao aceitar parceria. Confira o console.')
         }
-
-        setPartnersList(prev => [...prev, newPartner])
-        setPartnershipRequests(prev => prev.filter(r => r.id !== requestId))
-        // TODO: call Supabase `createPartnership` to persist the accepted partner
     }
 
-    // Reject a pending partnership request (remove from pending list)
-    const handleRejectPartnership = (requestId: number) => {
-        setPartnershipRequests(prev => prev.filter(r => r.id !== requestId))
-        // TODO: persist rejection reason or flag in DB if desired
+    // Reject a pending partnership request: marcar como 'Inativo' (ou usar deletePartnership conforme sua política)
+    const handleRejectPartnership = async (requestId: string) => {
+        try {
+            await updatePartnership(requestId, { status: 'Inativo' })
+            await loadAllData()
+            alert('Solicitação recusada.')
+        } catch (err) {
+            console.error('Erro ao recusar parceria:', err)
+            alert('Erro ao recusar parceria. Confira o console.')
+        }
     }
 
     // Estados dos modais
@@ -649,7 +649,12 @@ export default function Dashboard() {
             setInventoryItems(inventoryData || [])
             setSales(salesData || [])
             setInvoices(invoicesData || [])
-            setPartnersList(partnersData || [])
+            // Separar solicitações pendentes das parcerias ativas/inativas
+            const allPartners = partnersData || []
+            const pending = allPartners.filter((p: any) => p.status === 'Pendente')
+            const others = allPartners.filter((p: any) => p.status !== 'Pendente')
+            setPartnershipRequests(pending || [])
+            setPartnersList(others || [])
             setCoupons(couponsData || [])
             setSiteContent(contentData || [])
             setFaqs(faqsData || [])
