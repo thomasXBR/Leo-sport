@@ -1,17 +1,19 @@
 'use client';
 
-import { useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
-function CadastroContent() {
+export default function CadastroPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     // Redirecionar para a página inicial com parâmetro para abrir o popup de cadastro
-    const redirectTo = searchParams.get('redirect') || '/inicio';
-    router.replace(`${redirectTo}?auth=signup`);
-  }, [router, searchParams]);
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirectTo = urlParams.get('redirect') || '/inicio';
+      router.replace(`${redirectTo}?auth=signup`);
+    }
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -20,20 +22,5 @@ function CadastroContent() {
         <p className="mt-4 text-gray-600">Redirecionando...</p>
       </div>
     </div>
-  );
-}
-
-export default function CadastroPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-900 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando...</p>
-        </div>
-      </div>
-    }>
-      <CadastroContent />
-    </Suspense>
   );
 }
