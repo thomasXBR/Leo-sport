@@ -41,7 +41,7 @@ import {
     getCoupons, createCoupon, updateCoupon, deleteCoupon,
     getSiteContent, updateSiteContent, getFAQs, createFAQ, updateFAQ, deleteFAQ, getPurchases, createPurchase, updatePurchase, deletePurchase,
     getSiteImages, createSiteImage, updateSiteImage, deleteSiteImage,
-    getAllUsers,
+    getAllUsers, getAllUserCarts, getAllSaleItems,
     type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent, type FAQ, type Purchase, type SiteImage,
 } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
@@ -591,9 +591,12 @@ export default function Dashboard() {
     const [siteImages, setSiteImages] = useState<SiteImage[]>([])
     const [users, setUsers] = useState<any[]>([])
     const [salesWithItems, setSalesWithItems] = useState<any[]>([])
+    const [userCarts, setUserCarts] = useState<any[]>([])
+    const [purchasedItems, setPurchasedItems] = useState<any[]>([])
     const [sidebarOpen, setSidebarOpen] = useState(true)
     const [emailModalOpen, setEmailModalOpen] = useState(false)
     const [selectedUserForEmail, setSelectedUserForEmail] = useState<any>(null)
+    const [filterAcceptedTerms, setFilterAcceptedTerms] = useState(false)
     
     const FAQS_PER_PAGE = 2
     const [currentPage, setCurrentPage] = useState(1)
@@ -798,7 +801,7 @@ export default function Dashboard() {
     async function loadAllData() {
         try {
             setLoading(true)
-            const [productsData, inventoryData, salesData, invoicesData, partnersData, couponsData, contentData, faqsData, purchasesData, imagesData, usersData, salesWithItemsData] = await Promise.all([
+            const [productsData, inventoryData, salesData, invoicesData, partnersData, couponsData, contentData, faqsData, purchasesData, imagesData, usersData, salesWithItemsData, userCartsData, purchasedItemsData] = await Promise.all([
                 getProducts().catch(() => []),
                 getInventoryItems().catch(() => []),
                 getSales().catch(() => []),
@@ -811,6 +814,8 @@ export default function Dashboard() {
                 getSiteImages().catch(() => []),
                 getAllUsers().catch(() => []),
                 getSalesWithItems().catch(() => []),
+                getAllUserCarts().catch(() => []),
+                getAllSaleItems().catch(() => []),
             ])
 
             setProducts(productsData || [])
@@ -830,6 +835,8 @@ export default function Dashboard() {
             setSiteImages(imagesData || [])
             setUsers(usersData || [])
             setSalesWithItems(salesWithItemsData || [])
+            setUserCarts(userCartsData || [])
+            setPurchasedItems(purchasedItemsData || [])
 
             // Carregar dados do gráfico
             const chartSalesData = await getSalesDataForChart().catch(() => [])
@@ -1334,14 +1341,36 @@ export default function Dashboard() {
                     </div>
                 );
             case 'users':
+                const usersToShow = filterAcceptedTerms 
+                    ? users.filter((u: any) => u.accept_terms === true)
+                    : users
                 return (
                     <div>
-                        <h2 className="text-2xl font-semibold mb-6 text-gray-700 flex items-center">
-                            <User className="mr-2" size={24} />
-                            Usuários
-                        </h2>
-                        {users.length === 0 ? (
-                            <p className="text-center py-8 text-gray-500">Nenhum usuário encontrado.</p>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-semibold text-gray-700 flex items-center">
+                                <User className="mr-2" size={24} />
+                                Usuários
+                            </h2>
+                            <div className="flex items-center gap-4">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={filterAcceptedTerms}
+                                        onChange={(e) => setFilterAcceptedTerms(e.target.checked)}
+                                        className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
+                                    />
+                                    <span className="text-sm font-medium text-gray-700">
+                                        Apenas usuários que aceitaram termos
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                        {usersToShow.length === 0 ? (
+                            <p className="text-center py-8 text-gray-500">
+                                {filterAcceptedTerms 
+                                    ? 'Nenhum usuário que aceitou os termos encontrado.' 
+                                    : 'Nenhum usuário encontrado.'}
+                            </p>
                         ) : (
                             <div className="overflow-x-auto">
                                 <table className="min-w-full bg-white">
@@ -1350,13 +1379,14 @@ export default function Dashboard() {
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aceitou Termos</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data de Criação</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-200">
-                                        {users.map((user: any) => (
-                                            <tr key={user.id}>
+                                        {usersToShow.map((user: any) => (
+                                            <tr key={user.id} className={user.accept_terms ? 'bg-green-50' : ''}>
                                                 <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">
                                                     {user.name || '-'}
                                                 </td>
@@ -1372,20 +1402,35 @@ export default function Dashboard() {
                                                         {user.user_type || 'N/A'}
                                                     </span>
                                                 </td>
+                                                <td className="py-4 px-4 whitespace-nowrap">
+                                                    {user.accept_terms ? (
+                                                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                            ✓ Sim
+                                                        </span>
+                                                    ) : (
+                                                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                                            Não
+                                                        </span>
+                                                    )}
+                                                </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
                                                     {user.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : '-'}
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
-                                                    <button
-                                                        onClick={() => {
-                                                            setSelectedUserForEmail(user)
-                                                            setEmailModalOpen(true)
-                                                        }}
-                                                        className="text-cyan-600 hover:text-cyan-900 flex items-center gap-1"
-                                                    >
-                                                        <Mail size={16} />
-                                                        Enviar Email
-                                                    </button>
+                                                    {user.accept_terms && user.email ? (
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedUserForEmail(user)
+                                                                setEmailModalOpen(true)
+                                                            }}
+                                                            className="text-cyan-600 hover:text-cyan-900 flex items-center gap-1"
+                                                        >
+                                                            <Mail size={16} />
+                                                            Enviar Email
+                                                        </button>
+                                                    ) : (
+                                                        <span className="text-gray-400 text-xs">N/A</span>
+                                                    )}
                                                 </td>
                                             </tr>
                                         ))}
@@ -2014,7 +2059,7 @@ export default function Dashboard() {
                                                             </a>
                                                         )}
                                                         <button
-                                                            onClick={() => openDeleteDialog('site-image', image.id, image.label)}
+                                                            onClick={() => openDeleteDialog('site-image', image.id, image.label || image.image_key || 'Imagem')}
                                                             className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
                                                         >
                                                             <Trash2 size={16} />
@@ -2199,6 +2244,171 @@ export default function Dashboard() {
                                         </div>
                                     </div>
                                 ))}
+                            </div>
+                        )}
+                    </div>
+                )
+            case 'carts':
+                return (
+                    <div>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-semibold text-gray-700 flex items-center">
+                                <ShoppingCart className="mr-2" size={24} />
+                                Carrinhos de Usuários em Tempo Real
+                            </h2>
+                            <button
+                                onClick={loadAllData}
+                                className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
+                            >
+                                Atualizar
+                            </button>
+                        </div>
+                        {userCarts.length === 0 ? (
+                            <p className="text-center py-8 text-gray-500">Nenhum carrinho ativo no momento.</p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full bg-white">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuário</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantidade</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preço Unit.</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Última Atualização</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {userCarts.map((cart: any) => (
+                                            <tr key={cart.id} className="hover:bg-gray-50">
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                    {cart.user?.name || 'Usuário não identificado'}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
+                                                    {cart.user?.email || '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-sm text-gray-900">
+                                                    {cart.product?.name || 'Produto não encontrado'}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
+                                                    {cart.quantity}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
+                                                    {cart.product?.price ? `R$ ${Number(cart.product.price).toFixed(2).replace('.', ',')}` : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                                    {cart.product?.price ? `R$ ${(Number(cart.product.price) * cart.quantity).toFixed(2).replace('.', ',')}` : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {new Date(cart.updated_at).toLocaleString('pt-BR')}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
+                                                    {cart.user?.email && (
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedUserForEmail(cart.user)
+                                                                setEmailModalOpen(true)
+                                                            }}
+                                                            className="text-cyan-600 hover:text-cyan-900 flex items-center gap-1"
+                                                        >
+                                                            <Mail size={16} />
+                                                            Enviar Email
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                )
+            case 'purchased':
+                return (
+                    <div>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-semibold text-gray-700 flex items-center">
+                                <Package className="mr-2" size={24} />
+                                Produtos Comprados
+                            </h2>
+                            <button
+                                onClick={loadAllData}
+                                className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
+                            >
+                                Atualizar
+                            </button>
+                        </div>
+                        {purchasedItems.length === 0 ? (
+                            <p className="text-center py-8 text-gray-500">Nenhum produto comprado ainda.</p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full bg-white">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pedido</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantidade</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preço Unit.</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {purchasedItems.map((item: any) => (
+                                            <tr key={item.id} className="hover:bg-gray-50">
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                    {item.sale?.order_number || item.sale_id?.substring(0, 8) || '-'}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {item.sale?.customer_name || '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-sm text-gray-900">
+                                                    {item.product?.name || item.product_name}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
+                                                    {item.quantity}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
+                                                    R$ {Number(item.unit_price).toFixed(2).replace('.', ',')}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                                    R$ {Number(item.total_price).toFixed(2).replace('.', ',')}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {new Date(item.created_at).toLocaleDateString('pt-BR')}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap">
+                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(item.sale?.status || 'Pendente')}`}>
+                                                        {item.sale?.status || 'Pendente'}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
+                                                    {item.sale?.customer_email && (
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedUserForEmail({
+                                                                    email: item.sale.customer_email,
+                                                                    name: item.sale.customer_name
+                                                                })
+                                                                setEmailModalOpen(true)
+                                                            }}
+                                                            className="text-cyan-600 hover:text-cyan-900 flex items-center gap-1"
+                                                        >
+                                                            <Mail size={16} />
+                                                            Enviar Email
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         )}
                     </div>
