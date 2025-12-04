@@ -6,17 +6,21 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Trophy, Users, ShoppingBag, Star } from 'lucide-react';
-import Ondas from '@/components/onda/ondas';
 import { useSiteContent } from '@/hooks/use-site-content';
 import { useSiteImages } from '@/hooks/use-site-images';
-import { supabase } from '@/lib/supabase'; // Supondo que já existe este client
+import { supabase } from '@/lib/supabase';
+import ProductCard from '@/components/products/ProductCard';
 
 type Product = {
   id: string;
   name: string;
   image_url: string;
   price: number;
+  fake_price?: number;
   sales_count?: number;
+  status?: string;
+  stock_quantity?: number;
+  [key: string]: any;
 };
 
 export default function InicioPage() {
@@ -29,17 +33,39 @@ export default function InicioPage() {
   useEffect(() => {
     async function fetchBestSellers() {
       setProductsLoading(true);
-      // Aqui supomos que há uma coluna "sales_count" para ranquear os produtos mais vendidos
-      const { data, error } = await supabase
-        .from('products')
-        .select('id,name,image_url,price,sales_count')
-        .order('sales_count', { ascending: false })
-        .limit(4);
+      try {
+        // Primeira tentativa: buscar produtos ordenados por sales_count se a coluna existir
+        let { data, error } = await supabase
+          .from('products')
+          .select('id,name,image_url,price,fake_price,sales_count,status,stock_quantity')
+          .eq('status', 'Ativo')
+          .order('sales_count', { ascending: false, nullsFirst: false })
+          .limit(4);
 
-      if (!error && data) {
-        setBestSellers(data);
+        // Se der erro ou não houver dados, tentar busca alternativa
+        if (error || !data || data.length === 0) {
+          // Buscar produtos ativos com estoque, ordenados por data de criação
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('products')
+            .select('id,name,image_url,price,fake_price,status,stock_quantity')
+            .eq('status', 'Ativo')
+            .gt('stock_quantity', 0)
+            .order('created_at', { ascending: false })
+            .limit(4);
+
+          if (!fallbackError && fallbackData && fallbackData.length > 0) {
+            setBestSellers(fallbackData);
+          }
+        } else {
+          // Filtrar produtos sem imagem antes de definir
+          const validProducts = data.filter(p => p.image_url && p.name);
+          setBestSellers(validProducts);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar produtos mais vendidos:', err);
+      } finally {
+        setProductsLoading(false);
       }
-      setProductsLoading(false);
     }
     fetchBestSellers();
   }, []);
@@ -138,7 +164,7 @@ export default function InicioPage() {
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
             {getContent('bestsellers_title', 'Mais Vendidos')}
           </h2>
-          <p className="text-lg text-gray-600">
+          <p className="text-lg text-gray-600 mb-6">
             {getContent('bestsellers_subtitle', 'Confira os produtos mais vendidos na LeoSport')}
           </p>
         </div>
@@ -146,30 +172,36 @@ export default function InicioPage() {
           <div className="flex justify-center items-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {bestSellers.map((product) => (
-              <Card key={product.id} className="group cursor-pointer hover:shadow-lg transition-shadow duration-300">
-                <CardContent className="p-0">
-                  <Link href={`/produtos/${product.id}`}>
-                    <div className="relative overflow-hidden rounded-t-lg">
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div className="absolute inset-0 bg-black bg-opacity-10 group-hover:bg-opacity-20 transition-opacity duration-300" />
-                    </div>
-                    <div className="p-4">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">{product.name}</h3>
-                      <p className="text-blue-900 font-bold text-xl mb-1">{product.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-                      <p className="text-xs text-gray-600">{product.sales_count ?? 0} vendidos</p>
-                    </div>
-                  </Link>
-                </CardContent>
-              </Card>
-            ))}
+        ) : bestSellers.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-600 text-lg mb-4">
+              {getContent('bestsellers_empty', 'Nenhum produto encontrado no momento.')}
+            </p>
+            <Button asChild className="bg-blue-900 hover:bg-blue-950">
+              <Link href="/produtos">
+                Ver todos os produtos
+              </Link>
+            </Button>
           </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {bestSellers.map((product) => (
+                <ProductCard 
+                  key={product.id} 
+                  product={product}
+                  showStock={false}
+                />
+              ))}
+            </div>
+            <div className="text-center mt-8">
+              <Button asChild variant="outline" className="border-blue-900 text-blue-900 hover:bg-blue-50">
+                <Link href="/produtos">
+                  Ver todos os produtos
+                </Link>
+              </Button>
+            </div>
+          </>
         )}
       </section>
 

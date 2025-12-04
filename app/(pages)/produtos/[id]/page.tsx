@@ -23,15 +23,24 @@ interface ProductPageProps {
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const { id } = await params
 
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+
   let product = null
-  try {
-    product = await getSupabaseProductById(id)
-  } catch (error: any) {
-    if (error?.code === 'PGRST116' || error?.message?.includes('No rows')) {
-      const numericId = parseInt(id, 10)
-      if (!isNaN(numericId)) {
-        product = getProductById(numericId)
-      }
+  
+  if (isUUID) {
+    // Apenas tentar buscar no Supabase se o ID for um UUID válido
+    try {
+      product = await getSupabaseProductById(id)
+    } catch (error: any) {
+      // Ignorar erros silenciosamente e tentar produtos mock
+    }
+  }
+
+  // Se não encontrou no Supabase ou não é UUID, tentar produtos mock
+  if (!product) {
+    const numericId = parseInt(id, 10)
+    if (!isNaN(numericId)) {
+      product = getProductById(numericId)
     }
   }
 
@@ -52,14 +61,19 @@ export async function generateStaticParams() {
   try {
     const supabaseProducts = await getSupabaseProducts()
     if (supabaseProducts && supabaseProducts.length > 0) {
-      return supabaseProducts.map((product: any) => ({
-        id: product.id.toString(),
-      }))
+      // Filtrar apenas produtos com UUIDs válidos
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      return supabaseProducts
+        .filter((product: any) => product.id && uuidRegex.test(product.id.toString()))
+        .map((product: any) => ({
+          id: product.id.toString(),
+        }))
     }
   } catch (error: any) {
     console.log('Using mock products for static generation:', error?.message || error)
   }
 
+  // Retornar apenas produtos mock se não houver produtos do Supabase
   return productsData.map((product) => ({
     id: product.id.toString(),
   }))
@@ -74,6 +88,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   let isSupabaseProduct = false
 
   if (isUUID) {
+    // Apenas tentar buscar no Supabase se o ID for um UUID válido
     try {
       product = await getSupabaseProductById(id)
       if (product) {
@@ -94,26 +109,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
       return
     }
   } else {
-    try {
-      product = await getSupabaseProductById(id)
-      if (product) {
-        isSupabaseProduct = true
-      }
-    } catch (error: any) {
-      const isNotFoundError = error?.code === 'PGRST116' || 
-                              error?.message?.includes('No rows') ||
-                              error?.message?.includes('not found')
-      
-      if (!isNotFoundError) {
-        console.error('Error fetching product from Supabase:', error?.message || error)
-      }
-    }
-
-    if (!product) {
-      const numericId = parseInt(id, 10)
-      if (!isNaN(numericId)) {
-        product = getProductById(numericId)
-      }
+    // Se não é UUID, buscar diretamente nos produtos mock (não tentar Supabase)
+    const numericId = parseInt(id, 10)
+    if (!isNaN(numericId)) {
+      product = getProductById(numericId)
     }
   }
 

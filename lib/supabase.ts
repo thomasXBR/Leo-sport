@@ -12,6 +12,9 @@ export type UserProfile = {
   avatar_url?: string;
   description?: string;
   user_type: 'comprador' | 'vendedor' | 'admin';
+  phone?: string;
+  accept_terms?: boolean;
+  consent_emails?: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -38,6 +41,8 @@ export type Partnership = {
   status: 'Ativo' | 'Inativo' | 'Pendente';
   partnership_date: string;
   notes?: string;
+  form_type?: 'fornecedor' | 'representante';
+  form_payload?: string;
   created_at: string;
   updated_at: string;
 };
@@ -893,5 +898,87 @@ export async function deleteSiteImage(id: string) {
     .eq('id', id);
   
   if (error) throw error;
+}
+
+// ============================================
+// FUNÇÕES CRUD - USUÁRIOS
+// ============================================
+
+export async function getAllUsers() {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .order('created_at', { ascending: false });
+  
+  if (error) throw error;
+  return data || [];
+}
+
+// ============================================
+// FUNÇÕES CRUD - PEDIDOS E ITENS
+// ============================================
+
+export async function getSalesWithItems() {
+  // Buscar vendas com informações dos produtos (se houver order_items)
+  const { data: sales, error: salesError } = await supabase
+    .from('sales')
+    .select('*')
+    .order('created_at', { ascending: false });
+  
+  if (salesError) throw salesError;
+  
+  // Tentar buscar items dos pedidos se a tabela existir
+  const salesWithItems = await Promise.all(
+    (sales || []).map(async (sale) => {
+      try {
+        // Tentar buscar order_items relacionados
+        const { data: orderItems } = await supabase
+          .from('order_items')
+          .select('*, products(*)')
+          .eq('order_id', sale.id);
+        
+        return {
+          ...sale,
+          items: orderItems || []
+        };
+      } catch {
+        // Se a tabela não existir, retornar sem items
+        return {
+          ...sale,
+          items: []
+        };
+      }
+    })
+  );
+  
+  return salesWithItems;
+}
+
+export async function getSaleById(id: string) {
+  const { data: sale, error } = await supabase
+    .from('sales')
+    .select('*')
+    .eq('id', id)
+    .single();
+  
+  if (error) throw error;
+  
+  // Tentar buscar items do pedido
+  try {
+    const { data: orderItems } = await supabase
+      .from('order_items')
+      .select('*, products(*)')
+      .eq('order_id', id);
+    
+    return {
+      ...sale,
+      items: orderItems || []
+    };
+  } catch {
+    return {
+      ...sale,
+      items: []
+    };
+  }
 }
 

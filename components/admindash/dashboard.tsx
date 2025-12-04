@@ -12,7 +12,7 @@ import {
     Tooltip,
     Legend,
 } from 'chart.js'
-import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload, Loader2, ChevronLeft, ChevronRight, ShoppingCart, Package, DollarSign, Image as ImageIcon } from 'lucide-react'
+import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload, Loader2, ChevronLeft, ChevronRight, ShoppingCart, Package, DollarSign, Image as ImageIcon, Mail, Menu, X as XIcon, ChevronRight as ChevronRightIcon } from 'lucide-react'
 import Image from 'next/image'
 import ProductRegistrationForm from '@/components/forms/ProductRegistrationForm'
 import {
@@ -35,12 +35,13 @@ import {
 import {
     getProducts, createProduct, updateProduct, deleteProduct,
     getInventoryItems, createInventoryMovement, deleteInventoryMovement,
-    getSales, getSalesDataForChart,
+    getSales, getSalesDataForChart, getSalesWithItems, getSaleById,
     getInvoices, createInvoice, updateInvoice, deleteInvoice,
     getPartnerships, createPartnership, updatePartnership, deletePartnership,
     getCoupons, createCoupon, updateCoupon, deleteCoupon,
     getSiteContent, updateSiteContent, getFAQs, createFAQ, updateFAQ, deleteFAQ, getPurchases, createPurchase, updatePurchase, deletePurchase,
     getSiteImages, createSiteImage, updateSiteImage, deleteSiteImage,
+    getAllUsers,
     type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent, type FAQ, type Purchase, type SiteImage,
 } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
@@ -432,6 +433,97 @@ const InvoiceForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
     )
 }
 
+// Componente de Formulário de Email
+const EmailForm = ({ recipient, recipientName, onSend, onCancel }: { recipient: string, recipientName: string, onSend: (to: string, subject: string, message: string) => void, onCancel: () => void }) => {
+    const [subject, setSubject] = useState('')
+    const [message, setMessage] = useState('')
+    const [sending, setSending] = useState(false)
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!subject || !message) {
+            alert('Por favor, preencha todos os campos.')
+            return
+        }
+
+        setSending(true)
+        try {
+            await onSend(recipient, subject, message)
+            setSubject('')
+            setMessage('')
+        } catch (error) {
+            // Erro já tratado na função handleSendEmail
+        } finally {
+            setSending(false)
+        }
+    }
+
+    return (
+        <form onSubmit={handleSubmit}>
+            <div className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Para</label>
+                    <input
+                        type="email"
+                        value={recipient}
+                        disabled
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-100"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Nome: {recipientName}</p>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Assunto *</label>
+                    <input
+                        type="text"
+                        value={subject}
+                        onChange={(e) => setSubject(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        required
+                        placeholder="Assunto do email"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Mensagem *</label>
+                    <textarea
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 h-48"
+                        required
+                        placeholder="Digite sua mensagem aqui..."
+                    />
+                </div>
+            </div>
+            <DialogFooter className="mt-6">
+                <button
+                    type="button"
+                    onClick={onCancel}
+                    className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400"
+                    disabled={sending}
+                >
+                    Cancelar
+                </button>
+                <button
+                    type="submit"
+                    className="bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 flex items-center gap-2"
+                    disabled={sending}
+                >
+                    {sending ? (
+                        <>
+                            <Loader2 className="animate-spin" size={16} />
+                            Enviando...
+                        </>
+                    ) : (
+                        <>
+                            <Mail size={16} />
+                            Enviar Email
+                        </>
+                    )}
+                </button>
+            </DialogFooter>
+        </form>
+    )
+}
+
 // Componente de Formulário de Compras (Placeholder)
 const PurchaseForm = ({ initialData, onSave, onCancel }: { initialData: any, onSave: (data: any) => void, onCancel: () => void }) => {
     const [supplier, setSupplier] = useState(initialData?.supplier_name || '')
@@ -497,6 +589,11 @@ export default function Dashboard() {
     const [faqs, setFaqs] = useState<FAQ[]>([])
     const [purchases, setPurchases] = useState<Purchase[]>([])
     const [siteImages, setSiteImages] = useState<SiteImage[]>([])
+    const [users, setUsers] = useState<any[]>([])
+    const [salesWithItems, setSalesWithItems] = useState<any[]>([])
+    const [sidebarOpen, setSidebarOpen] = useState(true)
+    const [emailModalOpen, setEmailModalOpen] = useState(false)
+    const [selectedUserForEmail, setSelectedUserForEmail] = useState<any>(null)
     
     const FAQS_PER_PAGE = 2
     const [currentPage, setCurrentPage] = useState(1)
@@ -701,7 +798,7 @@ export default function Dashboard() {
     async function loadAllData() {
         try {
             setLoading(true)
-            const [productsData, inventoryData, salesData, invoicesData, partnersData, couponsData, contentData, faqsData, purchasesData, imagesData] = await Promise.all([
+            const [productsData, inventoryData, salesData, invoicesData, partnersData, couponsData, contentData, faqsData, purchasesData, imagesData, usersData, salesWithItemsData] = await Promise.all([
                 getProducts().catch(() => []),
                 getInventoryItems().catch(() => []),
                 getSales().catch(() => []),
@@ -712,6 +809,8 @@ export default function Dashboard() {
                 getFAQs().catch(() => []),
                 getPurchases().catch(() => []),
                 getSiteImages().catch(() => []),
+                getAllUsers().catch(() => []),
+                getSalesWithItems().catch(() => []),
             ])
 
             setProducts(productsData || [])
@@ -729,6 +828,8 @@ export default function Dashboard() {
             setFaqs(faqsData || [])
             setPurchases(purchasesData || [])
             setSiteImages(imagesData || [])
+            setUsers(usersData || [])
+            setSalesWithItems(salesWithItemsData || [])
 
             // Carregar dados do gráfico
             const chartSalesData = await getSalesDataForChart().catch(() => [])
@@ -1035,6 +1136,43 @@ export default function Dashboard() {
         }
     }
 
+    const handleSendEmail = async (to: string, subject: string, message: string) => {
+        try {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session) {
+                alert('Sessão expirada. Por favor, faça login novamente.')
+                return
+            }
+
+            const response = await fetch('/api/email/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({
+                    to,
+                    subject,
+                    message,
+                    html: `<p>${message.replace(/\n/g, '<br>')}</p>`,
+                }),
+            })
+
+            const result = await response.json()
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Erro ao enviar email')
+            }
+
+            alert('Email enviado com sucesso!')
+            setEmailModalOpen(false)
+            setSelectedUserForEmail(null)
+        } catch (error: any) {
+            console.error('Erro ao enviar email:', error)
+            alert(error.message || 'Erro ao enviar email. Tente novamente.')
+        }
+    }
+
     if (loading) {
         return (
             <div className="flex justify-center items-center min-h-screen">
@@ -1198,8 +1336,63 @@ export default function Dashboard() {
             case 'users':
                 return (
                     <div>
-                        <h2 className="text-2xl font-semibold mb-6 text-gray-700">Usuários e Parcerias</h2>
-                        <p className="text-gray-600">Gestão de usuários através da tabela profiles no Supabase.</p>
+                        <h2 className="text-2xl font-semibold mb-6 text-gray-700 flex items-center">
+                            <User className="mr-2" size={24} />
+                            Usuários
+                        </h2>
+                        {users.length === 0 ? (
+                            <p className="text-center py-8 text-gray-500">Nenhum usuário encontrado.</p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full bg-white">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data de Criação</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {users.map((user: any) => (
+                                            <tr key={user.id}>
+                                                <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">
+                                                    {user.name || '-'}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
+                                                    {user.email || '-'}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap">
+                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                                        user.user_type === 'admin' ? 'bg-red-100 text-red-800' :
+                                                        user.user_type === 'vendedor' ? 'bg-blue-100 text-blue-800' :
+                                                        'bg-gray-100 text-gray-800'
+                                                    }`}>
+                                                        {user.user_type || 'N/A'}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {user.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedUserForEmail(user)
+                                                            setEmailModalOpen(true)
+                                                        }}
+                                                        className="text-cyan-600 hover:text-cyan-900 flex items-center gap-1"
+                                                    >
+                                                        <Mail size={16} />
+                                                        Enviar Email
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 );
             case 'products':
@@ -1461,32 +1654,69 @@ export default function Dashboard() {
                             <p className="text-center py-8 text-gray-500">Nenhuma parceria cadastrada.</p>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {partnersList.map((partner: any) => (
-                                    <div key={partner.id} className="p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
-                                        <h3 className="font-semibold text-gray-800 mb-2">{partner.company_name}</h3>
-                                        <p className="text-sm text-gray-600 mb-1">Email: {partner.contact_email}</p>
-                                        <p className="text-sm text-gray-600 mb-3">Telefone: {partner.contact_phone || '-'}</p>
-                                        <span className={`px-2 py-1 text-xs rounded-full font-semibold ${getStatusClass(partner.status)}`}>
-                                            {partner.status}
-                                        </span>
-                                        <div className="mt-4 flex gap-2">
-                                            <button
-                                                onClick={() => openModal('partner', partner)}
-                                                className="flex-1 text-cyan-600 hover:text-cyan-800 text-sm font-medium"
-                                            >
-                                                <Edit size={16} className="inline mr-1" />
-                                                Editar
-                                            </button>
-                                            <button
-                                                onClick={() => openDeleteDialog('partnership', partner.id, partner.company_name)}
-                                                className="flex-1 text-red-600 hover:text-red-800 text-sm font-medium"
-                                            >
-                                                <Trash2 size={16} className="inline mr-1" />
-                                                Deletar
-                                            </button>
+                                {partnersList.map((partner: any) => {
+                                    // Tentar obter o tipo de parceria do form_type ou form_payload
+                                    let partnershipType = partner.form_type || 'N/A'
+                                    if (!partnershipType && partner.form_payload) {
+                                        try {
+                                            const payload = JSON.parse(partner.form_payload)
+                                            if (payload.activeForm) {
+                                                partnershipType = payload.activeForm === 'fornecedor' ? 'Fornecedor' : 'Representante'
+                                            }
+                                        } catch (e) {
+                                            // Se não conseguir parsear, usar form_type ou 'N/A'
+                                        }
+                                    }
+                                    const displayType = partnershipType === 'fornecedor' ? 'Fornecedor' : 
+                                                       partnershipType === 'representante' ? 'Representante' : 
+                                                       partnershipType || 'N/A'
+                                    
+                                    return (
+                                        <div key={partner.id} className="p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <h3 className="font-semibold text-gray-800">{partner.company_name}</h3>
+                                                <span className={`px-2 py-1 text-xs rounded-full font-semibold ${
+                                                    displayType === 'Fornecedor' ? 'bg-blue-100 text-blue-800' : 
+                                                    displayType === 'Representante' ? 'bg-purple-100 text-purple-800' : 
+                                                    'bg-gray-100 text-gray-800'
+                                                }`}>
+                                                    {displayType}
+                                                </span>
+                                            </div>
+                                            <p className="text-sm text-gray-600 mb-1">Email: {partner.contact_email}</p>
+                                            <p className="text-sm text-gray-600 mb-3">Telefone: {partner.contact_phone || '-'}</p>
+                                            <span className={`px-2 py-1 text-xs rounded-full font-semibold ${getStatusClass(partner.status)}`}>
+                                                {partner.status}
+                                            </span>
+                                            <div className="mt-4 flex gap-2">
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedUserForEmail({ email: partner.contact_email, name: partner.company_name })
+                                                        setEmailModalOpen(true)
+                                                    }}
+                                                    className="flex-1 bg-cyan-600 text-white px-3 py-2 rounded-lg hover:bg-cyan-700 text-sm font-medium flex items-center justify-center gap-2"
+                                                >
+                                                    <Mail size={14} />
+                                                    Email
+                                                </button>
+                                                <button
+                                                    onClick={() => openModal('partner', partner)}
+                                                    className="flex-1 text-cyan-600 hover:text-cyan-800 text-sm font-medium"
+                                                >
+                                                    <Edit size={16} className="inline mr-1" />
+                                                    Editar
+                                                </button>
+                                                <button
+                                                    onClick={() => openDeleteDialog('partnership', partner.id, partner.company_name)}
+                                                    className="flex-1 text-red-600 hover:text-red-800 text-sm font-medium"
+                                                >
+                                                    <Trash2 size={16} className="inline mr-1" />
+                                                    Deletar
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         )}
                     </div>
@@ -1880,33 +2110,178 @@ export default function Dashboard() {
                         )}
                     </div>
                 )
+            case 'carts':
+                return (
+                    <div>
+                        <h2 className="text-2xl font-semibold mb-6 text-gray-700 flex items-center">
+                            <ShoppingCart className="mr-2" size={24} />
+                            Carrinhos de Usuários
+                        </h2>
+                        <p className="text-gray-600 mb-4">
+                            Visualize os produtos nos carrinhos dos usuários. Os carrinhos são armazenados localmente no navegador de cada usuário.
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {users.length === 0 ? (
+                                <div className="col-span-full text-center py-8 text-gray-500">
+                                    Nenhum usuário encontrado
+                                </div>
+                            ) : (
+                                users.map((user: any) => (
+                                    <div key={user.id} className="p-4 border rounded-lg bg-white shadow-sm">
+                                        <h3 className="font-semibold text-gray-800 mb-2">{user.name || user.email}</h3>
+                                        <p className="text-sm text-gray-600 mb-1">Email: {user.email}</p>
+                                        <p className="text-sm text-gray-600 mb-3">Tipo: {user.user_type || 'N/A'}</p>
+                                        <button
+                                            onClick={() => {
+                                                setSelectedUserForEmail(user)
+                                                setEmailModalOpen(true)
+                                            }}
+                                            className="w-full bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            <Mail size={16} />
+                                            Enviar Email
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                )
+            case 'purchased':
+                return (
+                    <div>
+                        <h2 className="text-2xl font-semibold mb-6 text-gray-700 flex items-center">
+                            <Package className="mr-2" size={24} />
+                            Produtos Comprados
+                        </h2>
+                        {salesWithItems.length === 0 ? (
+                            <p className="text-center py-8 text-gray-500">Nenhum pedido encontrado.</p>
+                        ) : (
+                            <div className="space-y-6">
+                                {salesWithItems.map((sale: any) => (
+                                    <div key={sale.id} className="p-6 border rounded-lg bg-white shadow-sm">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div>
+                                                <h3 className="font-semibold text-gray-800 text-lg">
+                                                    Pedido #{sale.order_number || sale.id}
+                                                </h3>
+                                                <p className="text-sm text-gray-600">Cliente: {sale.customer_name}</p>
+                                                <p className="text-sm text-gray-600">Email: {sale.customer_email}</p>
+                                                <p className="text-sm text-gray-500">
+                                                    Data: {new Date(sale.created_at).toLocaleDateString('pt-BR')}
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-lg font-bold text-gray-900">
+                                                    R$ {Number(sale.total_amount).toFixed(2).replace('.', ',')}
+                                                </p>
+                                                <span className={`px-2 py-1 text-xs rounded-full font-semibold ${getStatusClass(sale.status)}`}>
+                                                    {sale.status}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        {sale.items && sale.items.length > 0 ? (
+                                            <div className="mt-4">
+                                                <h4 className="font-semibold text-gray-700 mb-2">Produtos:</h4>
+                                                <div className="space-y-2">
+                                                    {sale.items.map((item: any, index: number) => (
+                                                        <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                                            <div className="flex-1">
+                                                                <p className="font-medium text-gray-800">
+                                                                    {item.products?.name || `Produto ${item.product_id}`}
+                                                                </p>
+                                                                <p className="text-sm text-gray-600">
+                                                                    Quantidade: {item.quantity} x R$ {Number(item.unit_price || 0).toFixed(2).replace('.', ',')}
+                                                                </p>
+                                                            </div>
+                                                            <p className="font-semibold text-gray-900">
+                                                                R$ {Number(item.total_price || 0).toFixed(2).replace('.', ',')}
+                                                            </p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-gray-500 mt-4">Detalhes dos produtos não disponíveis</p>
+                                        )}
+                                        <div className="mt-4 flex gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedUserForEmail({ email: sale.customer_email, name: sale.customer_name })
+                                                    setEmailModalOpen(true)
+                                                }}
+                                                className="flex items-center gap-2 bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 transition-colors"
+                                            >
+                                                <Mail size={16} />
+                                                Enviar Email ao Cliente
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )
             default:
                 return null;
         }
     }
 
 
+    const menuItems = [
+        { id: 'sales', label: 'Vendas', icon: DollarSign },
+        { id: 'inventory', label: 'Estoque', icon: Package },
+        { id: 'users', label: 'Usuários', icon: User },
+        { id: 'products', label: 'Produtos', icon: ShoppingCart },
+        { id: 'invoices', label: 'Notas Fiscais', icon: FileText },
+        { id: 'partnerships', label: 'Parcerias', icon: Handshake },
+        { id: 'coupons', label: 'Cupons', icon: Ticket },
+        { id: 'content', label: 'Textos do Site', icon: Type },
+        { id: 'images', label: 'Imagens', icon: ImageIcon },
+        { id: 'faq', label: 'FAQ', icon: FileText },
+        { id: 'purchases', label: 'Compras', icon: Package },
+        { id: 'carts', label: 'Carrinhos', icon: ShoppingCart },
+        { id: 'purchased', label: 'Produtos Comprados', icon: Package },
+    ]
+
     return (
-        <div className="flex flex-col min-h-screen bg-gray-100">
-            <main className="flex-grow p-4 sm:p-6">
-                <h1 className="text-3xl font-bold text-gray-800 mb-8">Painel Administrativo</h1>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-10 gap-3 mb-6">
-                    <button onClick={() => setActiveTab('sales')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'sales' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Vendas</button>
-                    <button onClick={() => setActiveTab('inventory')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'inventory' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Estoque</button>
-                    <button onClick={() => setActiveTab('users')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'users' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Usuários</button>
-                    <button onClick={() => setActiveTab('products')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'products' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Produtos</button>
-                    <button onClick={() => setActiveTab('invoices')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'invoices' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Notas Fiscais</button>
-                    <button onClick={() => setActiveTab('partnerships')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'partnerships' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Parcerias</button>
-                    <button onClick={() => setActiveTab('coupons')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'coupons' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Cupons</button>
-                    <button onClick={() => setActiveTab('content')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'content' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Textos do Site</button>
-                    <button onClick={() => setActiveTab('images')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'images' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Imagens</button>
-                    <button onClick={() => setActiveTab('faq')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'faq' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>FAQ </button>
-
-
+        <div className="flex min-h-screen bg-gray-100">
+            {/* Sidebar */}
+            <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-cyan-900 text-white transition-all duration-300 flex flex-col fixed h-screen`}>
+                <div className="p-4 flex items-center justify-between border-b border-cyan-800">
+                    {sidebarOpen && <h1 className="text-xl font-bold">Painel Admin</h1>}
+                    <button
+                        onClick={() => setSidebarOpen(!sidebarOpen)}
+                        className="p-2 hover:bg-cyan-800 rounded-lg transition-colors"
+                    >
+                        {sidebarOpen ? <XIcon size={20} /> : <Menu size={20} />}
+                    </button>
                 </div>
+                <nav className="flex-1 overflow-y-auto p-2">
+                    {menuItems.map((item) => {
+                        const Icon = item.icon
+                        return (
+                            <button
+                                key={item.id}
+                                onClick={() => setActiveTab(item.id)}
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg mb-1 transition-all duration-200 ${
+                                    activeTab === item.id
+                                        ? 'bg-cyan-700 text-white shadow-lg'
+                                        : 'text-cyan-100 hover:bg-cyan-800'
+                                }`}
+                                title={!sidebarOpen ? item.label : ''}
+                            >
+                                <Icon size={20} className="flex-shrink-0" />
+                                {sidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
+                            </button>
+                        )
+                    })}
+                </nav>
+            </aside>
 
-                <div className="bg-white rounded-lg p-6 shadow-lg min-h-[500px]">
+            {/* Main Content */}
+            <main className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'} p-4 sm:p-6`}>
+                <div className="bg-white rounded-lg p-6 shadow-lg min-h-[calc(100vh-2rem)]">
                     {renderTabContent()}
                 </div>
 
@@ -1917,6 +2292,26 @@ export default function Dashboard() {
 
                 {/* Modais de Edição */}
                 {renderModals()}
+
+                {/* Modal de Envio de Email */}
+                <Dialog open={emailModalOpen} onOpenChange={setEmailModalOpen}>
+                    <DialogContent className="sm:max-w-[600px]">
+                        <DialogHeader>
+                            <DialogTitle>Enviar Email</DialogTitle>
+                        </DialogHeader>
+                        {selectedUserForEmail && (
+                            <EmailForm
+                                recipient={selectedUserForEmail.email || selectedUserForEmail}
+                                recipientName={selectedUserForEmail.name || selectedUserForEmail.email || 'Usuário'}
+                                onSend={handleSendEmail}
+                                onCancel={() => {
+                                    setEmailModalOpen(false)
+                                    setSelectedUserForEmail(null)
+                                }}
+                            />
+                        )}
+                    </DialogContent>
+                </Dialog>
 
                 {/* Dialog de Confirmação de Exclusão */}
                 <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
