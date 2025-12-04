@@ -489,6 +489,9 @@ export default function Dashboard() {
     const [sales, setSales] = useState<any[]>([])
     const [invoices, setInvoices] = useState<Invoice[]>([])
     const [partnersList, setPartnersList] = useState<Partnership[]>([])
+    // Requests submitted via the public "venda-na-leosport" form
+    // These are partnership applications pending admin review
+    const [partnershipRequests, setPartnershipRequests] = useState<any[]>([])
     const [coupons, setCoupons] = useState<Coupon[]>([])
     const [siteContent, setSiteContent] = useState<SupabaseSiteContent[]>([])
     const [faqs, setFaqs] = useState<FAQ[]>([])
@@ -522,6 +525,31 @@ export default function Dashboard() {
             borderRadius: 5,
         }],
     })
+
+    // Accept a pending partnership request: update status to 'Ativo' in Supabase
+    const handleAcceptPartnership = async (requestId: string) => {
+        try {
+            await updatePartnership(requestId, { status: 'Ativo' })
+            // Recarregar dados para manter sincronização
+            await loadAllData()
+            alert('Parceria aceita e ativada com sucesso.')
+        } catch (err) {
+            console.error('Erro ao aceitar parceria:', err)
+            alert('Erro ao aceitar parceria. Confira o console.')
+        }
+    }
+
+    // Reject a pending partnership request: marcar como 'Inativo' (ou usar deletePartnership conforme sua política)
+    const handleRejectPartnership = async (requestId: string) => {
+        try {
+            await updatePartnership(requestId, { status: 'Inativo' })
+            await loadAllData()
+            alert('Solicitação recusada.')
+        } catch (err) {
+            console.error('Erro ao recusar parceria:', err)
+            alert('Erro ao recusar parceria. Confira o console.')
+        }
+    }
 
     // Estados dos modais
     const [isModalOpen, setIsModalOpen] = useState(false)
@@ -690,7 +718,12 @@ export default function Dashboard() {
             setInventoryItems(inventoryData || [])
             setSales(salesData || [])
             setInvoices(invoicesData || [])
-            setPartnersList(partnersData || [])
+            // Separar solicitações pendentes das parcerias ativas/inativas
+            const allPartners = partnersData || []
+            const pending = allPartners.filter((p: any) => p.status === 'Pendente')
+            const others = allPartners.filter((p: any) => p.status !== 'Pendente')
+            setPartnershipRequests(pending || [])
+            setPartnersList(others || [])
             setCoupons(couponsData || [])
             setSiteContent(contentData || [])
             setFaqs(faqsData || [])
@@ -1342,16 +1375,101 @@ export default function Dashboard() {
                                 <Handshake className="mr-2" size={24} />
                                 Gestão de Parcerias
                             </h2>
-                            <button
-                                onClick={() => openModal('partner')}
-                                className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
-                            >
-                                <PlusCircle size={20} className="mr-2" />
-                                Adicionar Parceria
-                            </button>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => openModal('partner')}
+                                    className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
+                                >
+                                    <PlusCircle size={20} className="mr-2" />
+                                    Adicionar Parceria
+                                </button>
+                                <button
+                                    onClick={() => alert('Recusar parceria - implementar lógica')}
+                                    className="flex items-center bg-red-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors"
+                                >
+                                    <X size={20} className="mr-2" />
+                                    Recusar Parceria
+                                </button>
+                            </div>
                         </div>
-                        {/* Tabela de Parcerias (Conteúdo omitido para brevidade, assumindo que está funcionando) */}
-                        <p className="text-gray-500">Tabela de Parcerias...</p>
+                        {/* Pending partnership requests submitted from the public form */}
+                        {partnershipRequests.length > 0 && (
+                            <div className="mb-6">
+                                <h3 className="text-xl font-semibold mb-4">Solicitações Pendentes de Parceria</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {partnershipRequests.map((req: any) => (
+                                        <div key={req.id} className="p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
+                                            <h4 className="font-semibold text-gray-800 mb-1">{req.nomeEmpresa || req.nome || 'Solicitação sem nome'}</h4>
+                                            <p className="text-sm text-gray-600 mb-1">Email: {req.email}</p>
+                                            <p className="text-sm text-gray-600 mb-2">Telefone: {req.telefone || '-'}</p>
+                                            <p className="text-xs text-gray-500 mb-2">Tipo: {req.activeForm === 'representante' ? 'Representante' : 'Fornecedor'}</p>
+
+                                            {req.activeForm === 'fornecedor' ? (
+                                                <div className="text-sm text-gray-700 space-y-1">
+                                                    <p><strong>Anos no mercado:</strong> {req.anosMercado || '-'}</p>
+                                                    <p><strong>O que fabrica:</strong> {req.oQueFabrica || '-'}</p>
+                                                    <p><strong>Canais de venda:</strong> {req.canaisVendaAtuais || '-'}</p>
+                                                </div>
+                                            ) : (
+                                                <div className="text-sm text-gray-700 space-y-1">
+                                                    <p><strong>Área de atuação:</strong> {req.localAtuacao || '-'}</p>
+                                                    <p><strong>Produto a revender:</strong> {req.produtoRevender || '-'}</p>
+                                                    <p><strong>Estratégias de venda:</strong> {req.estrategiasVenda || '-'}</p>
+                                                </div>
+                                            )}
+
+                                            <div className="mt-4 flex gap-2">
+                                                <button
+                                                    onClick={() => handleAcceptPartnership(req.id)}
+                                                    className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-green-700"
+                                                >
+                                                    Aceitar Parceria
+                                                </button>
+                                                <button
+                                                    onClick={() => handleRejectPartnership(req.id)}
+                                                    className="flex-1 bg-red-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-red-700"
+                                                >
+                                                    Recusar Parceria
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {partnersList.length === 0 ? (
+                            <p className="text-center py-8 text-gray-500">Nenhuma parceria cadastrada.</p>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {partnersList.map((partner: any) => (
+                                    <div key={partner.id} className="p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
+                                        <h3 className="font-semibold text-gray-800 mb-2">{partner.company_name}</h3>
+                                        <p className="text-sm text-gray-600 mb-1">Email: {partner.contact_email}</p>
+                                        <p className="text-sm text-gray-600 mb-3">Telefone: {partner.contact_phone || '-'}</p>
+                                        <span className={`px-2 py-1 text-xs rounded-full font-semibold ${getStatusClass(partner.status)}`}>
+                                            {partner.status}
+                                        </span>
+                                        <div className="mt-4 flex gap-2">
+                                            <button
+                                                onClick={() => openModal('partner', partner)}
+                                                className="flex-1 text-cyan-600 hover:text-cyan-800 text-sm font-medium"
+                                            >
+                                                <Edit size={16} className="inline mr-1" />
+                                                Editar
+                                            </button>
+                                            <button
+                                                onClick={() => openDeleteDialog('partnership', partner.id, partner.company_name)}
+                                                className="flex-1 text-red-600 hover:text-red-800 text-sm font-medium"
+                                            >
+                                                <Trash2 size={16} className="inline mr-1" />
+                                                Deletar
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 );
             case 'coupons':

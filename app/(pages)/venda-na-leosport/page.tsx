@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { CheckCircle, Store, TrendingUp, Users, Shield } from 'lucide-react';
+import { createPartnership } from '@/lib/supabase'
 import Image from 'next/image';
 import { useSiteContent } from '@/hooks/use-site-content';
 import { useSiteImages } from '@/hooks/use-site-images';
@@ -64,28 +65,43 @@ export default function VendaNaLeoSportPage() {
     );
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement partner application submission
-    console.log('Partner application submitted:', {
-      formType: activeForm,
-      data: formData
-    });
-    alert(`Solicitação de ${activeForm === 'fornecedor' ? 'Fornecedor' : 'Representante'} enviada com sucesso! Entraremos em contato em breve.`);
 
-    // Limpar formulário
-    setFormData({
-      nome: '',
-      email: '',
-      telefone: '',
-      nomeEmpresa: '',
-      anosMercado: '',
-      oQueFabrica: '',
-      canaisVendaAtuais: '',
-      localAtuacao: '',
-      produtoRevender: '',
-      estrategiasVenda: ''
-    });
+    // Construir payload para supabase
+    const payload: any = {
+      company_name: formData.nomeEmpresa || formData.nome || null,
+      contact_email: formData.email || null,
+      contact_phone: formData.telefone || null,
+      status: 'Pendente',
+      partnership_date: new Date().toISOString().split('T')[0],
+      form_type: activeForm,
+      form_payload: JSON.stringify(formData),
+      // fallback: some schemas expect `notes` field — keep it for compatibility
+      notes: JSON.stringify(formData),
+    }
+
+    try {
+      await createPartnership(payload)
+      alert(`Solicitação de ${activeForm === 'fornecedor' ? 'Fornecedor' : 'Representante'} enviada com sucesso! Entraremos em contato em breve.`)
+
+      // Limpar formulário
+      setFormData({
+        nome: '',
+        email: '',
+        telefone: '',
+        nomeEmpresa: '',
+        anosMercado: '',
+        oQueFabrica: '',
+        canaisVendaAtuais: '',
+        localAtuacao: '',
+        produtoRevender: '',
+        estrategiasVenda: ''
+      })
+    } catch (err) {
+      console.error('Erro ao enviar solicitação de parceria:', err)
+      alert('Erro ao enviar solicitação. Tente novamente mais tarde.')
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
