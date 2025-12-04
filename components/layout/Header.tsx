@@ -34,6 +34,7 @@ export default function Header() {
   const [phone, setPhone] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [receiveEmails, setReceiveEmails] = useState(false);
+  const [selectAll, setSelectAll] = useState(false);
   
   const authDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -50,6 +51,19 @@ export default function Header() {
     const formatted = formatPhone(e.target.value);
     setPhone(formatted);
   };
+
+  const handleSelectAll = (checked: boolean) => {
+    setSelectAll(checked);
+    setAcceptTerms(checked);
+    setReceiveEmails(checked);
+  };
+
+  // Atualizar selectAll quando as checkboxes individuais mudarem
+  useEffect(() => {
+    if (authMode === 'signup') {
+      setSelectAll(acceptTerms && receiveEmails);
+    }
+  }, [acceptTerms, receiveEmails, authMode]);
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,6 +163,7 @@ export default function Header() {
         setPhone("");
         setAcceptTerms(false);
         setReceiveEmails(false);
+        setSelectAll(false);
         setTimeout(() => {
           setIsAuthOpen(false);
           setSuccess("");
@@ -220,6 +235,7 @@ export default function Header() {
       setPhone("");
       setAcceptTerms(false);
       setReceiveEmails(false);
+      setSelectAll(false);
       setAuthMode('login');
     }
   };
@@ -463,30 +479,48 @@ export default function Header() {
                           <label className="flex items-start cursor-pointer">
                             <input
                               type="checkbox"
-                              checked={acceptTerms}
-                              onChange={(e) => setAcceptTerms(e.target.checked)}
+                              checked={selectAll}
+                              onChange={(e) => handleSelectAll(e.target.checked)}
                               className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                             />
-                            <span className="ml-2 text-sm text-gray-700">
-                              Aceitar{' '}
-                              <Link href="/termos-de-uso" className="text-blue-600 hover:underline" target="_blank">
-                                termos de uso
-                              </Link>
-                              {' '}*
+                            <span className="ml-2 text-sm font-medium text-gray-900">
+                              Selecionar todos
                             </span>
                           </label>
 
-                          <label className="flex items-start cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={receiveEmails}
-                              onChange={(e) => setReceiveEmails(e.target.checked)}
-                              className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                            />
-                            <span className="ml-2 text-sm text-gray-700">
-                              Desejo receber emails com ofertas e novidades
-                            </span>
-                          </label>
+                          <div className="border-t pt-2 mt-2 space-y-2">
+                            <label className="flex items-start cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={acceptTerms}
+                                onChange={(e) => setAcceptTerms(e.target.checked)}
+                                className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                              <span className="ml-2 text-sm text-gray-700">
+                                Aceitar{' '}
+                                <Link href="/termos-de-uso" className="text-blue-600 hover:underline" target="_blank">
+                                  termos de uso
+                                </Link>
+                                {' '}e{' '}
+                                <Link href="/politica-privacidade" className="text-blue-600 hover:underline" target="_blank">
+                                  política de privacidade
+                                </Link>
+                                {' '}*
+                              </span>
+                            </label>
+
+                            <label className="flex items-start cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={receiveEmails}
+                                onChange={(e) => setReceiveEmails(e.target.checked)}
+                                className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                              <span className="ml-2 text-sm text-gray-700">
+                                Desejo receber emails com ofertas e novidades
+                              </span>
+                            </label>
+                          </div>
                         </div>
                       </>
                     )}
