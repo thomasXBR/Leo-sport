@@ -272,3 +272,4 @@ Para começar rapidamente:
 **Nota:** Para produção, recomendo usar um serviço de email profissional como Resend, SendGrid ou AWS SES para emails transacionais.
 
 
+
