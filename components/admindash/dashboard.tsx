@@ -2101,12 +2101,6 @@ export default function Dashboard() {
                         <p className="text-gray-600 mb-4">
                             Visualize os produtos nos carrinhos dos usuários. Os carrinhos são armazenados localmente no navegador de cada usuário.
                         </p>
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                            <p className="text-yellow-800 text-sm">
-                                <strong>Nota:</strong> Os carrinhos são armazenados no localStorage do navegador de cada usuário. 
-                                Para visualizar carrinhos em tempo real, considere implementar uma tabela de carrinhos no banco de dados.
-                            </p>
-                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {users.length === 0 ? (
                                 <div className="col-span-full text-center py-8 text-gray-500">
