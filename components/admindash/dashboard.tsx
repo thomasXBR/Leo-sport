@@ -12,7 +12,7 @@ import {
     Tooltip,
     Legend,
 } from 'chart.js'
-import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload, Loader2, ChevronLeft, ChevronRight, ShoppingCart, Package, DollarSign, Image as ImageIcon, Mail, Menu, X as XIcon, ChevronRight as ChevronRightIcon } from 'lucide-react'
+import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload, Loader2, ChevronLeft, ChevronRight, ShoppingCart, Package, DollarSign, Image as ImageIcon, Mail, Menu, X as XIcon, ChevronRight as ChevronRightIcon, CheckCircle, Calendar } from 'lucide-react'
 import Image from 'next/image'
 import ProductRegistrationForm from '@/components/forms/ProductRegistrationForm'
 import {
@@ -625,11 +625,18 @@ export default function Dashboard() {
 
     // Accept a pending partnership request: update status to 'Ativo' in Supabase
     const handleAcceptPartnership = async (requestId: string) => {
+        const partnership = partnershipRequests.find((p: any) => p.id === requestId)
+        const partnershipName = partnership?.company_name || partnership?.nomeEmpresa || 'Esta parceria'
+        
+        if (!confirm(`Tem certeza que deseja ACEITAR a solicitação de parceria de "${partnershipName}"?`)) {
+            return
+        }
+
         try {
             await updatePartnership(requestId, { status: 'Ativo' })
             // Recarregar dados para manter sincronização
             await loadAllData()
-            alert('Parceria aceita e ativada com sucesso.')
+            alert(`Parceria de "${partnershipName}" aceita e ativada com sucesso!`)
         } catch (err) {
             console.error('Erro ao aceitar parceria:', err)
             alert('Erro ao aceitar parceria. Confira o console.')
@@ -638,10 +645,17 @@ export default function Dashboard() {
 
     // Reject a pending partnership request: marcar como 'Inativo' (ou usar deletePartnership conforme sua política)
     const handleRejectPartnership = async (requestId: string) => {
+        const partnership = partnershipRequests.find((p: any) => p.id === requestId)
+        const partnershipName = partnership?.company_name || partnership?.nomeEmpresa || 'Esta parceria'
+        
+        if (!confirm(`Tem certeza que deseja RECUSAR a solicitação de parceria de "${partnershipName}"? Esta ação pode ser revertida depois.`)) {
+            return
+        }
+
         try {
             await updatePartnership(requestId, { status: 'Inativo' })
             await loadAllData()
-            alert('Solicitação recusada.')
+            alert(`Solicitação de parceria de "${partnershipName}" foi recusada.`)
         } catch (err) {
             console.error('Erro ao recusar parceria:', err)
             alert('Erro ao recusar parceria. Confira o console.')
@@ -819,7 +833,14 @@ export default function Dashboard() {
             setInvoices(invoicesData || [])
             // Separar solicitações pendentes das parcerias ativas/inativas
             const allPartners = partnersData || []
-            const pending = allPartners.filter((p: any) => p.status === 'Pendente')
+            // Filtrar por status 'Pendente' e ordenar por data de criação (mais recentes primeiro)
+            const pending = (allPartners || [])
+                .filter((p: any) => p.status === 'Pendente')
+                .sort((a: any, b: any) => {
+                    const dateA = new Date(a.created_at || 0).getTime()
+                    const dateB = new Date(b.created_at || 0).getTime()
+                    return dateB - dateA // Mais recentes primeiro
+                })
             const others = allPartners.filter((p: any) => p.status !== 'Pendente')
             setPartnershipRequests(pending || [])
             setPartnersList(others || [])
@@ -1568,66 +1589,171 @@ export default function Dashboard() {
                                 <Handshake className="mr-2" size={24} />
                                 Gestão de Parcerias
                             </h2>
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => openModal('partner')}
-                                    className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
-                                >
-                                    <PlusCircle size={20} className="mr-2" />
-                                    Adicionar Parceria
-                                </button>
-                                <button
-                                    onClick={() => alert('Recusar parceria - implementar lógica')}
-                                    className="flex items-center bg-red-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors"
-                                >
-                                    <X size={20} className="mr-2" />
-                                    Recusar Parceria
-                                </button>
-                            </div>
+                            <button
+                                onClick={() => openModal('partner')}
+                                className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
+                            >
+                                <PlusCircle size={20} className="mr-2" />
+                                Adicionar Parceria Manualmente
+                            </button>
                         </div>
                         {/* Pending partnership requests submitted from the public form */}
                         {partnershipRequests.length > 0 && (
-                            <div className="mb-6">
-                                <h3 className="text-xl font-semibold mb-4">Solicitações Pendentes de Parceria</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {partnershipRequests.map((req: any) => (
-                                        <div key={req.id} className="p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
-                                            <h4 className="font-semibold text-gray-800 mb-1">{req.nomeEmpresa || req.nome || 'Solicitação sem nome'}</h4>
-                                            <p className="text-sm text-gray-600 mb-1">Email: {req.email}</p>
-                                            <p className="text-sm text-gray-600 mb-2">Telefone: {req.telefone || '-'}</p>
-                                            <p className="text-xs text-gray-500 mb-2">Tipo: {req.activeForm === 'representante' ? 'Representante' : 'Fornecedor'}</p>
-
-                                            {req.activeForm === 'fornecedor' ? (
-                                                <div className="text-sm text-gray-700 space-y-1">
-                                                    <p><strong>Anos no mercado:</strong> {req.anosMercado || '-'}</p>
-                                                    <p><strong>O que fabrica:</strong> {req.oQueFabrica || '-'}</p>
-                                                    <p><strong>Canais de venda:</strong> {req.canaisVendaAtuais || '-'}</p>
-                                                </div>
-                                            ) : (
-                                                <div className="text-sm text-gray-700 space-y-1">
-                                                    <p><strong>Área de atuação:</strong> {req.localAtuacao || '-'}</p>
-                                                    <p><strong>Produto a revender:</strong> {req.produtoRevender || '-'}</p>
-                                                    <p><strong>Estratégias de venda:</strong> {req.estrategiasVenda || '-'}</p>
-                                                </div>
-                                            )}
-
-                                            <div className="mt-4 flex gap-2">
-                                                <button
-                                                    onClick={() => handleAcceptPartnership(req.id)}
-                                                    className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-green-700"
-                                                >
-                                                    Aceitar Parceria
-                                                </button>
-                                                <button
-                                                    onClick={() => handleRejectPartnership(req.id)}
-                                                    className="flex-1 bg-red-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-red-700"
-                                                >
-                                                    Recusar Parceria
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
+                            <div className="mb-8">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                                        <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-semibold">
+                                            {partnershipRequests.length}
+                                        </span>
+                                        Solicitações Pendentes de Parceria
+                                    </h3>
+                                    <span className="text-sm text-gray-500">
+                                        {new Date().toLocaleDateString('pt-BR')}
+                                    </span>
                                 </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {partnershipRequests.map((req: any) => {
+                                        // Parsear form_payload se necessário
+                                        let parsedData: any = {}
+                                        if (req.form_payload) {
+                                            try {
+                                                parsedData = JSON.parse(req.form_payload)
+                                            } catch (e) {
+                                                console.error('Erro ao parsear form_payload:', e)
+                                            }
+                                        }
+
+                                        // Determinar tipo de parceria
+                                        const partnershipType = req.form_type || parsedData.activeForm || 'fornecedor'
+                                        const isFornecedor = partnershipType === 'fornecedor'
+                                        
+                                        // Obter dados do formulário
+                                        const nomeEmpresa = req.company_name || parsedData.nomeEmpresa || parsedData.nome || 'Não informado'
+                                        const email = req.contact_email || parsedData.email || 'Não informado'
+                                        const telefone = req.contact_phone || parsedData.telefone || '-'
+                                        const dataSolicitacao = req.created_at ? new Date(req.created_at).toLocaleDateString('pt-BR') : '-'
+
+                                        return (
+                                            <div key={req.id} className="p-5 border-2 border-yellow-200 rounded-lg bg-gradient-to-br from-white to-yellow-50 shadow-md hover:shadow-lg transition-all">
+                                                <div className="flex items-start justify-between mb-3">
+                                                    <div className="flex-1">
+                                                        <h4 className="font-bold text-gray-900 text-lg mb-1">{nomeEmpresa}</h4>
+                                                        <span className={`inline-block px-2 py-1 text-xs rounded-full font-semibold ${
+                                                            isFornecedor 
+                                                                ? 'bg-blue-100 text-blue-800' 
+                                                                : 'bg-purple-100 text-purple-800'
+                                                        }`}>
+                                                            {isFornecedor ? 'Fornecedor' : 'Representante'}
+                                                        </span>
+                                                    </div>
+                                                    <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">
+                                                        Pendente
+                                                    </span>
+                                                </div>
+
+                                                <div className="space-y-2 mb-4 text-sm">
+                                                    <div className="flex items-center gap-2">
+                                                        <Mail size={14} className="text-gray-400" />
+                                                        <span className="text-gray-600">{email}</span>
+                                                    </div>
+                                                    {telefone && telefone !== '-' && (
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-gray-400">📞</span>
+                                                            <span className="text-gray-600">{telefone}</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex items-center gap-2">
+                                                        <Calendar size={14} className="text-gray-400" />
+                                                        <span className="text-gray-500 text-xs">Solicitado em: {dataSolicitacao}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="border-t pt-3 mb-4">
+                                                    {isFornecedor ? (
+                                                        <div className="text-sm text-gray-700 space-y-2">
+                                                            {parsedData.anosMercado && (
+                                                                <div>
+                                                                    <strong className="text-gray-800">Anos no mercado:</strong>
+                                                                    <p className="text-gray-600">{parsedData.anosMercado} anos</p>
+                                                                </div>
+                                                            )}
+                                                            {parsedData.oQueFabrica && (
+                                                                <div>
+                                                                    <strong className="text-gray-800">O que fabrica:</strong>
+                                                                    <p className="text-gray-600 line-clamp-2">{parsedData.oQueFabrica}</p>
+                                                                </div>
+                                                            )}
+                                                            {parsedData.canaisVendaAtuais && (
+                                                                <div>
+                                                                    <strong className="text-gray-800">Canais de venda:</strong>
+                                                                    <p className="text-gray-600 line-clamp-2">{parsedData.canaisVendaAtuais}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-sm text-gray-700 space-y-2">
+                                                            {parsedData.localAtuacao && (
+                                                                <div>
+                                                                    <strong className="text-gray-800">Área de atuação:</strong>
+                                                                    <p className="text-gray-600">{parsedData.localAtuacao}</p>
+                                                                </div>
+                                                            )}
+                                                            {parsedData.produtoRevender && (
+                                                                <div>
+                                                                    <strong className="text-gray-800">Produto a revender:</strong>
+                                                                    <p className="text-gray-600 line-clamp-2">{parsedData.produtoRevender}</p>
+                                                                </div>
+                                                            )}
+                                                            {parsedData.estrategiasVenda && (
+                                                                <div>
+                                                                    <strong className="text-gray-800">Estratégias de venda:</strong>
+                                                                    <p className="text-gray-600 line-clamp-2">{parsedData.estrategiasVenda}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex flex-col gap-2 mt-4">
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => handleAcceptPartnership(req.id)}
+                                                            className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                                                        >
+                                                            <CheckCircle size={16} />
+                                                            Aceitar
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleRejectPartnership(req.id)}
+                                                            className="flex-1 bg-red-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                                                        >
+                                                            <X size={16} />
+                                                            Recusar
+                                                        </button>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedUserForEmail({ email, name: nomeEmpresa })
+                                                            setEmailModalOpen(true)
+                                                        }}
+                                                        className="w-full bg-cyan-600 text-white px-3 py-2 rounded-lg hover:bg-cyan-700 transition-colors flex items-center justify-center gap-2 text-sm"
+                                                    >
+                                                        <Mail size={14} />
+                                                        Enviar Email
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {partnershipRequests.length === 0 && (
+                            <div className="mb-8 p-6 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 text-center">
+                                <Handshake className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                                <p className="text-gray-600 font-medium">Nenhuma solicitação pendente no momento</p>
+                                <p className="text-sm text-gray-500 mt-1">As novas solicitações da página de vendas aparecerão aqui</p>
                             </div>
                         )}
 

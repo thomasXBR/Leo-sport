@@ -68,22 +68,39 @@ export default function VendaNaLeoSportPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validar campos obrigatórios
+    if (activeForm === 'fornecedor') {
+      if (!formData.nomeEmpresa || !formData.email || !formData.anosMercado || !formData.oQueFabrica || !formData.canaisVendaAtuais) {
+        alert('Por favor, preencha todos os campos obrigatórios.')
+        return
+      }
+    } else {
+      if (!formData.email || !formData.localAtuacao || !formData.produtoRevender || !formData.estrategiasVenda) {
+        alert('Por favor, preencha todos os campos obrigatórios.')
+        return
+      }
+    }
+
     // Construir payload para supabase
     const payload: any = {
-      company_name: formData.nomeEmpresa || formData.nome || null,
-      contact_email: formData.email || null,
+      company_name: formData.nomeEmpresa || formData.nome || 'Não informado',
+      contact_email: formData.email,
       contact_phone: formData.telefone || null,
       status: 'Pendente',
       partnership_date: new Date().toISOString().split('T')[0],
       form_type: activeForm,
-      form_payload: JSON.stringify(formData),
+      form_payload: JSON.stringify({
+        ...formData,
+        activeForm, // Garantir que activeForm está no payload
+        submittedAt: new Date().toISOString()
+      }),
       // fallback: some schemas expect `notes` field — keep it for compatibility
-      notes: JSON.stringify(formData),
+      notes: `Solicitação de ${activeForm === 'fornecedor' ? 'Fornecedor' : 'Representante'} - ${new Date().toLocaleDateString('pt-BR')}`,
     }
 
     try {
       await createPartnership(payload)
-      alert(`Solicitação de ${activeForm === 'fornecedor' ? 'Fornecedor' : 'Representante'} enviada com sucesso! Entraremos em contato em breve.`)
+      alert(`✅ Solicitação de ${activeForm === 'fornecedor' ? 'Fornecedor' : 'Representante'} enviada com sucesso!\n\nNossa equipe entrará em contato em breve através do email ${formData.email}.`)
 
       // Limpar formulário
       setFormData({
@@ -98,9 +115,10 @@ export default function VendaNaLeoSportPage() {
         produtoRevender: '',
         estrategiasVenda: ''
       })
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao enviar solicitação de parceria:', err)
-      alert('Erro ao enviar solicitação. Tente novamente mais tarde.')
+      const errorMessage = err?.message || 'Erro desconhecido'
+      alert(`❌ Erro ao enviar solicitação: ${errorMessage}\n\nPor favor, tente novamente mais tarde ou entre em contato conosco.`)
     }
   };
 
@@ -196,6 +214,11 @@ export default function VendaNaLeoSportPage() {
             <p className="text-gray-600 text-center">
               {getContent('seller_form_subtitle', 'Preencha o formulário abaixo e nossa equipe entrará em contato')}
             </p>
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800 text-center">
+                <strong>ℹ️ Informação:</strong> Sua solicitação será analisada pela nossa equipe. Você receberá uma resposta por email em até 48 horas úteis.
+              </p>
+            </div>
 
             {/* Choice Chips */}
             <div className="flex justify-center mt-6">
