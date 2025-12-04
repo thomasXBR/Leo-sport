@@ -15,20 +15,17 @@ import { useCart } from '@/contexts/CartContext';
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, profile, signIn, signUp, signOut } = useAuth();
+  const { user, profile, signIn, signOut } = useAuth();
   const { cartCount, clearCart } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   // Form states
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const authDropdownRef = useRef<HTMLDivElement>(null);
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
@@ -53,38 +50,16 @@ export default function Header() {
         return;
       }
 
-      // Validação de confirmação de senha (apenas no cadastro)
-      if (isSignUp) {
-        if (!name || name.trim().length < 2) {
-          setError("O nome deve ter no mínimo 2 caracteres");
-          setLoading(false);
-          return;
-        }
-
-        if (password !== confirmPassword) {
-          setError("As senhas não coincidem");
-          setLoading(false);
-          return;
-        }
-      }
-
-      let result;
-      if (isSignUp) {
-        result = await signUp(email.trim(), password, name.trim());
-      } else {
-        result = await signIn(email.trim(), password);
-      }
+      const result = await signIn(email.trim(), password);
 
       if (result.error) {
         throw result.error;
       }
 
-      setSuccess(isSignUp ? "Cadastro realizado com sucesso!" : "Login realizado!");
+      setSuccess("Login realizado!");
       // Reset form
-      setName("");
       setEmail("");
       setPassword("");
-      setConfirmPassword("");
       setTimeout(() => {
         setIsAuthOpen(false);
         setSuccess("");
@@ -107,11 +82,6 @@ export default function Header() {
     }
   };
 
-  const toggleAuthMode = () => {
-    setIsSignUp(!isSignUp);
-    setError("");
-    setSuccess("");
-  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -234,7 +204,7 @@ export default function Header() {
               <div ref={authDropdownRef} className="absolute right-0 top-12 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-2xl border p-6 z-50">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold text-gray-900">
-                    {isSignUp ? "Criar Conta" : "Entrar"}
+                    Entrar
                   </h2>
                   <Button variant="ghost" size="sm" onClick={() => setIsAuthOpen(false)}>
                     <X className="w-4 h-4" />
@@ -242,20 +212,6 @@ export default function Header() {
                 </div>
 
                 <form onSubmit={handleAuthSubmit} className="space-y-4">
-                  {isSignUp && (
-                    <div>
-                      <Label htmlFor="name">Nome</Label>
-                      <Input
-                        id="name"
-                        type="text"
-                        required
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="mt-1"
-                      />
-                    </div>
-                  )}
-
                   <div>
                     <Label htmlFor="email">Email</Label>
                     <Input
@@ -274,7 +230,7 @@ export default function Header() {
                     <Input
                       id="password"
                       type="password"
-                      autoComplete={isSignUp ? "new-password" : "current-password"}
+                      autoComplete="current-password"
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -282,38 +238,12 @@ export default function Header() {
                     />
                   </div>
 
-                  {isSignUp && (
-                    <div>
-                      <Label htmlFor="confirmPassword">Confirmar Senha</Label>
-                      <Input
-                        id="confirmPassword"
-                        type="password"
-                        autoComplete="new-password"
-                        required
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="mt-1"
-                      />
-                    </div>
-                  )}
-
                   {error && <div className="text-red-600 text-sm">{error}</div>}
                   {success && <div className="text-green-600 text-sm">{success}</div>}
 
                   <Button type="submit" className="w-full bg-blue-900 hover:bg-blue-950" disabled={loading}>
-                    {loading ? (isSignUp ? "Cadastrando..." : "Entrando...") : (isSignUp ? "Cadastrar" : "Entrar")}
+                    {loading ? "Entrando..." : "Entrar"}
                   </Button>
-
-                  <div className="text-center text-sm">
-                    {isSignUp ? "Já tem uma conta?" : "Não tem uma conta?"}{' '}
-                    <button
-                      type="button"
-                      onClick={toggleAuthMode}
-                      className="text-blue-600 hover:underline font-medium"
-                    >
-                      {isSignUp ? "Entrar" : "Cadastre-se"}
-                    </button>
-                  </div>
                 </form>
               </div>
             )}
