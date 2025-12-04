@@ -70,22 +70,31 @@ export default function VendaNaLeoSportPage() {
 
     // Validar campos obrigatórios
     if (activeForm === 'fornecedor') {
-      if (!formData.nomeEmpresa || !formData.email || !formData.anosMercado || !formData.oQueFabrica || !formData.canaisVendaAtuais) {
-        alert('Por favor, preencha todos os campos obrigatórios.')
+      if (!formData.nomeEmpresa?.trim() || !formData.email?.trim() || !formData.anosMercado?.trim() || !formData.oQueFabrica?.trim() || !formData.canaisVendaAtuais?.trim()) {
+        alert('Por favor, preencha todos os campos obrigatórios marcados com (*).')
         return
       }
     } else {
-      if (!formData.email || !formData.localAtuacao || !formData.produtoRevender || !formData.estrategiasVenda) {
-        alert('Por favor, preencha todos os campos obrigatórios.')
+      if (!formData.email?.trim() || !formData.localAtuacao?.trim() || !formData.produtoRevender?.trim() || !formData.estrategiasVenda?.trim()) {
+        alert('Por favor, preencha todos os campos obrigatórios marcados com (*).')
         return
       }
     }
 
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.email.trim())) {
+      alert('Por favor, insira um email válido.')
+      return
+    }
+
     // Construir payload para supabase
     const payload: any = {
-      company_name: formData.nomeEmpresa || formData.nome || 'Não informado',
-      contact_email: formData.email,
-      contact_phone: formData.telefone || null,
+      company_name: activeForm === 'fornecedor' 
+        ? (formData.nomeEmpresa || 'Não informado')
+        : (formData.nome || formData.email.split('@')[0] || 'Não informado'),
+      contact_email: formData.email.trim(),
+      contact_phone: formData.telefone?.trim() || null,
       status: 'Pendente',
       partnership_date: new Date().toISOString().split('T')[0],
       form_type: activeForm,
@@ -246,9 +255,37 @@ export default function VendaNaLeoSportPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Campos comuns para ambos os tipos */}
+              <div className="border-b pb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Informações de Contato</h3>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  placeholder="seu@email.com"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="telefone">Telefone</Label>
+                <Input
+                  id="telefone"
+                  type="tel"
+                  value={formData.telefone}
+                  onChange={(e) => handleInputChange('telefone', e.target.value)}
+                  placeholder="(00) 00000-0000"
+                />
+              </div>
+
               {activeForm === 'fornecedor' ? (
                 <>
-                  <div className="border-b pb-6">
+                  <div className="border-b pb-6 mt-6">
                     <h3 className="text-lg font-semibold text-gray-900">Informações da Empresa</h3>
                   </div>
 
@@ -301,8 +338,18 @@ export default function VendaNaLeoSportPage() {
                 </>
               ) : (
                 <>
-                  <div className="border-b pb-6">
+                  <div className="border-b pb-6 mt-6">
                     <h3 className="text-lg font-semibold text-gray-900">Informações sobre a Atuação</h3>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="nome">Nome completo</Label>
+                    <Input
+                      id="nome"
+                      value={formData.nome}
+                      onChange={(e) => handleInputChange('nome', e.target.value)}
+                      placeholder="Seu nome completo"
+                    />
                   </div>
 
                   <div className="space-y-2">
