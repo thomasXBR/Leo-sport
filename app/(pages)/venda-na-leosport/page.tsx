@@ -103,10 +103,12 @@ export default function VendaNaLeoSportPage() {
     }
 
     // Construir payload para supabase com valores já validados
+    const companyName = activeForm === 'fornecedor' 
+      ? (formData.nomeEmpresa?.trim() || 'Não informado')
+      : (formData.nome?.trim() || emailTrimmed.split('@')[0] || 'Não informado')
+    
     const payload: any = {
-      company_name: activeForm === 'fornecedor' 
-        ? (formData.nomeEmpresa?.trim() || 'Não informado')
-        : (formData.nome?.trim() || emailTrimmed.split('@')[0] || 'Não informado'),
+      company_name: companyName,
       contact_email: emailTrimmed,
       contact_phone: formData.telefone?.trim() || null,
       status: 'Pendente',
@@ -121,9 +123,23 @@ export default function VendaNaLeoSportPage() {
       notes: `Solicitação de ${activeForm === 'fornecedor' ? 'Fornecedor' : 'Representante'} - ${new Date().toLocaleDateString('pt-BR')}`,
     }
 
+    // Validação final do payload antes de enviar
+    if (!payload.company_name || payload.company_name === 'Não informado') {
+      alert('Por favor, preencha o nome da empresa ou seu nome completo.')
+      return
+    }
+    
+    if (!payload.contact_email || !emailRegex.test(payload.contact_email)) {
+      alert('Por favor, insira um email válido.')
+      return
+    }
+
     try {
-      await createPartnership(payload)
-      alert(`✅ Solicitação de ${activeForm === 'fornecedor' ? 'Fornecedor' : 'Representante'} enviada com sucesso!\n\nNossa equipe entrará em contato em breve através do email ${formData.email}.`)
+      console.log('Enviando payload:', payload)
+      const result = await createPartnership(payload)
+      console.log('Parceria criada com sucesso:', result)
+      
+      alert(`✅ Solicitação de ${activeForm === 'fornecedor' ? 'Fornecedor' : 'Representante'} enviada com sucesso!\n\nNossa equipe entrará em contato em breve através do email ${emailTrimmed}.`)
 
       // Limpar formulário
       setFormData({
@@ -139,9 +155,38 @@ export default function VendaNaLeoSportPage() {
         estrategiasVenda: ''
       })
     } catch (err: any) {
-      console.error('Erro ao enviar solicitação de parceria:', err)
-      const errorMessage = err?.message || 'Erro desconhecido'
-      alert(`❌ Erro ao enviar solicitação: ${errorMessage}\n\nPor favor, tente novamente mais tarde ou entre em contato conosco.`)
+      console.error('Erro completo ao enviar solicitação de parceria:', err)
+      console.error('Detalhes do erro:', {
+        message: err?.message,
+        details: err?.details,
+        hint: err?.hint,
+        code: err?.code,
+        error: err
+      })
+      
+      // Extrair mensagem de erro mais detalhada
+      let errorMessage = 'Erro desconhecido ao enviar solicitação'
+      
+      if (err?.message) {
+        errorMessage = err.message
+      } else if (err?.details) {
+        errorMessage = err.details
+      } else if (err?.hint) {
+        errorMessage = err.hint
+      } else if (typeof err === 'string') {
+        errorMessage = err
+      }
+      
+      // Mensagens mais amigáveis para erros comuns
+      if (errorMessage.includes('null value') || errorMessage.includes('violates not-null constraint')) {
+        errorMessage = 'Alguns campos obrigatórios não foram preenchidos corretamente. Por favor, verifique todos os campos.'
+      } else if (errorMessage.includes('duplicate key') || errorMessage.includes('unique constraint')) {
+        errorMessage = 'Já existe uma solicitação com este email. Por favor, use outro email ou aguarde o processamento da solicitação anterior.'
+      } else if (errorMessage.includes('permission') || errorMessage.includes('RLS')) {
+        errorMessage = 'Erro de permissão. Por favor, verifique se você está logado ou entre em contato com o suporte.'
+      }
+      
+      alert(`❌ Erro ao enviar solicitação:\n\n${errorMessage}\n\nPor favor, verifique os dados e tente novamente. Se o problema persistir, entre em contato conosco.`)
     }
   };
 

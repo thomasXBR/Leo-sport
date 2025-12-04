@@ -725,13 +725,43 @@ export async function getPartnerships() {
 }
 
 export async function createPartnership(partnership: Omit<Partnership, 'id' | 'created_at' | 'updated_at'>) {
+  // Limpar campos undefined/null para evitar erros
+  const cleanPartnership = Object.fromEntries(
+    Object.entries(partnership).filter(([_, value]) => value !== undefined && value !== null)
+  ) as Omit<Partnership, 'id' | 'created_at' | 'updated_at'>;
+  
+  // Garantir que campos obrigatórios existam
+  if (!cleanPartnership.company_name) {
+    cleanPartnership.company_name = 'Não informado';
+  }
+  if (!cleanPartnership.contact_email) {
+    throw new Error('Email é obrigatório');
+  }
+  if (!cleanPartnership.status) {
+    cleanPartnership.status = 'Pendente';
+  }
+  if (!cleanPartnership.partnership_date) {
+    cleanPartnership.partnership_date = new Date().toISOString().split('T')[0];
+  }
+  
   const { data, error } = await supabase
     .from('partnerships')
-    .insert([partnership])
+    .insert([cleanPartnership])
     .select()
     .single();
   
-  if (error) throw error;
+  if (error) {
+    console.error('Erro ao criar parceria no Supabase:', {
+      error,
+      partnership: cleanPartnership,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code
+    });
+    throw error;
+  }
+  
   return data;
 }
 
