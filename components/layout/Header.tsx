@@ -174,6 +174,21 @@ export default function Header() {
   };
 
 
+  // Verificar se deve abrir o popup de cadastro ao carregar
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const authParam = urlParams.get('auth');
+      if (authParam === 'signup' && !user) {
+        setIsAuthOpen(true);
+        setAuthMode('signup');
+        // Limpar o parâmetro da URL
+        const cleanPath = pathname || '/inicio';
+        window.history.replaceState({}, '', cleanPath);
+      }
+    }
+  }, [user, pathname]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
