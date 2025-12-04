@@ -12,6 +12,9 @@ export type UserProfile = {
   avatar_url?: string;
   description?: string;
   user_type: 'comprador' | 'vendedor' | 'admin';
+  phone?: string;
+  accept_terms?: boolean;
+  consent_emails?: boolean;
   created_at: string;
   updated_at: string;
 };

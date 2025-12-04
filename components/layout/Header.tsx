@@ -244,6 +244,13 @@ export default function Header() {
                   <Button type="submit" className="w-full bg-blue-900 hover:bg-blue-950" disabled={loading}>
                     {loading ? "Entrando..." : "Entrar"}
                   </Button>
+
+                  <div className="text-center text-sm pt-2">
+                    <span className="text-gray-600">Não tem uma conta? </span>
+                    <Link href="/cadastro" className="text-blue-600 hover:underline font-medium">
+                      Cadastre-se
+                    </Link>
+                  </div>
                 </form>
               </div>
             )}
