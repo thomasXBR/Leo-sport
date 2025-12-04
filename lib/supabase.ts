@@ -59,10 +59,13 @@ export type Product = {
   stock_quantity: number;
   weight?: string;
   dimensions?: string;
+  width?: number;
+  height?: number;
   image_url?: string;
   color?: string;
   features?: string;
   specifications?: string;
+  relevance?: number;
   no_shipping?: boolean;
   devolution_months?: number;
   warranty_months?: number;
