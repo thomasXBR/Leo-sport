@@ -98,8 +98,8 @@ export default function VendaNaLeoSportPage() {
         produtoRevender: '',
         estrategiasVenda: ''
       })
-    } catch (err) {
-      console.error('Erro ao enviar solicitação de parceria:', err)
+    } catch (err: any) {
+      console.error('Erro ao enviar solicitação de parceria:', err?.message || String(err))
       alert('Erro ao enviar solicitação. Tente novamente mais tarde.')
     }
   };

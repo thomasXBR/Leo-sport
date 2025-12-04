@@ -1397,43 +1397,62 @@ export default function Dashboard() {
                             <div className="mb-6">
                                 <h3 className="text-xl font-semibold mb-4">Solicitações Pendentes de Parceria</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {partnershipRequests.map((req: any) => (
-                                        <div key={req.id} className="p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
-                                            <h4 className="font-semibold text-gray-800 mb-1">{req.nomeEmpresa || req.nome || 'Solicitação sem nome'}</h4>
-                                            <p className="text-sm text-gray-600 mb-1">Email: {req.email}</p>
-                                            <p className="text-sm text-gray-600 mb-2">Telefone: {req.telefone || '-'}</p>
-                                            <p className="text-xs text-gray-500 mb-2">Tipo: {req.activeForm === 'representante' ? 'Representante' : 'Fornecedor'}</p>
+                                    {partnershipRequests.map((req: any) => {
+                                        // Alguns formulários antigos gravavam campos com nomes PT-BR diretamente,
+                                        // enquanto a versão nova grava `company_name`, `contact_email` e `form_payload` (json/json-string).
+                                        // Aqui normalizamos os dados para exibir corretamente no dashboard.
+                                        let parsedPayload: any = null
+                                        try {
+                                            if (req.form_payload) {
+                                                parsedPayload = typeof req.form_payload === 'string' ? JSON.parse(req.form_payload) : req.form_payload
+                                            }
+                                        } catch (e) {
+                                            parsedPayload = null
+                                        }
 
-                                            {req.activeForm === 'fornecedor' ? (
-                                                <div className="text-sm text-gray-700 space-y-1">
-                                                    <p><strong>Anos no mercado:</strong> {req.anosMercado || '-'}</p>
-                                                    <p><strong>O que fabrica:</strong> {req.oQueFabrica || '-'}</p>
-                                                    <p><strong>Canais de venda:</strong> {req.canaisVendaAtuais || '-'}</p>
-                                                </div>
-                                            ) : (
-                                                <div className="text-sm text-gray-700 space-y-1">
-                                                    <p><strong>Área de atuação:</strong> {req.localAtuacao || '-'}</p>
-                                                    <p><strong>Produto a revender:</strong> {req.produtoRevender || '-'}</p>
-                                                    <p><strong>Estratégias de venda:</strong> {req.estrategiasVenda || '-'}</p>
-                                                </div>
-                                            )}
+                                        const displayName = req.company_name || parsedPayload?.nomeEmpresa || parsedPayload?.nome || req.nome || 'Solicitação sem nome'
+                                        const displayEmail = req.contact_email || parsedPayload?.email || req.email || '-'
+                                        const displayPhone = req.contact_phone || parsedPayload?.telefone || req.telefone || '-'
+                                        const formType = req.form_type || parsedPayload?.form_type || (parsedPayload && parsedPayload.localAtuacao ? 'representante' : 'fornecedor')
 
-                                            <div className="mt-4 flex gap-2">
-                                                <button
-                                                    onClick={() => handleAcceptPartnership(req.id)}
-                                                    className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-green-700"
-                                                >
-                                                    Aceitar Parceria
-                                                </button>
-                                                <button
-                                                    onClick={() => handleRejectPartnership(req.id)}
-                                                    className="flex-1 bg-red-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-red-700"
-                                                >
-                                                    Recusar Parceria
-                                                </button>
+                                        return (
+                                            <div key={req.id} className="p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
+                                                <h4 className="font-semibold text-gray-800 mb-1">{displayName}</h4>
+                                                <p className="text-sm text-gray-600 mb-1">Email: {displayEmail}</p>
+                                                <p className="text-sm text-gray-600 mb-2">Telefone: {displayPhone}</p>
+                                                <p className="text-xs text-gray-500 mb-2">Tipo: {formType === 'representante' ? 'Representante' : 'Fornecedor'}</p>
+
+                                                {formType === 'fornecedor' ? (
+                                                    <div className="text-sm text-gray-700 space-y-1">
+                                                        <p><strong>Anos no mercado:</strong> {parsedPayload?.anosMercado || parsedPayload?.anos || '-'}</p>
+                                                        <p><strong>O que fabrica:</strong> {parsedPayload?.oQueFabrica || parsedPayload?.oQueFabrica || '-'}</p>
+                                                        <p><strong>Canais de venda:</strong> {parsedPayload?.canaisVendaAtuais || '-'}</p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-sm text-gray-700 space-y-1">
+                                                        <p><strong>Área de atuação:</strong> {parsedPayload?.localAtuacao || '-'}</p>
+                                                        <p><strong>Produto a revender:</strong> {parsedPayload?.produtoRevender || '-'}</p>
+                                                        <p><strong>Estratégias de venda:</strong> {parsedPayload?.estrategiasVenda || '-'}</p>
+                                                    </div>
+                                                )}
+
+                                                <div className="mt-4 flex gap-2">
+                                                    <button
+                                                        onClick={() => handleAcceptPartnership(req.id)}
+                                                        className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-green-700"
+                                                    >
+                                                        Aceitar Parceria
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleRejectPartnership(req.id)}
+                                                        className="flex-1 bg-red-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-red-700"
+                                                    >
+                                                        Recusar Parceria
+                                                    </button>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        )
+                                    })}
                                 </div>
                             </div>
                         )}
