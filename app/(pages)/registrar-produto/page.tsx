@@ -27,7 +27,7 @@ export default function RegisterProductPage() {
   // Show form to authenticated admin users
   if (user && profile?.user_type === 'admin') {
     return (
-      <div className="min-h-screen bg-gray-50 py-12 px-4">
+      <div className="max-h-screen bg-gray-50 py-12 px-4">
         <ProductRegistrationForm
           onSuccess={() => {
             // Optionally handle success (e.g., show toast, redirect, etc.)
