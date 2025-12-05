@@ -126,6 +126,9 @@ export default function ProductsPage() {
   const [widthRange, setWidthRange] = useState<[number, number]>([0, 0]);
   const [heightRange, setHeightRange] = useState<[number, number]>([0, 0]);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 0]);
+  const [widthRangeInitialized, setWidthRangeInitialized] = useState(false);
+  const [heightRangeInitialized, setHeightRangeInitialized] = useState(false);
+  const [priceRangeInitialized, setPriceRangeInitialized] = useState(false);
   const [sortBy, setSortBy] = useState('relevance');
 
   // Para mostrar/esconder filtros em mobile
@@ -173,12 +176,18 @@ export default function ProductsPage() {
           const allWidths = prods.map((p) => parseFloat(p.width)).filter((v) => !isNaN(v));
           const allHeights = prods.map((p) => parseFloat(p.height)).filter((v) => !isNaN(v));
           const allPrices = prods.map((p) => p.price ?? 0).filter((v) => v > 0);
-          if (allWidths.length)
+          if (allWidths.length) {
             setWidthRange([Math.min(...allWidths), Math.max(...allWidths)]);
-          if (allHeights.length)
+            setWidthRangeInitialized(true);
+          }
+          if (allHeights.length) {
             setHeightRange([Math.min(...allHeights), Math.max(...allHeights)]);
-          if (allPrices.length)
+            setHeightRangeInitialized(true);
+          }
+          if (allPrices.length) {
             setPriceRange([Math.min(...allPrices), Math.max(...allPrices)]);
+            setPriceRangeInitialized(true);
+          }
         }
       } catch (error) {
         console.error('Erro ao carregar produtos (conexão/base?):', error);
@@ -242,32 +251,30 @@ export default function ProductsPage() {
     let matchesHeight = true;
     let matchesPrice = true;
     
-    if (
-      !isNaN(widthRange[0]) &&
-      !isNaN(widthRange[1]) &&
-      product.width !== ''
-    ) {
-      const w = parseFloat(product.width);
-      matchesWidth = isNaN(w)
-        ? true
-        : w >= widthRange[0] && w <= widthRange[1];
+    // Filtro de largura: só aplica se o range foi inicializado e o produto tem largura
+    if (widthRangeInitialized && !isNaN(widthRange[0]) && !isNaN(widthRange[1])) {
+      if (product.width !== '') {
+        const w = parseFloat(product.width);
+        matchesWidth = !isNaN(w) && w >= widthRange[0] && w <= widthRange[1];
+      } else {
+        // Se o produto não tem largura e o filtro está ativo, não mostrar
+        matchesWidth = false;
+      }
     }
-    if (
-      !isNaN(heightRange[0]) &&
-      !isNaN(heightRange[1]) &&
-      product.height !== ''
-    ) {
-      const h = parseFloat(product.height);
-      matchesHeight = isNaN(h)
-        ? true
-        : h >= heightRange[0] && h <= heightRange[1];
+    
+    // Filtro de altura: só aplica se o range foi inicializado e o produto tem altura
+    if (heightRangeInitialized && !isNaN(heightRange[0]) && !isNaN(heightRange[1])) {
+      if (product.height !== '') {
+        const h = parseFloat(product.height);
+        matchesHeight = !isNaN(h) && h >= heightRange[0] && h <= heightRange[1];
+      } else {
+        // Se o produto não tem altura e o filtro está ativo, não mostrar
+        matchesHeight = false;
+      }
     }
-    if (
-      !isNaN(priceRange[0]) &&
-      !isNaN(priceRange[1]) &&
-      priceRange[0] > 0 &&
-      priceRange[1] > 0
-    ) {
+    
+    // Filtro de preço: só aplica se o range foi inicializado
+    if (priceRangeInitialized && !isNaN(priceRange[0]) && !isNaN(priceRange[1])) {
       const p = product.price ?? 0;
       matchesPrice = p >= priceRange[0] && p <= priceRange[1];
     }
