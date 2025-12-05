@@ -49,29 +49,29 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
       ? ((initialData as any).features as string[]).join('\n')
       : typeof (initialData as any)?.features === 'string'
         ? (() => {
-            try {
-              const parsed = JSON.parse((initialData as any).features)
-              if (Array.isArray(parsed)) return parsed.join('\n')
-            } catch (e) {
-              // Se não for JSON, retorna como está
-            }
-            return (initialData as any).features ?? ''
-          })()
+          try {
+            const parsed = JSON.parse((initialData as any).features)
+            if (Array.isArray(parsed)) return parsed.join('\n')
+          } catch (e) {
+            // Se não for JSON, retorna como está
+          }
+          return (initialData as any).features ?? ''
+        })()
         : '',
     specifications: typeof (initialData as any)?.specifications === 'object' && (initialData as any)?.specifications && !Array.isArray((initialData as any)?.specifications)
       ? Object.entries((initialData as any).specifications).map(([k, v]) => `${k}: ${v}`).join('\n')
       : typeof (initialData as any)?.specifications === 'string'
         ? (() => {
-            try {
-              const parsed = JSON.parse((initialData as any).specifications)
-              if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-                return Object.entries(parsed).map(([k, v]) => `${k}: ${v}`).join('\n')
-              }
-            } catch (e) {
-              // Se não for JSON, retorna como está (já está no formato correto)
+          try {
+            const parsed = JSON.parse((initialData as any).specifications)
+            if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+              return Object.entries(parsed).map(([k, v]) => `${k}: ${v}`).join('\n')
             }
-            return (initialData as any).specifications ?? ''
-          })()
+          } catch (e) {
+            // Se não for JSON, retorna como está (já está no formato correto)
+          }
+          return (initialData as any).specifications ?? ''
+        })()
         : '',
     no_shipping: (initialData as any)?.no_shipping ?? false,
     devolution_months: (initialData as any)?.devolution_months ? String((initialData as any).devolution_months) : '1',
@@ -92,7 +92,7 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
           .from('categories')
           .select('id, name')
           .order('name', { ascending: true });
-        
+
         if (error) {
           console.error('Erro ao carregar categorias:', error);
           setSports([]);
@@ -173,7 +173,7 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
   const parseSpecifications = (specText: string): Record<string, string> => {
     const specs: Record<string, string> = {};
     if (!specText || !specText.trim()) return specs;
-    
+
     specText.split('\n').forEach((line) => {
       const trimmedLine = line.trim();
       if (trimmedLine) {
@@ -337,7 +337,7 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
   const discount = calculateDiscount();
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto p-6 bg-white rounded-lg shadow-lg ring-1 ring-gray-100 overflow-hidden">
+    <div className="w-full max-w-[1800px] mx-auto p-6 bg-white rounded-lg shadow-lg ring-1 ring-gray-100 overflow-hidden">
       <h1 className="text-3xl font-bold text-gray-900 mb-1">{productId ? 'Editar Produto' : 'Registrar Produto'}</h1>
       <p className="text-sm text-gray-600 mb-6">{productId ? 'Atualize os campos do produto e salve as alterações' : 'Preencha os campos obrigatórios para adicionar um produto'}</p>
       <form onSubmit={handleSubmit} className="space-y-6 max-h-[80vh] overflow-y-auto pr-4">
