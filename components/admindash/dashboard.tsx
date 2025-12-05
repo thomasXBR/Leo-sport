@@ -1,5 +1,6 @@
 'use client'
 
+
 import { useState, useEffect, useRef } from 'react'
 import { Bar } from 'react-chartjs-2'
 import {
@@ -11,7 +12,7 @@ import {
     Tooltip,
     Legend,
 } from 'chart.js'
-import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload, Loader2, ChevronLeft, ChevronRight, ShoppingCart, Package, DollarSign } from 'lucide-react'
+import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload, Loader2, ChevronLeft, ChevronRight, ShoppingCart, Package, DollarSign, Image as ImageIcon, Mail, Menu, X as XIcon, ChevronRight as ChevronRightIcon, CheckCircle, Calendar } from 'lucide-react'
 import Image from 'next/image'
 import ProductRegistrationForm from '@/components/forms/ProductRegistrationForm'
 import {
@@ -34,12 +35,14 @@ import {
 import {
     getProducts, createProduct, updateProduct, deleteProduct,
     getInventoryItems, createInventoryMovement, deleteInventoryMovement,
-    getSales, getSalesDataForChart,
+    getSales, getSalesDataForChart, getSalesWithItems, getSaleById,
     getInvoices, createInvoice, updateInvoice, deleteInvoice,
     getPartnerships, createPartnership, updatePartnership, deletePartnership,
     getCoupons, createCoupon, updateCoupon, deleteCoupon,
     getSiteContent, updateSiteContent, getFAQs, createFAQ, updateFAQ, deleteFAQ, getPurchases, createPurchase, updatePurchase, deletePurchase,
-    type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent, type FAQ, type Purchase,
+    getSiteImages, createSiteImage, updateSiteImage, deleteSiteImage,
+    getAllUsers, getAllUserCarts, getAllSaleItems,
+    type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent, type FAQ, type Purchase, type SiteImage,
 } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
 
@@ -97,6 +100,430 @@ const FAQForm = ({ initialData, onSave, onCancel }: { initialData: any, onSave: 
         </form>
     )
 }
+// Componente de Formulário de Cupom
+const CouponForm = ({ initialData, onSave, onCancel }: { initialData: any, onSave: (data: any) => void, onCancel: () => void }) => {
+    const [code, setCode] = useState(initialData?.code || '')
+    const [description, setDescription] = useState(initialData?.description || '')
+    const [carouselText, setCarouselText] = useState(initialData?.carousel_text || '')
+    const [discountType, setDiscountType] = useState<'Percentual' | 'Fixo' | 'Especial'>(initialData?.discount_type || 'Percentual')
+    const [discountValue, setDiscountValue] = useState(initialData?.discount_value || '')
+    const [validFrom, setValidFrom] = useState(initialData?.valid_from || new Date().toISOString().split('T')[0])
+    const [validUntil, setValidUntil] = useState(initialData?.valid_until || '')
+    const [usageLimit, setUsageLimit] = useState<string>(initialData?.usage_limit ? String(initialData.usage_limit) : '')
+    const [minPurchaseAmount, setMinPurchaseAmount] = useState<string>(initialData?.min_purchase_amount ? String(initialData.min_purchase_amount) : '')
+    const [status, setStatus] = useState<'Ativo' | 'Inativo' | 'Expirado'>(initialData?.status || 'Ativo')
+    const [showInNavbar, setShowInNavbar] = useState(initialData?.show_in_navbar || false)
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        onSave({
+            code,
+            description,
+            carousel_text: carouselText,
+            discount_type: discountType,
+            discount_value: discountValue,
+            valid_from: validFrom,
+            valid_until: validUntil,
+            usage_limit: usageLimit ? parseInt(usageLimit) : undefined,
+            min_purchase_amount: minPurchaseAmount ? parseFloat(minPurchaseAmount) : undefined,
+            status,
+            show_in_navbar: showInNavbar,
+        })
+    }
+
+    return (
+        <form onSubmit={handleSubmit}>
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Código do Cupom *</label>
+                    <input
+                        type="text"
+                        value={code}
+                        onChange={(e) => setCode(e.target.value.toUpperCase())}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        required
+                        placeholder="EX: DESCONTO10"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Descrição</label>
+                    <textarea
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 h-20"
+                        placeholder="Descrição do cupom (opcional)"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Texto do Carrossel *</label>
+                    <input
+                        type="text"
+                        value={carouselText}
+                        onChange={(e) => setCarouselText(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        required
+                        placeholder="Ex: 🎉 Use o cupom DESCONTO10 e ganhe 10% OFF!"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">Este texto será exibido no carrossel do topo do site</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Tipo de Desconto *</label>
+                        <select
+                            value={discountType}
+                            onChange={(e) => setDiscountType(e.target.value as 'Percentual' | 'Fixo' | 'Especial')}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                        >
+                            <option value="Percentual">Percentual (%)</option>
+                            <option value="Fixo">Valor Fixo (R$)</option>
+                            <option value="Especial">Especial</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Valor do Desconto *</label>
+                        <input
+                            type="text"
+                            value={discountValue}
+                            onChange={(e) => setDiscountValue(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                            placeholder={discountType === 'Percentual' ? 'Ex: 10' : 'Ex: 50.00'}
+                        />
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Válido de *</label>
+                        <input
+                            type="date"
+                            value={validFrom}
+                            onChange={(e) => setValidFrom(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Válido até *</label>
+                        <input
+                            type="date"
+                            value={validUntil}
+                            onChange={(e) => setValidUntil(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                        />
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Limite de Uso</label>
+                        <input
+                            type="number"
+                            value={usageLimit}
+                            onChange={(e) => setUsageLimit(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            placeholder="Ex: 100 (opcional)"
+                            min="1"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Valor Mínimo de Compra (R$)</label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            value={minPurchaseAmount}
+                            onChange={(e) => setMinPurchaseAmount(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            placeholder="Ex: 100.00 (opcional)"
+                            min="0"
+                        />
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Status *</label>
+                        <select
+                            value={status}
+                            onChange={(e) => setStatus(e.target.value as 'Ativo' | 'Inativo' | 'Expirado')}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                        >
+                            <option value="Ativo">Ativo</option>
+                            <option value="Inativo">Inativo</option>
+                            <option value="Expirado">Expirado</option>
+                        </select>
+                    </div>
+                    <div className="flex items-end">
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={showInNavbar}
+                                onChange={(e) => setShowInNavbar(e.target.checked)}
+                                className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Exibir no Carrossel</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <DialogFooter className="mt-6">
+                <button type="button" onClick={onCancel} className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400">
+                    Cancelar
+                </button>
+                <button type="submit" className="bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700">
+                    <Save size={20} className="inline mr-2" /> Salvar
+                </button>
+            </DialogFooter>
+        </form>
+    )
+}
+
+// Componente de Formulário de Nota Fiscal
+const InvoiceForm = ({ initialData, onSave, onCancel }: { initialData: any, onSave: (data: any) => void, onCancel: () => void }) => {
+    const [invoiceNumber, setInvoiceNumber] = useState(initialData?.invoice_number || '')
+    const [orderId, setOrderId] = useState(initialData?.order_id || '')
+    const [customerName, setCustomerName] = useState(initialData?.customer_name || '')
+    const [customerEmail, setCustomerEmail] = useState(initialData?.customer_email || '')
+    const [customerCpfCnpj, setCustomerCpfCnpj] = useState(initialData?.customer_cpf_cnpj || '')
+    const [totalAmount, setTotalAmount] = useState<string>(initialData?.total_amount ? String(initialData.total_amount) : '')
+    const [status, setStatus] = useState<'Pendente' | 'Emitida' | 'Cancelada' | 'Rejeitada'>(initialData?.status || 'Pendente')
+    const [issueDate, setIssueDate] = useState(initialData?.issue_date || new Date().toISOString().split('T')[0])
+    const [dueDate, setDueDate] = useState(initialData?.due_date || '')
+    const [notes, setNotes] = useState(initialData?.notes || '')
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        onSave({
+            invoice_number: invoiceNumber,
+            order_id: orderId || undefined,
+            customer_name: customerName,
+            customer_email: customerEmail || undefined,
+            customer_cpf_cnpj: customerCpfCnpj || undefined,
+            total_amount: parseFloat(totalAmount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0,
+            status,
+            issue_date: issueDate,
+            due_date: dueDate || undefined,
+            notes: notes || undefined,
+        })
+    }
+
+    return (
+        <form onSubmit={handleSubmit}>
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Número da Nota Fiscal *</label>
+                    <input
+                        type="text"
+                        value={invoiceNumber}
+                        onChange={(e) => setInvoiceNumber(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        required
+                        placeholder="Ex: NF001234"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">ID do Pedido</label>
+                    <input
+                        type="text"
+                        value={orderId}
+                        onChange={(e) => setOrderId(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        placeholder="ID do pedido relacionado (opcional)"
+                    />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Nome do Cliente *</label>
+                        <input
+                            type="text"
+                            value={customerName}
+                            onChange={(e) => setCustomerName(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Email do Cliente</label>
+                        <input
+                            type="email"
+                            value={customerEmail}
+                            onChange={(e) => setCustomerEmail(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            placeholder="cliente@email.com"
+                        />
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">CPF/CNPJ</label>
+                    <input
+                        type="text"
+                        value={customerCpfCnpj}
+                        onChange={(e) => setCustomerCpfCnpj(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                    />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Valor Total (R$) *</label>
+                        <input
+                            type="text"
+                            value={totalAmount}
+                            onChange={(e) => setTotalAmount(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                            placeholder="0.00"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Status *</label>
+                        <select
+                            value={status}
+                            onChange={(e) => setStatus(e.target.value as 'Pendente' | 'Emitida' | 'Cancelada' | 'Rejeitada')}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                        >
+                            <option value="Pendente">Pendente</option>
+                            <option value="Emitida">Emitida</option>
+                            <option value="Cancelada">Cancelada</option>
+                            <option value="Rejeitada">Rejeitada</option>
+                        </select>
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Data de Emissão *</label>
+                        <input
+                            type="date"
+                            value={issueDate}
+                            onChange={(e) => setIssueDate(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Data de Vencimento</label>
+                        <input
+                            type="date"
+                            value={dueDate}
+                            onChange={(e) => setDueDate(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        />
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Observações</label>
+                    <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 h-20"
+                        placeholder="Observações adicionais (opcional)"
+                    />
+                </div>
+            </div>
+            <DialogFooter className="mt-6">
+                <button type="button" onClick={onCancel} className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400">
+                    Cancelar
+                </button>
+                <button type="submit" className="bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700">
+                    <Save size={20} className="inline mr-2" /> Salvar
+                </button>
+            </DialogFooter>
+        </form>
+    )
+}
+
+// Componente de Formulário de Email
+const EmailForm = ({ recipient, recipientName, onSend, onCancel }: { recipient: string, recipientName: string, onSend: (to: string, subject: string, message: string) => void, onCancel: () => void }) => {
+    const [subject, setSubject] = useState('')
+    const [message, setMessage] = useState('')
+    const [sending, setSending] = useState(false)
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!subject || !message) {
+            alert('Por favor, preencha todos os campos.')
+            return
+        }
+
+        setSending(true)
+        try {
+            await onSend(recipient, subject, message)
+            setSubject('')
+            setMessage('')
+        } catch (error) {
+            // Erro já tratado na função handleSendEmail
+        } finally {
+            setSending(false)
+        }
+    }
+
+    return (
+        <form onSubmit={handleSubmit}>
+            <div className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Para</label>
+                    <input
+                        type="email"
+                        value={recipient}
+                        disabled
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-100"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Nome: {recipientName}</p>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Assunto *</label>
+                    <input
+                        type="text"
+                        value={subject}
+                        onChange={(e) => setSubject(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        required
+                        placeholder="Assunto do email"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Mensagem *</label>
+                    <textarea
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 h-48"
+                        required
+                        placeholder="Digite sua mensagem aqui..."
+                    />
+                </div>
+            </div>
+            <DialogFooter className="mt-6">
+                <button
+                    type="button"
+                    onClick={onCancel}
+                    className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400"
+                    disabled={sending}
+                >
+                    Cancelar
+                </button>
+                <button
+                    type="submit"
+                    className="bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 flex items-center gap-2"
+                    disabled={sending}
+                >
+                    {sending ? (
+                        <>
+                            <Loader2 className="animate-spin" size={16} />
+                            Enviando...
+                        </>
+                    ) : (
+                        <>
+                            <Mail size={16} />
+                            Enviar Email
+                        </>
+                    )}
+                </button>
+            </DialogFooter>
+        </form>
+    )
+}
+
 // Componente de Formulário de Compras (Placeholder)
 const PurchaseForm = ({ initialData, onSave, onCancel }: { initialData: any, onSave: (data: any) => void, onCancel: () => void }) => {
     const [supplier, setSupplier] = useState(initialData?.supplier_name || '')
@@ -154,10 +581,22 @@ export default function Dashboard() {
     const [sales, setSales] = useState<any[]>([])
     const [invoices, setInvoices] = useState<Invoice[]>([])
     const [partnersList, setPartnersList] = useState<Partnership[]>([])
+    // Requests submitted via the public "venda-na-leosport" form
+    // These are partnership applications pending admin review
+    const [partnershipRequests, setPartnershipRequests] = useState<any[]>([])
     const [coupons, setCoupons] = useState<Coupon[]>([])
     const [siteContent, setSiteContent] = useState<SupabaseSiteContent[]>([])
     const [faqs, setFaqs] = useState<FAQ[]>([])
     const [purchases, setPurchases] = useState<Purchase[]>([])
+    const [siteImages, setSiteImages] = useState<SiteImage[]>([])
+    const [users, setUsers] = useState<any[]>([])
+    const [salesWithItems, setSalesWithItems] = useState<any[]>([])
+    const [userCarts, setUserCarts] = useState<any[]>([])
+    const [purchasedItems, setPurchasedItems] = useState<any[]>([])
+    const [sidebarOpen, setSidebarOpen] = useState(true)
+    const [emailModalOpen, setEmailModalOpen] = useState(false)
+    const [selectedUserForEmail, setSelectedUserForEmail] = useState<any>(null)
+    const [filterAcceptedTerms, setFilterAcceptedTerms] = useState(false)
     
     const FAQS_PER_PAGE = 2
     const [currentPage, setCurrentPage] = useState(1)
@@ -167,6 +606,15 @@ export default function Dashboard() {
         (currentPage - 1) * FAQS_PER_PAGE,
         currentPage * FAQS_PER_PAGE
     )
+
+    // Ajusta a página atual caso a lista de FAQs mude (ex.: exclusão/adição)
+    useEffect(() => {
+        if (calculatedTotalPages === 0) {
+            setCurrentPage(1)
+        } else if (currentPage > calculatedTotalPages) {
+            setCurrentPage(calculatedTotalPages)
+        }
+    }, [faqs, calculatedTotalPages])
 
     const [salesData, setSalesData] = useState({
         labels: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho'],
@@ -178,6 +626,45 @@ export default function Dashboard() {
         }],
     })
 
+    // Accept a pending partnership request: update status to 'Ativo' in Supabase
+    const handleAcceptPartnership = async (requestId: string) => {
+        const partnership = partnershipRequests.find((p: any) => p.id === requestId)
+        const partnershipName = partnership?.company_name || partnership?.nomeEmpresa || 'Esta parceria'
+        
+        if (!confirm(`Tem certeza que deseja ACEITAR a solicitação de parceria de "${partnershipName}"?`)) {
+            return
+        }
+
+        try {
+            await updatePartnership(requestId, { status: 'Ativo' })
+            // Recarregar dados para manter sincronização
+            await loadAllData()
+            alert(`Parceria de "${partnershipName}" aceita e ativada com sucesso!`)
+        } catch (err) {
+            console.error('Erro ao aceitar parceria:', err)
+            alert('Erro ao aceitar parceria. Confira o console.')
+        }
+    }
+
+    // Reject a pending partnership request: marcar como 'Inativo' (ou usar deletePartnership conforme sua política)
+    const handleRejectPartnership = async (requestId: string) => {
+        const partnership = partnershipRequests.find((p: any) => p.id === requestId)
+        const partnershipName = partnership?.company_name || partnership?.nomeEmpresa || 'Esta parceria'
+        
+        if (!confirm(`Tem certeza que deseja RECUSAR a solicitação de parceria de "${partnershipName}"? Esta ação pode ser revertida depois.`)) {
+            return
+        }
+
+        try {
+            await updatePartnership(requestId, { status: 'Inativo' })
+            await loadAllData()
+            alert(`Solicitação de parceria de "${partnershipName}" foi recusada.`)
+        } catch (err) {
+            console.error('Erro ao recusar parceria:', err)
+            alert('Erro ao recusar parceria. Confira o console.')
+        }
+    }
+
     // Estados dos modais
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [modalType, setModalType] = useState<'invoice' | 'partner' | 'coupon' | 'product' | 'inventory' | 'faq' | 'purchase' | null>(null)
@@ -186,7 +673,11 @@ export default function Dashboard() {
     const [itemToDelete, setItemToDelete] = useState<{ type: string; id: string; name: string } | null>(null)
     const fileInputRef = useRef<HTMLInputElement | null>(null)
     const [uploadingPurchaseId, setUploadingPurchaseId] = useState<string | null>(null)
+    const [uploadingInvoiceId, setUploadingInvoiceId] = useState<string | null>(null)
+    const [uploadingFileType, setUploadingFileType] = useState<'purchase' | 'invoice' | 'site-image' | null>(null)
     const [uploading, setUploading] = useState(false)
+    const [uploadingImageId, setUploadingImageId] = useState<string | null>(null)
+    const imageInputRef = useRef<HTMLInputElement | null>(null)
 
     const chartOptions = {
         responsive: true,
@@ -197,31 +688,53 @@ export default function Dashboard() {
         },
     }
 
-    const openFileSelector = (purchaseId: string) => {
-        setUploadingPurchaseId(purchaseId)
+    const openFileSelector = (id: string, type: 'purchase' | 'invoice' | 'site-image') => {
+        if (type === 'purchase') {
+            setUploadingPurchaseId(id)
+        } else if (type === 'invoice') {
+            setUploadingInvoiceId(id)
+        } else if (type === 'site-image') {
+            setUploadingImageId(id)
+        }
+        setUploadingFileType(type)
         // trigger native file selector
-        fileInputRef.current?.click()
+        if (type === 'site-image') {
+            imageInputRef.current?.click()
+        } else {
+            fileInputRef.current?.click()
+        }
     }
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         const purchaseId = uploadingPurchaseId
-        if (!file || !purchaseId) return
+        const invoiceId = uploadingInvoiceId
+        const fileType = uploadingFileType
+        if (!file || (!purchaseId && !invoiceId) || !fileType || fileType === 'site-image') return
         setUploading(true)
         try {
-            // Upload to Supabase Storage - ensure you have a bucket named 'purchases-pdfs'
-            const path = `purchases/${purchaseId}/${Date.now()}_${file.name}`
-            const { error: uploadError } = await supabase.storage.from('purchases-pdfs').upload(path, file, { upsert: true })
+            const id = fileType === 'purchase' ? purchaseId : invoiceId
+            if (!id) return
+
+            // Upload to Supabase Storage
+            const bucketName = fileType === 'purchase' ? 'purchases-pdfs' : 'invoices-pdfs'
+            const folderName = fileType === 'purchase' ? 'purchases' : 'invoices'
+            const path = `${folderName}/${id}/${Date.now()}_${file.name}`
+            const { error: uploadError } = await supabase.storage.from(bucketName).upload(path, file, { upsert: true })
             if (uploadError) throw uploadError
 
             // Get public URL (or use createSignedUrl for private buckets)
-            const { data: urlData } = supabase.storage.from('purchases-pdfs').getPublicUrl(path)
+            const { data: urlData } = supabase.storage.from(bucketName).getPublicUrl(path)
             const publicUrl = urlData.publicUrl
 
-            // Save URL on purchase record (updatePurchase accepts partial)
-            await updatePurchase(purchaseId, { pdf_url: publicUrl } as any)
+            // Save URL on record
+            if (fileType === 'purchase') {
+                await updatePurchase(id, { pdf_url: publicUrl } as any)
+            } else {
+                await updateInvoice(id, { pdf_url: publicUrl } as any)
+            }
 
-            // Reload purchases
+            // Reload data
             await loadAllData()
             alert('PDF anexado com sucesso.')
         } catch (err) {
@@ -230,7 +743,67 @@ export default function Dashboard() {
         } finally {
             setUploading(false)
             setUploadingPurchaseId(null)
+            setUploadingInvoiceId(null)
+            setUploadingFileType(null)
             if (fileInputRef.current) fileInputRef.current.value = ''
+        }
+    }
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        const imageId = uploadingImageId
+        if (!file || !imageId || uploadingFileType !== 'site-image') return
+        
+        // Validar tipo de arquivo
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+        if (!validTypes.includes(file.type)) {
+            alert('Por favor, selecione uma imagem válida (JPG, PNG ou WEBP)')
+            return
+        }
+
+        // Validar tamanho (máximo 5MB)
+        const maxSize = 5 * 1024 * 1024 // 5MB
+        if (file.size > maxSize) {
+            alert('A imagem deve ter no máximo 5MB')
+            return
+        }
+
+        setUploading(true)
+        try {
+            // Upload to Supabase Storage
+            const bucketName = 'site-images'
+            const imageRecord = siteImages.find(img => img.id === imageId)
+            const fileName = imageRecord ? `${imageRecord.image_key}_${Date.now()}.${file.name.split('.').pop()}` : `${Date.now()}_${file.name}`
+            const path = `images/${fileName}`
+            
+            const { error: uploadError } = await supabase.storage.from(bucketName).upload(path, file, { 
+                upsert: true,
+                cacheControl: '3600'
+            })
+            if (uploadError) throw uploadError
+
+            // Get public URL
+            const { data: urlData } = supabase.storage.from(bucketName).getPublicUrl(path)
+            const publicUrl = urlData.publicUrl
+
+            // Update image record
+            await updateSiteImage(imageId, { image_url: publicUrl })
+
+            // Reload data
+            await loadAllData()
+            alert('Imagem enviada com sucesso!')
+        } catch (err: any) {
+            console.error('Erro ao enviar imagem:', err)
+            if (err.message?.includes('Bucket not found')) {
+                alert('Erro: O bucket "site-images" não existe. Por favor, crie-o no Supabase Dashboard > Storage.')
+            } else {
+                alert('Erro ao enviar imagem. Verifique o console.')
+            }
+        } finally {
+            setUploading(false)
+            setUploadingImageId(null)
+            setUploadingFileType(null)
+            if (imageInputRef.current) imageInputRef.current.value = ''
         }
     }
 
@@ -242,7 +815,7 @@ export default function Dashboard() {
     async function loadAllData() {
         try {
             setLoading(true)
-            const [productsData, inventoryData, salesData, invoicesData, partnersData, couponsData, contentData, faqsData, purchasesData] = await Promise.all([
+            const [productsData, inventoryData, salesData, invoicesData, partnersData, couponsData, contentData, faqsData, purchasesData, imagesData, usersData, salesWithItemsData, userCartsData, purchasedItemsData] = await Promise.all([
                 getProducts().catch(() => []),
                 getInventoryItems().catch(() => []),
                 getSales().catch(() => []),
@@ -252,17 +825,39 @@ export default function Dashboard() {
                 getSiteContent().catch(() => []),
                 getFAQs().catch(() => []),
                 getPurchases().catch(() => []),
+                getSiteImages().catch(() => []),
+                getAllUsers().catch(() => []),
+                getSalesWithItems().catch(() => []),
+                getAllUserCarts().catch(() => []),
+                getAllSaleItems().catch(() => []),
             ])
 
             setProducts(productsData || [])
             setInventoryItems(inventoryData || [])
             setSales(salesData || [])
             setInvoices(invoicesData || [])
-            setPartnersList(partnersData || [])
+            // Separar solicitações pendentes das parcerias ativas/inativas
+            const allPartners = partnersData || []
+            // Filtrar por status 'Pendente' e ordenar por data de criação (mais recentes primeiro)
+            const pending = (allPartners || [])
+                .filter((p: any) => p.status === 'Pendente')
+                .sort((a: any, b: any) => {
+                    const dateA = new Date(a.created_at || 0).getTime()
+                    const dateB = new Date(b.created_at || 0).getTime()
+                    return dateB - dateA // Mais recentes primeiro
+                })
+            const others = allPartners.filter((p: any) => p.status !== 'Pendente')
+            setPartnershipRequests(pending || [])
+            setPartnersList(others || [])
             setCoupons(couponsData || [])
             setSiteContent(contentData || [])
             setFaqs(faqsData || [])
-             setPurchases(purchasesData || [])
+            setPurchases(purchasesData || [])
+            setSiteImages(imagesData || [])
+            setUsers(usersData || [])
+            setSalesWithItems(salesWithItemsData || [])
+            setUserCarts(userCartsData || [])
+            setPurchasedItems(purchasedItemsData || [])
 
             // Carregar dados do gráfico
             const chartSalesData = await getSalesDataForChart().catch(() => [])
@@ -372,6 +967,10 @@ export default function Dashboard() {
                     await deleteFAQ(itemToDelete.id)
                     loadAllData() // Recarregar para atualizar a lista
                     break
+                case 'site-image':
+                    await deleteSiteImage(itemToDelete.id)
+                    loadAllData() // Recarregar para atualizar a lista
+                    break
             }
             setDeleteDialogOpen(false)
             setItemToDelete(null)
@@ -387,15 +986,20 @@ export default function Dashboard() {
                 await updateInvoice(editingItem.id, formData)
                 setInvoices(invoices.map(i => i.id === editingItem.id ? { ...i, ...formData } : i))
             } else {
-                const invoiceNumber = `NF${Date.now().toString().slice(-6)}`
+                const invoiceNumber = formData.invoice_number || `NF${Date.now().toString().slice(-6)}`
                 const newInvoice = await createInvoice({
                     invoice_number: invoiceNumber,
                     order_id: formData.order_id || '',
                     customer_name: formData.customer_name,
                     customer_email: formData.customer_email || '',
-                    total_amount: parseFloat(formData.total_amount.toString().replace(/[^\d.,]/g, '').replace(',', '.')) || 0,
+                    customer_cpf_cnpj: formData.customer_cpf_cnpj || undefined,
+                    total_amount: typeof formData.total_amount === 'string' 
+                        ? parseFloat(formData.total_amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0
+                        : formData.total_amount || 0,
                     status: formData.status || 'Pendente',
                     issue_date: formData.issue_date || new Date().toISOString().split('T')[0],
+                    due_date: formData.due_date || undefined,
+                    notes: formData.notes || undefined,
                 })
                 setInvoices([newInvoice, ...invoices])
             }
@@ -413,6 +1017,7 @@ export default function Dashboard() {
             const couponData: any = {
                 code: formData.code,
                 description: formData.description || undefined,
+                carousel_text: formData.carousel_text || undefined,
                 discount_type: formData.discount_type,
                 discount_value: formData.discount_value,
                 valid_from: formData.valid_from || new Date().toISOString().split('T')[0],
@@ -430,7 +1035,7 @@ export default function Dashboard() {
                 if (formData.show_in_navbar !== undefined) {
                     couponData.show_in_navbar = formData.show_in_navbar
                 }
-                const updatedCoupon = await updateCoupon(editingItem.id, couponData)
+                await updateCoupon(editingItem.id, couponData)
                 // Recarregar dados do Supabase para garantir sincronização
                 const updatedCoupons = await getCoupons()
                 setCoupons(updatedCoupons || [])
@@ -445,7 +1050,7 @@ export default function Dashboard() {
                 if (formData.show_in_navbar !== undefined) {
                     newCouponData.show_in_navbar = formData.show_in_navbar
                 }
-                const newCoupon = await createCoupon(newCouponData)
+                await createCoupon(newCouponData)
                 // Recarregar dados do Supabase para garantir sincronização
                 const updatedCoupons = await getCoupons()
                 setCoupons(updatedCoupons || [])
@@ -514,6 +1119,7 @@ export default function Dashboard() {
         try {
             await updateSiteContent(id, value)
             setSiteContent(siteContent.map(c => c.id === id ? { ...c, value } : c))
+            alert('Texto salvo com sucesso! As alterações serão visíveis após recarregar a página.')
         } catch (error) {
             console.error('Erro ao salvar conteúdo:', error)
             alert('Erro ao salvar. Tente novamente.')
@@ -526,7 +1132,10 @@ export default function Dashboard() {
                 updateSiteContent(content.id, content.value)
             )
             await Promise.all(updates)
-            alert('Todas as alterações foram salvas!')
+            // Recarregar dados do Supabase para garantir sincronização
+            const updatedContent = await getSiteContent()
+            setSiteContent(updatedContent || [])
+            alert('Todas as alterações foram salvas com sucesso! As alterações serão visíveis após recarregar a página.')
         } catch (error) {
             console.error('Erro ao salvar conteúdo:', error)
             alert('Erro ao salvar. Tente novamente.')
@@ -552,6 +1161,43 @@ export default function Dashboard() {
         } catch (error) {
             console.error('Erro ao salvar FAQ:', error)
             alert('Erro ao salvar FAQ. Tente novamente.')
+        }
+    }
+
+    const handleSendEmail = async (to: string, subject: string, message: string) => {
+        try {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session) {
+                alert('Sessão expirada. Por favor, faça login novamente.')
+                return
+            }
+
+            const response = await fetch('/api/email/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({
+                    to,
+                    subject,
+                    message,
+                    html: `<p>${message.replace(/\n/g, '<br>')}</p>`,
+                }),
+            })
+
+            const result = await response.json()
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Erro ao enviar email')
+            }
+
+            alert('Email enviado com sucesso!')
+            setEmailModalOpen(false)
+            setSelectedUserForEmail(null)
+        } catch (error: any) {
+            console.error('Erro ao enviar email:', error)
+            alert(error.message || 'Erro ao enviar email. Tente novamente.')
         }
     }
 
@@ -581,13 +1227,23 @@ export default function Dashboard() {
                 break
             case 'invoice':
                 modalTitle = isEdit ? 'Editar Nota Fiscal' : 'Emitir Nova Nota Fiscal'
-                // Aqui você precisaria de um componente InvoiceForm
-                modalContent = <p>Formulário de Nota Fiscal Pendente</p> 
+                modalContent = (
+                    <InvoiceForm
+                        initialData={editingItem}
+                        onSave={handleSaveInvoice}
+                        onCancel={closeModal}
+                    />
+                )
                 break
             case 'coupon':
                 modalTitle = isEdit ? 'Editar Cupom' : 'Adicionar Novo Cupom'
-                // Aqui você precisaria de um componente CouponForm
-                modalContent = <p>Formulário de Cupom Pendente</p>
+                modalContent = (
+                    <CouponForm
+                        initialData={editingItem}
+                        onSave={handleSaveCoupon}
+                        onCancel={closeModal}
+                    />
+                )
                 break
             case 'product':
                 modalTitle = isEdit ? 'Editar Produto' : 'Adicionar Novo Produto'
@@ -617,12 +1273,12 @@ export default function Dashboard() {
                 modalContent = <p>Formulário de Parceria Pendente</p>
                 break
             default:
-                return null
-        }
+                break
+            }
 
         return (
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className={modalType === 'coupon' || modalType === 'invoice' ? 'sm:max-w-[700px] max-h-[90vh]' : 'sm:max-w-[425px]'}>
                     <DialogHeader>
                         <DialogTitle>{modalTitle}</DialogTitle>
                     </DialogHeader>
@@ -706,10 +1362,103 @@ export default function Dashboard() {
                     </div>
                 );
             case 'users':
+                const usersToShow = filterAcceptedTerms 
+                    ? users.filter((u: any) => u.accept_terms === true)
+                    : users
                 return (
                     <div>
-                        <h2 className="text-2xl font-semibold mb-6 text-gray-700">Usuários e Parcerias</h2>
-                        <p className="text-gray-600">Gestão de usuários através da tabela profiles no Supabase.</p>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-semibold text-gray-700 flex items-center">
+                                <User className="mr-2" size={24} />
+                                Usuários
+                            </h2>
+                            <div className="flex items-center gap-4">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={filterAcceptedTerms}
+                                        onChange={(e) => setFilterAcceptedTerms(e.target.checked)}
+                                        className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
+                                    />
+                                    <span className="text-sm font-medium text-gray-700">
+                                        Apenas usuários que aceitaram termos
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                        {usersToShow.length === 0 ? (
+                            <p className="text-center py-8 text-gray-500">
+                                {filterAcceptedTerms 
+                                    ? 'Nenhum usuário que aceitou os termos encontrado.' 
+                                    : 'Nenhum usuário encontrado.'}
+                            </p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full bg-white">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aceitou Termos</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data de Criação</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {usersToShow.map((user: any) => (
+                                            <tr key={user.id} className={user.accept_terms ? 'bg-green-50' : ''}>
+                                                <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">
+                                                    {user.name || '-'}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
+                                                    {user.email || '-'}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap">
+                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                                        user.user_type === 'admin' ? 'bg-red-100 text-red-800' :
+                                                        user.user_type === 'vendedor' ? 'bg-blue-100 text-blue-800' :
+                                                        'bg-gray-100 text-gray-800'
+                                                    }`}>
+                                                        {user.user_type || 'N/A'}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap">
+                                                    {user.accept_terms ? (
+                                                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                            ✓ Sim
+                                                        </span>
+                                                    ) : (
+                                                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                                            Não
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {user.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
+                                                    {user.accept_terms && user.email ? (
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedUserForEmail(user)
+                                                                setEmailModalOpen(true)
+                                                            }}
+                                                            className="text-cyan-600 hover:text-cyan-900 flex items-center gap-1"
+                                                        >
+                                                            <Mail size={16} />
+                                                            Enviar Email
+                                                        </button>
+                                                    ) : (
+                                                        <span className="text-gray-400 text-xs">N/A</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 );
             case 'products':
@@ -744,23 +1493,23 @@ export default function Dashboard() {
                                             <h3 className="font-semibold text-gray-800 truncate">{product.name}</h3>
                                             <p className="text-sm text-gray-600 mb-1">SKU: {product.sku}</p>
                                             <p className="text-sm text-gray-600 mb-2">Estoque: {product.stock_quantity}</p>
-                                            <p className="text-lg font-bold text-gray-900 mb-3">R$ {product.price.toFixed(2).replace('.', ',')}</p>
+                                            <p className="text-lg font-bold text-gray-900 mb-3">
+                                                R$ {product.price.toFixed(2).replace('.', ',')}
+                                            </p>
                                             <div className="mb-4">
-                                                <p className="text-sm text-gray-400 line-trough">
-                                                    R${
-                                                        (
-                                                            (Number(product.price) / 0.75)
-                                                                .toFixed(2)
-                                                                .replace('.', ',')
-                                                        )
-                                                    }
-                                                </p>
+                                                {product.fake_price && product.fake_price > 0 ? (
+                                                    <p className="text-sm text-gray-400 line-through">
+                                                        R$ {product.fake_price.toFixed(2).replace('.', ',')}
+                                                    </p>
+                                                ) : null}
                                                 <p className="text-xl font-extrabold text-red-600">
-                                                    R${product.price.toFixed(2).replace('.', ',')}
+                                                    R$ {product.price.toFixed(2).replace('.', ',')}
                                                 </p>
-                                                <span className="inline-block mt-1 px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-800 rounded-full">
-                                                    25% OFF
-                                                </span>
+                                                {product.fake_price && product.fake_price > product.price ? (
+                                                    <span className="inline-block mt-1 px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-800 rounded-full">
+                                                        {Math.round((1 - product.price / product.fake_price) * 100)}% OFF
+                                                    </span>
+                                                ) : null}
                                             </div>
                                             <div className="flex gap-2">
                                                 <button
@@ -799,8 +1548,82 @@ export default function Dashboard() {
                                 Emitir Nota Fiscal
                             </button>
                         </div>
-                        {/* Tabela de Notas Fiscais (Conteúdo omitido para brevidade, assumindo que está funcionando) */}
-                        <p className="text-gray-500">Tabela de Notas Fiscais...</p>
+                        {invoices.length === 0 ? (
+                            <p className="text-center py-8 text-gray-500">Nenhuma nota fiscal cadastrada.</p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full bg-white">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor Total</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data de Emissão</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PDF</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {invoices.map((invoice) => (
+                                            <tr key={invoice.id}>
+                                                <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">{invoice.invoice_number}</td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">{invoice.customer_name}</td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">{invoice.customer_email || '-'}</td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
+                                                    R$ {Number(invoice.total_amount).toFixed(2).replace('.', ',')}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {new Date(invoice.issue_date).toLocaleDateString('pt-BR')}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap">
+                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(invoice.status)}`}>
+                                                        {invoice.status}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm">
+                                                    {invoice.pdf_url ? (
+                                                        <a href={invoice.pdf_url} target="_blank" rel="noreferrer" className="text-cyan-600 hover:underline">
+                                                            Visualizar PDF
+                                                        </a>
+                                                    ) : (
+                                                        <span className="text-gray-400">-</span>
+                                                    )}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => openFileSelector(invoice.id, 'invoice')}
+                                                            className="flex items-center gap-1 bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                                                            title="Adicionar/Atualizar PDF"
+                                                        >
+                                                            {uploading && uploadingFileType === 'invoice' && uploadingInvoiceId === invoice.id ? (
+                                                                <Loader2 className="animate-spin" size={14} />
+                                                            ) : (
+                                                                <Package size={14} />
+                                                            )}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => openModal('invoice', invoice)}
+                                                            className="text-cyan-600 hover:text-cyan-900"
+                                                        >
+                                                            <Edit size={18} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => openDeleteDialog('invoice', invoice.id, invoice.invoice_number)}
+                                                            className="text-red-600 hover:text-red-900"
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 );
             case 'partnerships':
@@ -816,11 +1639,238 @@ export default function Dashboard() {
                                 className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
                             >
                                 <PlusCircle size={20} className="mr-2" />
-                                Adicionar Parceria
+                                Adicionar Parceria Manualmente
                             </button>
                         </div>
-                        {/* Tabela de Parcerias (Conteúdo omitido para brevidade, assumindo que está funcionando) */}
-                        <p className="text-gray-500">Tabela de Parcerias...</p>
+                        {/* Pending partnership requests submitted from the public form */}
+                        {partnershipRequests.length > 0 && (
+                            <div className="mb-8">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                                        <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-semibold">
+                                            {partnershipRequests.length}
+                                        </span>
+                                        Solicitações Pendentes de Parceria
+                                    </h3>
+                                    <span className="text-sm text-gray-500">
+                                        {new Date().toLocaleDateString('pt-BR')}
+                                    </span>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {partnershipRequests.map((req: any) => {
+                                        // Parsear form_payload se necessário
+                                        let parsedData: any = {}
+                                        if (req.form_payload) {
+                                            try {
+                                                parsedData = JSON.parse(req.form_payload)
+                                            } catch (e) {
+                                                console.error('Erro ao parsear form_payload:', e)
+                                            }
+                                        }
+
+                                        // Determinar tipo de parceria
+                                        const partnershipType = req.form_type || parsedData.activeForm || 'fornecedor'
+                                        const isFornecedor = partnershipType === 'fornecedor'
+                                        
+                                        // Obter dados do formulário
+                                        const nomeEmpresa = req.company_name || parsedData.nomeEmpresa || parsedData.nome || 'Não informado'
+                                        const email = req.contact_email || parsedData.email || 'Não informado'
+                                        const telefone = req.contact_phone || parsedData.telefone || '-'
+                                        const dataSolicitacao = req.created_at ? new Date(req.created_at).toLocaleDateString('pt-BR') : '-'
+
+                                        return (
+                                            <div key={req.id} className="p-5 border-2 border-yellow-200 rounded-lg bg-gradient-to-br from-white to-yellow-50 shadow-md hover:shadow-lg transition-all">
+                                                <div className="flex items-start justify-between mb-3">
+                                                    <div className="flex-1">
+                                                        <h4 className="font-bold text-gray-900 text-lg mb-1">{nomeEmpresa}</h4>
+                                                        <span className={`inline-block px-2 py-1 text-xs rounded-full font-semibold ${
+                                                            isFornecedor 
+                                                                ? 'bg-blue-100 text-blue-800' 
+                                                                : 'bg-purple-100 text-purple-800'
+                                                        }`}>
+                                                            {isFornecedor ? 'Fornecedor' : 'Representante'}
+                                                        </span>
+                                                    </div>
+                                                    <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">
+                                                        Pendente
+                                                    </span>
+                                                </div>
+
+                                                <div className="space-y-2 mb-4 text-sm">
+                                                    <div className="flex items-center gap-2">
+                                                        <Mail size={14} className="text-gray-400" />
+                                                        <span className="text-gray-600">{email}</span>
+                                                    </div>
+                                                    {telefone && telefone !== '-' && (
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-gray-400">📞</span>
+                                                            <span className="text-gray-600">{telefone}</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex items-center gap-2">
+                                                        <Calendar size={14} className="text-gray-400" />
+                                                        <span className="text-gray-500 text-xs">Solicitado em: {dataSolicitacao}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="border-t pt-3 mb-4">
+                                                    {isFornecedor ? (
+                                                        <div className="text-sm text-gray-700 space-y-2">
+                                                            {parsedData.anosMercado && (
+                                                                <div>
+                                                                    <strong className="text-gray-800">Anos no mercado:</strong>
+                                                                    <p className="text-gray-600">{parsedData.anosMercado} anos</p>
+                                                                </div>
+                                                            )}
+                                                            {parsedData.oQueFabrica && (
+                                                                <div>
+                                                                    <strong className="text-gray-800">O que fabrica:</strong>
+                                                                    <p className="text-gray-600 line-clamp-2">{parsedData.oQueFabrica}</p>
+                                                                </div>
+                                                            )}
+                                                            {parsedData.canaisVendaAtuais && (
+                                                                <div>
+                                                                    <strong className="text-gray-800">Canais de venda:</strong>
+                                                                    <p className="text-gray-600 line-clamp-2">{parsedData.canaisVendaAtuais}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-sm text-gray-700 space-y-2">
+                                                            {parsedData.localAtuacao && (
+                                                                <div>
+                                                                    <strong className="text-gray-800">Área de atuação:</strong>
+                                                                    <p className="text-gray-600">{parsedData.localAtuacao}</p>
+                                                                </div>
+                                                            )}
+                                                            {parsedData.produtoRevender && (
+                                                                <div>
+                                                                    <strong className="text-gray-800">Produto a revender:</strong>
+                                                                    <p className="text-gray-600 line-clamp-2">{parsedData.produtoRevender}</p>
+                                                                </div>
+                                                            )}
+                                                            {parsedData.estrategiasVenda && (
+                                                                <div>
+                                                                    <strong className="text-gray-800">Estratégias de venda:</strong>
+                                                                    <p className="text-gray-600 line-clamp-2">{parsedData.estrategiasVenda}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex flex-col gap-2 mt-4">
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => handleAcceptPartnership(req.id)}
+                                                            className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                                                        >
+                                                            <CheckCircle size={16} />
+                                                            Aceitar
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleRejectPartnership(req.id)}
+                                                            className="flex-1 bg-red-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                                                        >
+                                                            <X size={16} />
+                                                            Recusar
+                                                        </button>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedUserForEmail({ email, name: nomeEmpresa })
+                                                            setEmailModalOpen(true)
+                                                        }}
+                                                        className="w-full bg-cyan-600 text-white px-3 py-2 rounded-lg hover:bg-cyan-700 transition-colors flex items-center justify-center gap-2 text-sm"
+                                                    >
+                                                        <Mail size={14} />
+                                                        Enviar Email
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {partnershipRequests.length === 0 && (
+                            <div className="mb-8 p-6 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 text-center">
+                                <Handshake className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                                <p className="text-gray-600 font-medium">Nenhuma solicitação pendente no momento</p>
+                                <p className="text-sm text-gray-500 mt-1">As novas solicitações da página de vendas aparecerão aqui</p>
+                            </div>
+                        )}
+
+                        {partnersList.length === 0 ? (
+                            <p className="text-center py-8 text-gray-500">Nenhuma parceria cadastrada.</p>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {partnersList.map((partner: any) => {
+                                    // Tentar obter o tipo de parceria do form_type ou form_payload
+                                    let partnershipType = partner.form_type || 'N/A'
+                                    if (!partnershipType && partner.form_payload) {
+                                        try {
+                                            const payload = JSON.parse(partner.form_payload)
+                                            if (payload.activeForm) {
+                                                partnershipType = payload.activeForm === 'fornecedor' ? 'Fornecedor' : 'Representante'
+                                            }
+                                        } catch (e) {
+                                            // Se não conseguir parsear, usar form_type ou 'N/A'
+                                        }
+                                    }
+                                    const displayType = partnershipType === 'fornecedor' ? 'Fornecedor' : 
+                                                       partnershipType === 'representante' ? 'Representante' : 
+                                                       partnershipType || 'N/A'
+                                    
+                                    return (
+                                        <div key={partner.id} className="p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <h3 className="font-semibold text-gray-800">{partner.company_name}</h3>
+                                                <span className={`px-2 py-1 text-xs rounded-full font-semibold ${
+                                                    displayType === 'Fornecedor' ? 'bg-blue-100 text-blue-800' : 
+                                                    displayType === 'Representante' ? 'bg-purple-100 text-purple-800' : 
+                                                    'bg-gray-100 text-gray-800'
+                                                }`}>
+                                                    {displayType}
+                                                </span>
+                                            </div>
+                                            <p className="text-sm text-gray-600 mb-1">Email: {partner.contact_email}</p>
+                                            <p className="text-sm text-gray-600 mb-3">Telefone: {partner.contact_phone || '-'}</p>
+                                            <span className={`px-2 py-1 text-xs rounded-full font-semibold ${getStatusClass(partner.status)}`}>
+                                                {partner.status}
+                                            </span>
+                                            <div className="mt-4 flex gap-2">
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedUserForEmail({ email: partner.contact_email, name: partner.company_name })
+                                                        setEmailModalOpen(true)
+                                                    }}
+                                                    className="flex-1 bg-cyan-600 text-white px-3 py-2 rounded-lg hover:bg-cyan-700 text-sm font-medium flex items-center justify-center gap-2"
+                                                >
+                                                    <Mail size={14} />
+                                                    Email
+                                                </button>
+                                                <button
+                                                    onClick={() => openModal('partner', partner)}
+                                                    className="flex-1 text-cyan-600 hover:text-cyan-800 text-sm font-medium"
+                                                >
+                                                    <Edit size={16} className="inline mr-1" />
+                                                    Editar
+                                                </button>
+                                                <button
+                                                    onClick={() => openDeleteDialog('partnership', partner.id, partner.company_name)}
+                                                    className="flex-1 text-red-600 hover:text-red-800 text-sm font-medium"
+                                                >
+                                                    <Trash2 size={16} className="inline mr-1" />
+                                                    Deletar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        )}
                     </div>
                 );
             case 'coupons':
@@ -839,11 +1889,84 @@ export default function Dashboard() {
                                 Adicionar Cupom
                             </button>
                         </div>
-                        {/* Tabela de Cupons (Conteúdo omitido para brevidade, assumindo que está funcionando) */}
-                        <p className="text-gray-500">Tabela de Cupons...</p>
+                        {coupons.length === 0 ? (
+                            <p className="text-center py-8 text-gray-500">Nenhum cupom cadastrado.</p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full bg-white">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Texto do Carrossel</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Desconto</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Válido até</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Carrossel</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {coupons.map((coupon) => (
+                                            <tr key={coupon.id}>
+                                                <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">{coupon.code}</td>
+                                                <td className="py-4 px-4 text-sm text-gray-600 max-w-xs truncate" title={coupon.carousel_text || coupon.description || 'Sem texto'}>
+                                                    {coupon.carousel_text || coupon.description || '-'}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {coupon.discount_type === 'Percentual' ? `${coupon.discount_value}%` : `R$ ${coupon.discount_value}`}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {new Date(coupon.valid_until).toLocaleDateString('pt-BR')}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap">
+                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(coupon.status)}`}>
+                                                        {coupon.status}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap">
+                                                    {coupon.show_in_navbar ? (
+                                                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                            Sim
+                                                        </span>
+                                                    ) : (
+                                                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                                            Não
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
+                                                    <button
+                                                        onClick={() => openModal('coupon', coupon)}
+                                                        className="text-cyan-600 hover:text-cyan-900 mr-3"
+                                                    >
+                                                        <Edit size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openDeleteDialog('coupon', coupon.id, coupon.code)}
+                                                        className="text-red-600 hover:text-red-900"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 );
             case 'content':
+                // Agrupar conteúdos por seção
+                const contentBySection = siteContent.reduce((acc: any, content) => {
+                    const section = content.section || 'Outros';
+                    if (!acc[section]) {
+                        acc[section] = [];
+                    }
+                    acc[section].push(content);
+                    return acc;
+                }, {});
+
                 return (
                     <div>
                         <div className="flex justify-between items-center mb-6">
@@ -859,8 +1982,63 @@ export default function Dashboard() {
                                 Salvar Tudo
                             </button>
                         </div>
-                        {/* Campos de Conteúdo do Site (Conteúdo omitido para brevidade, assumindo que está funcionando) */}
-                        <p className="text-gray-500">Campos de Conteúdo do Site...</p>
+                        {siteContent.length === 0 ? (
+                            <p className="text-center py-8 text-gray-500">Nenhum conteúdo encontrado. Os textos padrão serão usados.</p>
+                        ) : (
+                            <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+                                {Object.entries(contentBySection).map(([section, contents]: [string, any]) => (
+                                    <div key={section} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                        <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-300">
+                                            {section}
+                                        </h3>
+                                        <div className="space-y-4">
+                                            {contents.map((content: SupabaseSiteContent) => (
+                                                <div key={content.id} className="bg-white p-4 rounded border border-gray-200">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        {content.label || content.content_key}
+                                                    </label>
+                                                    {content.content_type === 'textarea' ? (
+                                                        <textarea
+                                                            value={content.value || ''}
+                                                            onChange={(e) => {
+                                                                const updated = siteContent.map(c =>
+                                                                    c.id === content.id ? { ...c, value: e.target.value } : c
+                                                                );
+                                                                setSiteContent(updated);
+                                                            }}
+                                                            className="w-full border border-gray-300 rounded-md shadow-sm p-2 h-24"
+                                                            placeholder={`Digite o ${content.label.toLowerCase()}...`}
+                                                        />
+                                                    ) : (
+                                                        <input
+                                                            type="text"
+                                                            value={content.value || ''}
+                                                            onChange={(e) => {
+                                                                const updated = siteContent.map(c =>
+                                                                    c.id === content.id ? { ...c, value: e.target.value } : c
+                                                                );
+                                                                setSiteContent(updated);
+                                                            }}
+                                                            className="w-full border border-gray-300 rounded-md shadow-sm p-2"
+                                                            placeholder={`Digite o ${content.label.toLowerCase()}...`}
+                                                        />
+                                                    )}
+                                                    <div className="mt-2 flex items-center justify-between">
+                                                        <span className="text-xs text-gray-500">Chave: {content.content_key}</span>
+                                                        <button
+                                                            onClick={() => handleSaveContent(content.id, content.value)}
+                                                            className="text-xs text-cyan-600 hover:text-cyan-800 font-medium"
+                                                        >
+                                                            Salvar este campo
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 );
             case 'faq': // <-- NOVO BLOCO IMPLEMENTADO
@@ -929,6 +2107,105 @@ export default function Dashboard() {
                         )}
                     </div>
                 );
+            case 'images':
+                // Agrupar imagens por seção
+                const imagesBySection = siteImages.reduce((acc: any, image) => {
+                    const section = image.section || 'Outros';
+                    if (!acc[section]) {
+                        acc[section] = [];
+                    }
+                    acc[section].push(image);
+                    return acc;
+                }, {});
+
+                return (
+                    <div>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-semibold text-gray-700 flex items-center">
+                                <ImageIcon className="mr-2" size={24} />
+                                Edição de Imagens do Site
+                            </h2>
+                        </div>
+                        {siteImages.length === 0 ? (
+                            <p className="text-center py-8 text-gray-500">Nenhuma imagem encontrada. As imagens padrão serão usadas.</p>
+                        ) : (
+                            <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+                                {Object.entries(imagesBySection).map(([section, images]: [string, any]) => (
+                                    <div key={section} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                        <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-300">
+                                            {section}
+                                        </h3>
+                                        <div className="space-y-4">
+                                            {images.map((image: SiteImage) => (
+                                                <div key={image.id} className="bg-white p-4 rounded border border-gray-200">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        {image.label}
+                                                    </label>
+                                                    <div className="mb-3">
+                                                        {image.image_url ? (
+                                                            <div className="relative w-full max-w-md h-48 border border-gray-300 rounded-lg overflow-hidden">
+                                                                <img
+                                                                    src={image.image_url}
+                                                                    alt={image.alt_text || image.label}
+                                                                    className="w-full h-full object-contain"
+                                                                />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="w-full max-w-md h-48 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
+                                                                <p className="text-gray-500">Nenhuma imagem carregada</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <button
+                                                            onClick={() => openFileSelector(image.id, 'site-image')}
+                                                            disabled={uploading && uploadingImageId === image.id}
+                                                            className="flex items-center gap-2 bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        >
+                                                            {uploading && uploadingImageId === image.id ? (
+                                                                <>
+                                                                    <Loader2 className="animate-spin" size={16} />
+                                                                    <span>Enviando...</span>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <Upload size={16} />
+                                                                    <span>{image.image_url ? 'Trocar Imagem' : 'Upload Imagem'}</span>
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                        {image.image_url && (
+                                                            <a
+                                                                href={image.image_url}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                                                            >
+                                                                Visualizar
+                                                            </a>
+                                                        )}
+                                                        <button
+                                                            onClick={() => openDeleteDialog('site-image', image.id, image.label || image.image_key || 'Imagem')}
+                                                            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                    <div className="mt-2">
+                                                        <span className="text-xs text-gray-500">Chave: {image.image_key}</span>
+                                                        {image.description && (
+                                                            <p className="text-xs text-gray-500 mt-1">{image.description}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                );
             case 'purchases':
                 return (
                     <div>
@@ -961,11 +2238,11 @@ export default function Dashboard() {
                                         </div>
                                         <div className="flex space-x-2 flex-shrink-0">
                                             <button
-                                                onClick={() => openFileSelector(purchase.id)}
+                                                onClick={() => openFileSelector(purchase.id, 'purchase')}
                                                 className="flex items-center gap-2 bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700"
                                                 title="Adicionar/Atualizar PDF"
                                             >
-                                                {uploading && uploadingPurchaseId === purchase.id ? (
+                                                {uploading && uploadingFileType === 'purchase' && uploadingPurchaseId === purchase.id ? (
                                                     <Loader2 className="animate-spin" size={16} />
                                                 ) : (
                                                     <Package size={16} />
@@ -985,40 +2262,373 @@ export default function Dashboard() {
                         )}
                     </div>
                 )
+            case 'carts':
+                return (
+                    <div>
+                        <h2 className="text-2xl font-semibold mb-6 text-gray-700 flex items-center">
+                            <ShoppingCart className="mr-2" size={24} />
+                            Carrinhos de Usuários
+                        </h2>
+                        <p className="text-gray-600 mb-4">
+                            Visualize os produtos nos carrinhos dos usuários. Os carrinhos são armazenados localmente no navegador de cada usuário.
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {users.length === 0 ? (
+                                <div className="col-span-full text-center py-8 text-gray-500">
+                                    Nenhum usuário encontrado
+                                </div>
+                            ) : (
+                                users.map((user: any) => (
+                                    <div key={user.id} className="p-4 border rounded-lg bg-white shadow-sm">
+                                        <h3 className="font-semibold text-gray-800 mb-2">{user.name || user.email}</h3>
+                                        <p className="text-sm text-gray-600 mb-1">Email: {user.email}</p>
+                                        <p className="text-sm text-gray-600 mb-3">Tipo: {user.user_type || 'N/A'}</p>
+                                        <button
+                                            onClick={() => {
+                                                setSelectedUserForEmail(user)
+                                                setEmailModalOpen(true)
+                                            }}
+                                            className="w-full bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            <Mail size={16} />
+                                            Enviar Email
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                )
+            case 'purchased':
+                return (
+                    <div>
+                        <h2 className="text-2xl font-semibold mb-6 text-gray-700 flex items-center">
+                            <Package className="mr-2" size={24} />
+                            Produtos Comprados
+                        </h2>
+                        {salesWithItems.length === 0 ? (
+                            <p className="text-center py-8 text-gray-500">Nenhum pedido encontrado.</p>
+                        ) : (
+                            <div className="space-y-6">
+                                {salesWithItems.map((sale: any) => (
+                                    <div key={sale.id} className="p-6 border rounded-lg bg-white shadow-sm">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div>
+                                                <h3 className="font-semibold text-gray-800 text-lg">
+                                                    Pedido #{sale.order_number || sale.id}
+                                                </h3>
+                                                <p className="text-sm text-gray-600">Cliente: {sale.customer_name}</p>
+                                                <p className="text-sm text-gray-600">Email: {sale.customer_email}</p>
+                                                <p className="text-sm text-gray-500">
+                                                    Data: {new Date(sale.created_at).toLocaleDateString('pt-BR')}
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-lg font-bold text-gray-900">
+                                                    R$ {Number(sale.total_amount).toFixed(2).replace('.', ',')}
+                                                </p>
+                                                <span className={`px-2 py-1 text-xs rounded-full font-semibold ${getStatusClass(sale.status)}`}>
+                                                    {sale.status}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        {sale.items && sale.items.length > 0 ? (
+                                            <div className="mt-4">
+                                                <h4 className="font-semibold text-gray-700 mb-2">Produtos:</h4>
+                                                <div className="space-y-2">
+                                                    {sale.items.map((item: any, index: number) => (
+                                                        <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                                            <div className="flex-1">
+                                                                <p className="font-medium text-gray-800">
+                                                                    {item.products?.name || `Produto ${item.product_id}`}
+                                                                </p>
+                                                                <p className="text-sm text-gray-600">
+                                                                    Quantidade: {item.quantity} x R$ {Number(item.unit_price || 0).toFixed(2).replace('.', ',')}
+                                                                </p>
+                                                            </div>
+                                                            <p className="font-semibold text-gray-900">
+                                                                R$ {Number(item.total_price || 0).toFixed(2).replace('.', ',')}
+                                                            </p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-gray-500 mt-4">Detalhes dos produtos não disponíveis</p>
+                                        )}
+                                        <div className="mt-4 flex gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedUserForEmail({ email: sale.customer_email, name: sale.customer_name })
+                                                    setEmailModalOpen(true)
+                                                }}
+                                                className="flex items-center gap-2 bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 transition-colors"
+                                            >
+                                                <Mail size={16} />
+                                                Enviar Email ao Cliente
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )
+            case 'carts':
+                return (
+                    <div>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-semibold text-gray-700 flex items-center">
+                                <ShoppingCart className="mr-2" size={24} />
+                                Carrinhos de Usuários em Tempo Real
+                            </h2>
+                            <button
+                                onClick={loadAllData}
+                                className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
+                            >
+                                Atualizar
+                            </button>
+                        </div>
+                        {userCarts.length === 0 ? (
+                            <p className="text-center py-8 text-gray-500">Nenhum carrinho ativo no momento.</p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full bg-white">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuário</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantidade</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preço Unit.</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Última Atualização</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {userCarts.map((cart: any) => (
+                                            <tr key={cart.id} className="hover:bg-gray-50">
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                    {cart.user?.name || 'Usuário não identificado'}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
+                                                    {cart.user?.email || '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-sm text-gray-900">
+                                                    {cart.product?.name || 'Produto não encontrado'}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
+                                                    {cart.quantity}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
+                                                    {cart.product?.price ? `R$ ${Number(cart.product.price).toFixed(2).replace('.', ',')}` : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                                    {cart.product?.price ? `R$ ${(Number(cart.product.price) * cart.quantity).toFixed(2).replace('.', ',')}` : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {new Date(cart.updated_at).toLocaleString('pt-BR')}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
+                                                    {cart.user?.email && (
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedUserForEmail(cart.user)
+                                                                setEmailModalOpen(true)
+                                                            }}
+                                                            className="text-cyan-600 hover:text-cyan-900 flex items-center gap-1"
+                                                        >
+                                                            <Mail size={16} />
+                                                            Enviar Email
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                )
+            case 'purchased':
+                return (
+                    <div>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-semibold text-gray-700 flex items-center">
+                                <Package className="mr-2" size={24} />
+                                Produtos Comprados
+                            </h2>
+                            <button
+                                onClick={loadAllData}
+                                className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
+                            >
+                                Atualizar
+                            </button>
+                        </div>
+                        {purchasedItems.length === 0 ? (
+                            <p className="text-center py-8 text-gray-500">Nenhum produto comprado ainda.</p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full bg-white">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pedido</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantidade</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preço Unit.</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {purchasedItems.map((item: any) => (
+                                            <tr key={item.id} className="hover:bg-gray-50">
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                    {item.sale?.order_number || item.sale_id?.substring(0, 8) || '-'}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {item.sale?.customer_name || '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-sm text-gray-900">
+                                                    {item.product?.name || item.product_name}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
+                                                    {item.quantity}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
+                                                    R$ {Number(item.unit_price).toFixed(2).replace('.', ',')}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                                    R$ {Number(item.total_price).toFixed(2).replace('.', ',')}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {new Date(item.created_at).toLocaleDateString('pt-BR')}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap">
+                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(item.sale?.status || 'Pendente')}`}>
+                                                        {item.sale?.status || 'Pendente'}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
+                                                    {item.sale?.customer_email && (
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedUserForEmail({
+                                                                    email: item.sale.customer_email,
+                                                                    name: item.sale.customer_name
+                                                                })
+                                                                setEmailModalOpen(true)
+                                                            }}
+                                                            className="text-cyan-600 hover:text-cyan-900 flex items-center gap-1"
+                                                        >
+                                                            <Mail size={16} />
+                                                            Enviar Email
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                )
             default:
                 return null;
         }
     }
 
 
+    const menuItems = [
+        { id: 'sales', label: 'Vendas', icon: DollarSign },
+        { id: 'inventory', label: 'Estoque', icon: Package },
+        { id: 'users', label: 'Usuários', icon: User },
+        { id: 'products', label: 'Produtos', icon: ShoppingCart },
+        { id: 'invoices', label: 'Notas Fiscais', icon: FileText },
+        { id: 'partnerships', label: 'Parcerias', icon: Handshake },
+        { id: 'coupons', label: 'Cupons', icon: Ticket },
+        { id: 'content', label: 'Textos do Site', icon: Type },
+        { id: 'images', label: 'Imagens', icon: ImageIcon },
+        { id: 'faq', label: 'FAQ', icon: FileText },
+        { id: 'purchases', label: 'Compras', icon: Package },
+        { id: 'carts', label: 'Carrinhos', icon: ShoppingCart },
+        { id: 'purchased', label: 'Produtos Comprados', icon: Package },
+    ]
+
     return (
-        <div className="flex flex-col min-h-screen bg-gray-100">
-            <main className="flex-grow p-4 sm:p-6">
-                <h1 className="text-3xl font-bold text-gray-800 mb-8">Painel Administrativo</h1>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-3 mb-6">
-                    <button onClick={() => setActiveTab('sales')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'sales' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Vendas</button>
-                    <button onClick={() => setActiveTab('inventory')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'inventory' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Estoque</button>
-                    <button onClick={() => setActiveTab('users')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'users' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Usuários</button>
-                    <button onClick={() => setActiveTab('products')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'products' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Produtos</button>
-                    <button onClick={() => setActiveTab('invoices')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'invoices' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Notas Fiscais</button>
-                    <button onClick={() => setActiveTab('partnerships')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'partnerships' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Parcerias</button>
-                    <button onClick={() => setActiveTab('coupons')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'coupons' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Cupons</button>
-                    <button onClick={() => setActiveTab('content')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'content' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Textos do Site</button>
-                    <button onClick={() => setActiveTab('faq')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'faq' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>FAQ </button>
-
-
+        <div className="flex min-h-screen bg-gray-100">
+            {/* Sidebar */}
+            <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-cyan-900 text-white transition-all duration-300 flex flex-col fixed h-screen`}>
+                <div className="p-4 flex items-center justify-between border-b border-cyan-800">
+                    {sidebarOpen && <h1 className="text-xl font-bold">Painel Admin</h1>}
+                    <button
+                        onClick={() => setSidebarOpen(!sidebarOpen)}
+                        className="p-2 hover:bg-cyan-800 rounded-lg transition-colors"
+                    >
+                        {sidebarOpen ? <XIcon size={20} /> : <Menu size={20} />}
+                    </button>
                 </div>
+                <nav className="flex-1 overflow-y-auto p-2">
+                    {menuItems.map((item) => {
+                        const Icon = item.icon
+                        return (
+                            <button
+                                key={item.id}
+                                onClick={() => setActiveTab(item.id)}
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg mb-1 transition-all duration-200 ${
+                                    activeTab === item.id
+                                        ? 'bg-cyan-700 text-white shadow-lg'
+                                        : 'text-cyan-100 hover:bg-cyan-800'
+                                }`}
+                                title={!sidebarOpen ? item.label : ''}
+                            >
+                                <Icon size={20} className="flex-shrink-0" />
+                                {sidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
+                            </button>
+                        )
+                    })}
+                </nav>
+            </aside>
 
-                <div className="bg-white rounded-lg p-6 shadow-lg min-h-[500px]">
+            {/* Main Content */}
+            <main className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'} p-4 sm:p-6`}>
+                <div className="bg-white rounded-lg p-6 shadow-lg min-h-[calc(100vh-2rem)]">
                     {renderTabContent()}
                 </div>
 
                 {/* hidden file input used for attaching PDFs to purchases */}
                 <input ref={fileInputRef} type="file" accept="application/pdf" className="hidden" onChange={handleFileChange} />
+                {/* hidden file input used for uploading site images */}
+                <input ref={imageInputRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden" onChange={handleImageUpload} />
 
                 {/* Modais de Edição */}
                 {renderModals()}
+
+                {/* Modal de Envio de Email */}
+                <Dialog open={emailModalOpen} onOpenChange={setEmailModalOpen}>
+                    <DialogContent className="sm:max-w-[600px]">
+                        <DialogHeader>
+                            <DialogTitle>Enviar Email</DialogTitle>
+                        </DialogHeader>
+                        {selectedUserForEmail && (
+                            <EmailForm
+                                recipient={selectedUserForEmail.email || selectedUserForEmail}
+                                recipientName={selectedUserForEmail.name || selectedUserForEmail.email || 'Usuário'}
+                                onSend={handleSendEmail}
+                                onCancel={() => {
+                                    setEmailModalOpen(false)
+                                    setSelectedUserForEmail(null)
+                                }}
+                            />
+                        )}
+                    </DialogContent>
+                </Dialog>
 
                 {/* Dialog de Confirmação de Exclusão */}
                 <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

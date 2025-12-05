@@ -10,7 +10,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, name: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, name: string, phone?: string, acceptTerms?: boolean, consentEmails?: boolean) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<{ error: any }>;
@@ -105,7 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const signUp = async (email: string, password: string, name: string) => {
+  const signUp = async (email: string, password: string, name: string, phone?: string, acceptTerms?: boolean, consentEmails?: boolean) => {
     try {
       // Validar email antes de qualquer coisa
       const emailValidation = validateEmail(email);
@@ -150,13 +150,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Criar perfil na tabela profiles
-      const newProfile: Omit<UserProfile, 'id' | 'created_at' | 'updated_at'> = {
+      const newProfile: any = {
         email: email.trim(),
         name: name.trim(),
         avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name.trim()}`,
         description: '',
         user_type: 'comprador',
       };
+
+      // Adicionar telefone se fornecido
+      if (phone) {
+        newProfile.phone = phone.trim();
+      }
+
+      // Adicionar aceite de termos
+      if (acceptTerms !== undefined) {
+        newProfile.accept_terms = acceptTerms;
+      }
+
+      // Adicionar consentimento de emails se fornecido
+      if (consentEmails !== undefined) {
+        newProfile.consent_emails = consentEmails;
+      }
 
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
@@ -179,6 +194,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Aguardar um pouco para garantir que tudo foi salvo
       await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Enviar email de boas-vindas com cupom (não bloquear o cadastro se falhar)
+      try {
+        const welcomeEmailResponse = await fetch('/api/email/welcome', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: email.trim(),
+            name: name.trim(),
+          }),
+        });
+
+        if (!welcomeEmailResponse.ok) {
+          console.warn('Email de boas-vindas não foi enviado, mas a conta foi criada com sucesso');
+        }
+      } catch (emailError) {
+        // Não falhar o cadastro se o email não for enviado
+        console.warn('Erro ao enviar email de boas-vindas:', emailError);
+      }
 
       return { error: null };
     } catch (error: any) {

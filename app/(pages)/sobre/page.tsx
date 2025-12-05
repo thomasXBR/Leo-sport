@@ -4,9 +4,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Target, Heart, Users, Award } from 'lucide-react';
 import Image from 'next/image';
 import { useSiteContent } from '@/hooks/use-site-content';
+import { useSiteImages } from '@/hooks/use-site-images';
 
 export default function SobrePage() {
   const { getContent, loading } = useSiteContent();
+  const { getImage } = useSiteImages();
 
   const values = [
     {
@@ -46,7 +48,7 @@ export default function SobrePage() {
         {/* Background Image */}
         <div className="absolute inset-0">
           <Image
-            src="/images/SOBRE.jpg"
+            src={getImage('sobre_background', '/images/SOBRE.jpg')}
             alt="Sports Background"
             fill
             className="object-cover"
@@ -86,7 +88,7 @@ export default function SobrePage() {
           </div>
           <div className="relative">
             <Image
-              src="https://images.pexels.com/photos/1552242/pexels-photo-1552242.jpeg?auto=compress&cs=tinysrgb&w=600"
+              src={getImage('sobre_content_image', 'https://images.pexels.com/photos/1552242/pexels-photo-1552242.jpeg?auto=compress&cs=tinysrgb&w=600')}
               alt="Equipe LeoSport"
               width={600}
               height={400}

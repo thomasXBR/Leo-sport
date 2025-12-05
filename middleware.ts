@@ -5,6 +5,20 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Rotas públicas que NUNCA devem ser bloqueadas (webhooks externos)
+  const publicWebhookRoutes = [
+    '/api/shipping/webhook',
+    '/api/webhook/melhorenvio',
+    '/api/payments/webhook',
+    '/api/webhooks',
+  ];
+
+  // Se for uma rota de webhook, DEIXE PASSAR DIRETO (não bloqueie)
+  const isWebhookRoute = publicWebhookRoutes.some(route => pathname.startsWith(route));
+  if (isWebhookRoute) {
+    return NextResponse.next();
+  }
+
   // Protected routes that require authentication
   const protectedRoutes = ['/dashboard'];
   const adminRoutes = ['/dashboard/admin'];
@@ -36,7 +50,7 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes)
+     * - api (API routes) - todas as rotas de API são liberadas
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
