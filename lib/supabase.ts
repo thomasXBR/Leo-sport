@@ -303,12 +303,10 @@ export async function getProducts() {
 }
 
 export async function getProductById(id: string) {
-  // Se quiser incluir reviews ao buscar um produto, basta fazer um join:
-  // Exemplo:
-  // .select('*, categories(name, slug), reviews(*)')
+  // Buscar produto com categoria, sem reviews (relacionamento pode não existir)
   const { data, error } = await supabase
     .from('products')
-    .select('*, categories(name, slug), reviews(*)')
+    .select('*, categories(name, slug)')
     .eq('id', id)
     .single();
   
@@ -1124,6 +1122,97 @@ export async function deleteSiteImage(id: string) {
     .eq('id', id);
   
   if (error) throw error;
+}
+
+// ============================================
+// FUNÇÕES PARA UPLOAD DE IMAGENS NO STORAGE
+// ============================================
+
+/**
+ * Upload de imagem de produto para o Supabase Storage
+ * @param file - Arquivo de imagem
+ * @param productId - ID do produto (opcional, para atualização)
+ * @param productSku - SKU do produto para nomear o arquivo
+ * @returns URL pública da imagem
+ */
+export async function uploadProductImage(
+  file: File,
+  productId?: string,
+  productSku?: string
+): Promise<string> {
+  // Validar tipo de arquivo
+  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  if (!validTypes.includes(file.type)) {
+    throw new Error('Tipo de arquivo inválido. Use JPG, PNG ou WEBP.');
+  }
+
+  // Validar tamanho (máximo 5MB)
+  const maxSize = 5 * 1024 * 1024; // 5MB
+  if (file.size > maxSize) {
+    throw new Error('A imagem deve ter no máximo 5MB');
+  }
+
+  // Nome do arquivo: usar SKU ou timestamp
+  const fileExtension = file.name.split('.').pop() || 'jpg';
+  const fileName = productSku 
+    ? `products/${productSku}_${Date.now()}.${fileExtension}`
+    : `products/${productId || Date.now()}_${Date.now()}.${fileExtension}`;
+
+  // Upload para o bucket 'products' (ou 'product-images')
+  const bucketName = 'products';
+  
+  const { error: uploadError } = await supabase.storage
+    .from(bucketName)
+    .upload(fileName, file, {
+      upsert: true,
+      cacheControl: '3600',
+      contentType: file.type,
+    });
+
+  if (uploadError) {
+    console.error('Erro no upload:', uploadError);
+    throw new Error(`Erro ao fazer upload da imagem: ${uploadError.message}`);
+  }
+
+  // Obter URL pública
+  const { data: urlData } = supabase.storage
+    .from(bucketName)
+    .getPublicUrl(fileName);
+
+  return urlData.publicUrl;
+}
+
+/**
+ * Deletar imagem do storage
+ * @param imageUrl - URL da imagem a ser deletada
+ */
+export async function deleteProductImage(imageUrl: string): Promise<void> {
+  try {
+    // Extrair o caminho do arquivo da URL
+    const url = new URL(imageUrl);
+    const pathParts = url.pathname.split('/');
+    const bucketIndex = pathParts.findIndex(part => part === 'storage' || part === 'v1');
+    
+    if (bucketIndex === -1) {
+      throw new Error('URL de imagem inválida');
+    }
+
+    // O bucket geralmente vem após 'storage/v1/object/public/'
+    const bucketName = pathParts[bucketIndex + 3] || 'products';
+    const filePath = pathParts.slice(bucketIndex + 4).join('/');
+
+    const { error } = await supabase.storage
+      .from(bucketName)
+      .remove([filePath]);
+
+    if (error) {
+      console.error('Erro ao deletar imagem:', error);
+      // Não lançar erro, apenas logar (a imagem pode não existir)
+    }
+  } catch (error: any) {
+    console.error('Erro ao processar exclusão de imagem:', error);
+    // Não lançar erro, apenas logar
+  }
 }
 
 

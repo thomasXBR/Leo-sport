@@ -1,11 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { createProduct, updateProduct, Product, getSiteContent, supabase } from '@/lib/supabase';
+import { createProduct, updateProduct, Product, getSiteContent, supabase, uploadProductImage, deleteProductImage } from '@/lib/supabase';
 import { getCategories } from '@/lib/products-data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, CheckCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Upload, X } from 'lucide-react';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 
 interface Sport {
@@ -26,6 +26,9 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
   const [success, setSuccess] = useState('');
   const [sports, setSports] = useState<Sport[]>([]);
   const [loadingContent, setLoadingContent] = useState(true);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [formData, setFormData] = useState(() => ({
     name: initialData?.name ?? '',
     description: initialData?.description ?? '',
@@ -75,6 +78,13 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
     warranty_months: (initialData as any)?.warranty_months ? String((initialData as any).warranty_months) : '12',
   }));
 
+  // Carregar preview da imagem inicial
+  useEffect(() => {
+    if (initialData?.image_url) {
+      setImagePreview(initialData.image_url);
+    }
+  }, [initialData]);
+
   useEffect(() => {
     const loadSports = async () => {
       try {
@@ -117,6 +127,41 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = e.target;
     setFormData((prev) => ({ ...prev, [name]: checked }));
+  };
+
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validar tipo
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setError('Por favor, selecione uma imagem válida (JPG, PNG ou WEBP)');
+      return;
+    }
+
+    // Validar tamanho (5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setError('A imagem deve ter no máximo 5MB');
+      return;
+    }
+
+    setImageFile(file);
+    setError('');
+
+    // Criar preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setFormData((prev) => ({ ...prev, image_url: '' }));
   };
 
   const parseFeatures = (featuresText: string): string[] =>
@@ -197,6 +242,21 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
 
     setLoading(true);
     try {
+      // Upload de imagem se houver arquivo selecionado
+      let imageUrl = formData.image_url;
+      if (imageFile) {
+        setUploadingImage(true);
+        try {
+          imageUrl = await uploadProductImage(imageFile, productId || undefined, formData.sku);
+        } catch (uploadError: any) {
+          setError(uploadError.message || 'Erro ao fazer upload da imagem');
+          setUploadingImage(false);
+          setLoading(false);
+          return;
+        }
+        setUploadingImage(false);
+      }
+
       // Converte specifications em JSON string
       const specsObject = parseSpecifications(formData.specifications);
       const specsJson = Object.keys(specsObject).length > 0 ? JSON.stringify(specsObject) : undefined;
@@ -214,7 +274,7 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
         dimensions: formData.dimensions || undefined,
         width: formData.width ? parseFloat(String(formData.width)) : undefined,
         height: formData.height ? parseFloat(String(formData.height)) : undefined,
-        image_url: formData.image_url || undefined,
+        image_url: imageUrl || undefined,
         color: (formData as any).color || undefined,
         status: formData.status as 'Ativo' | 'Inativo' | 'Esgotado',
         // Salvar features como JSON string de array
@@ -441,20 +501,84 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
           <div className="border-t pt-3">
             <CollapsibleTrigger asChild>
               <button className="w-full text-left flex items-center justify-between">
-                <h2 className="text-lg font-medium text-gray-800">Imagem</h2>
+                <h2 className="text-lg font-medium text-gray-800">Imagem do Produto</h2>
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="p-4 bg-gray-50 rounded-md">
-                <div>
-                  <Label htmlFor="image_url" className="text-sm font-medium text-gray-700 mb-1">URL da Imagem</Label>
-                  <Input id="image_url" name="image_url" value={formData.image_url} onChange={handleInputChange} />
-                  {formData.image_url && (
-                    <div className="mt-3">
+                <div className="space-y-4">
+                  {/* Upload de arquivo */}
+                  <div>
+                    <Label htmlFor="image_file" className="text-sm font-medium text-gray-700 mb-1 block">
+                      Enviar Imagem
+                    </Label>
+                    <div className="flex items-center gap-4">
+                      <label
+                        htmlFor="image_file"
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 transition-colors"
+                      >
+                        <Upload className="w-4 h-4" />
+                        {uploadingImage ? 'Enviando...' : 'Selecionar Arquivo'}
+                      </label>
+                      <input
+                        id="image_file"
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/webp"
+                        onChange={handleImageFileChange}
+                        className="hidden"
+                        disabled={uploadingImage}
+                      />
+                      {imagePreview && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveImage}
+                          className="flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                          Remover
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Formatos aceitos: JPG, PNG, WEBP (máx. 5MB)
+                    </p>
+                  </div>
+
+                  {/* Preview da imagem */}
+                  {imagePreview && (
+                    <div className="mt-4">
                       <p className="text-sm text-gray-600 mb-2">Prévia:</p>
-                      <img src={formData.image_url} alt="Prévia" className="max-w-sm h-auto rounded-lg border" onError={(e) => {(e.target as HTMLImageElement).src = 'https://placehold.co/200x200';}} />
+                      <div className="relative inline-block">
+                        <img
+                          src={imagePreview}
+                          alt="Prévia"
+                          className="max-w-sm h-auto rounded-lg border shadow-sm"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://placehold.co/200x200';
+                          }}
+                        />
+                      </div>
                     </div>
                   )}
+
+                  {/* URL alternativa (fallback) */}
+                  <div>
+                    <Label htmlFor="image_url" className="text-sm font-medium text-gray-700 mb-1">
+                      Ou informe uma URL da Imagem
+                    </Label>
+                    <Input
+                      id="image_url"
+                      name="image_url"
+                      type="url"
+                      value={formData.image_url}
+                      onChange={handleInputChange}
+                      placeholder="https://exemplo.com/imagem.jpg"
+                      disabled={!!imageFile}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Use apenas se não for fazer upload de arquivo
+                    </p>
+                  </div>
                 </div>
               </div>
             </CollapsibleContent>
