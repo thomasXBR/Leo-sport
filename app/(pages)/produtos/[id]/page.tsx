@@ -72,60 +72,22 @@ export async function generateStaticParams() {
 // ---- Page ----
 export default async function ProductPage({ params }: ProductPageProps) {
   const { id } = await params
-
-  // Verifica se é um UUID válido (formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+  const productId = String(id) // Garantir que o ID é uma string
 
   let product = null
-  let isSupabaseProduct = false
 
-  // Se for UUID, só busca no Supabase (não tenta mocks numéricos)
-  if (isUUID) {
-    try {
-      product = await getSupabaseProductById(id)
-      if (product) {
-        isSupabaseProduct = true
-      }
-    } catch (error: any) {
-      // Verificar se é um erro de "não encontrado"
-      if (error?.code === 'PGRST116' || error?.message?.includes('No rows') || error?.message?.includes('not found')) {
-        console.log('Product not found in Supabase:', id)
-        notFound()
-        return
-      }
-      // Qualquer outro erro também retorna 404
-      console.error('Error fetching UUID product from Supabase:', error?.message || error)
-      notFound()
-      return
-    }
-
-    // Se não encontrou o produto
-    if (!product) {
-      notFound()
-      return
-    }
-  } else {
-    // Se não for UUID, tenta Supabase primeiro, depois mocks numéricos
-    try {
-      product = await getSupabaseProductById(id)
-      if (product) {
-        isSupabaseProduct = true
-      }
-    } catch (error: any) {
-      // Se não encontrou no Supabase e não é UUID, tenta buscar nos mocks numéricos
-      if (error?.code === 'PGRST116' || error?.message?.includes('No rows') || error?.message?.includes('not found')) {
-        console.log('Supabase product not found, trying mock data:', error?.message || error)
-      } else {
-        console.error('Error fetching product from Supabase:', error?.message || error)
-      }
-    }
-
-    // Fallback para produtos mock numéricos apenas se não for UUID
-    if (!product) {
-      const numericId = parseInt(id, 10)
-      if (!isNaN(numericId)) {
+  // Tenta buscar no Supabase primeiro (o ID pode ser UUID ou string numérica)
+  try {
+    product = await getSupabaseProductById(productId)
+  } catch (error: any) {
+    // Se não encontrou no Supabase, tenta buscar nos mocks numéricos (apenas se for número puro)
+    if (error?.code === 'PGRST116' || error?.message?.includes('No rows') || error?.message?.includes('not found')) {
+      const numericId = parseInt(productId, 10)
+      if (!isNaN(numericId) && String(numericId) === productId) {
         product = getProductById(numericId)
       }
+    } else {
+      console.error('Error fetching product from Supabase:', error?.message || error)
     }
   }
 
