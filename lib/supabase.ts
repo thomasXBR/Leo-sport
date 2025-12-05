@@ -38,6 +38,8 @@ export type Partnership = {
   status: 'Ativo' | 'Inativo' | 'Pendente';
   partnership_date: string;
   notes?: string;
+  form_type?: 'fornecedor' | 'representante';
+  form_payload?: string | object;
   created_at: string;
   updated_at: string;
 };
