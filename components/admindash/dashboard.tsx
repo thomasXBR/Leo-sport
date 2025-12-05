@@ -532,7 +532,6 @@ const PartnerForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
     const [status, setStatus] = useState<'Ativo' | 'Inativo' | 'Pendente'>(initialData?.status || 'Pendente')
     const [partnershipDate, setPartnershipDate] = useState(initialData?.partnership_date || new Date().toISOString().split('T')[0])
     const [notes, setNotes] = useState(initialData?.notes || '')
-    const [isActive, setIsActive] = useState(initialData?.is_active !== undefined ? initialData.is_active : (initialData?.status === 'Ativo'))
     
     // Parsear form_payload se existir
     let formPayload = null
@@ -555,7 +554,6 @@ const PartnerForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
             status: status,
             partnership_date: partnershipDate,
             notes: notes || undefined,
-            is_active: isActive,
         })
     }
 
@@ -569,7 +567,7 @@ const PartnerForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
                         <div className="space-y-2 text-sm">
                             <div className="grid grid-cols-2 gap-2">
                                 {formPayload.nome && (
-                                    <div>
+                <div>
                                         <span className="font-medium text-gray-600">Nome:</span>
                                         <p className="text-gray-900">{formPayload.nome}</p>
                                     </div>
@@ -687,16 +685,16 @@ const PartnerForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
                         required
                     />
                 </div>
-                <div>
+                    <div>
                     <label className="block text-sm font-medium text-gray-700">Telefone de Contato</label>
-                    <input
+                        <input
                         type="tel"
                         value={contactPhone}
                         onChange={(e) => setContactPhone(e.target.value)}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                         placeholder="(00) 00000-0000"
-                    />
-                </div>
+                        />
+                    </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Status *</label>
@@ -721,18 +719,6 @@ const PartnerForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
                             required
                         />
                     </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <input
-                        type="checkbox"
-                        id="is_active"
-                        checked={isActive}
-                        onChange={(e) => setIsActive(e.target.checked)}
-                        className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
-                    />
-                    <label htmlFor="is_active" className="text-sm font-medium text-gray-700 cursor-pointer">
-                        Parceria Ativa
-                    </label>
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Observações</label>
@@ -779,16 +765,16 @@ const PurchaseForm = ({ initialData, onSave, onCancel }: { initialData: any, onS
                         required
                     />
                 </div>
-                <div>
+                    <div>
                     <label className="block text-sm font-medium text-gray-700">Valor Total (R$)</label>
-                    <input
-                        type="number"
-                        step="0.01"
-                        value={total}
-                        onChange={(e) => setTotal(e.target.value)}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                        required
-                    />
+                        <input
+                            type="number"
+                            step="0.01"
+                            value={total}
+                            onChange={(e) => setTotal(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                        />
                 </div>
             </div>
             <DialogFooter className="mt-6">
@@ -933,7 +919,7 @@ export default function Dashboard() {
         if (type === 'site-image') {
             imageInputRef.current?.click()
         } else {
-            fileInputRef.current?.click()
+        fileInputRef.current?.click()
         }
     }
 
@@ -1116,13 +1102,13 @@ export default function Dashboard() {
         const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho']
         const monthlyTotals = [0, 0, 0, 0, 0, 0]
 
-        data.forEach(sale => {
-            const date = new Date(sale.created_at)
+            data.forEach(sale => {
+                const date = new Date(sale.created_at)
             const monthIndex = date.getMonth()
             if (monthIndex >= 0 && monthIndex < 6) {
                 monthlyTotals[monthIndex] += parseFloat(sale.total_amount) || 0
-            }
-        })
+                }
+            })
 
         return monthlyTotals
     }
@@ -1267,7 +1253,7 @@ export default function Dashboard() {
                 if (formData.show_in_navbar !== undefined) {
                     couponData.show_in_navbar = formData.show_in_navbar
                 }
-                await updateCoupon(editingItem.id, couponData)
+                        await updateCoupon(editingItem.id, couponData)
                 // Recarregar dados do Supabase para garantir sincronização
                 const updatedCoupons = await getCoupons()
                 setCoupons(updatedCoupons || [])
@@ -1282,7 +1268,7 @@ export default function Dashboard() {
                 if (formData.show_in_navbar !== undefined) {
                     newCouponData.show_in_navbar = formData.show_in_navbar
                 }
-                await createCoupon(newCouponData)
+                        await createCoupon(newCouponData)
                 // Recarregar dados do Supabase para garantir sincronização
                 const updatedCoupons = await getCoupons()
                 setCoupons(updatedCoupons || [])
@@ -1323,7 +1309,7 @@ export default function Dashboard() {
             if (isColumnError) {
                 alert('A coluna "show_in_navbar" não existe no banco de dados.\n\nPor favor, adicione-a no Supabase:\n1. Vá para Table Editor → coupons\n2. Adicione coluna: show_in_navbar (boolean, nullable)')
             } else {
-                alert(`Erro ao salvar cupom: ${errorMessage}`)
+            alert(`Erro ao salvar cupom: ${errorMessage}`)
             }
         }
     }
@@ -1346,7 +1332,6 @@ export default function Dashboard() {
                     status: formData.status || 'Pendente',
                     partnership_date: formData.partnership_date || new Date().toISOString().split('T')[0],
                     notes: formData.notes || undefined,
-                    is_active: formData.is_active !== undefined ? formData.is_active : true,
                 })
                 setPartnersList([newPartner, ...partnersList])
                 alert('Parceria criada com sucesso!')
@@ -1642,18 +1627,18 @@ export default function Dashboard() {
                                 Usuários
                             </h2>
                             <div className="flex items-center gap-4">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="checkbox"
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
                                         checked={filterAcceptedTerms}
                                         onChange={(e) => setFilterAcceptedTerms(e.target.checked)}
-                                        className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
-                                    />
-                                    <span className="text-sm font-medium text-gray-700">
+                                    className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
+                                />
+                                <span className="text-sm font-medium text-gray-700">
                                         Apenas usuários que aceitaram termos
-                                    </span>
-                                </label>
-                            </div>
+                                </span>
+                            </label>
+                        </div>
                         </div>
                         {usersToShow.length === 0 ? (
                             <p className="text-center py-8 text-gray-500">
@@ -1662,24 +1647,24 @@ export default function Dashboard() {
                                     : 'Nenhum usuário encontrado.'}
                             </p>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full bg-white">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full bg-white">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aceitou Termos</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data de Criação</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200">
+                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
                                         {usersToShow.map((user: any) => (
                                             <tr key={user.id} className={user.accept_terms ? 'bg-green-50' : ''}>
                                                 <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">
                                                     {user.name || '-'}
-                                                </td>
+                                            </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
                                                     {user.email || '-'}
                                                 </td>
@@ -1724,9 +1709,9 @@ export default function Dashboard() {
                                                 </td>
                                             </tr>
                                         ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                </tbody>
+                            </table>
+                        </div>
                         )}
                     </div>
                 );
@@ -1939,8 +1924,8 @@ export default function Dashboard() {
                                         const email = req.contact_email || parsedData.email || 'Não informado'
                                         const telefone = req.contact_phone || parsedData.telefone || '-'
                                         const dataSolicitacao = req.created_at ? new Date(req.created_at).toLocaleDateString('pt-BR') : '-'
-
-                                        return (
+                                            
+                                            return (
                                             <div key={req.id} className="p-5 border-2 border-yellow-200 rounded-lg bg-gradient-to-br from-white to-yellow-50 shadow-md hover:shadow-lg transition-all">
                                                 <div className="flex items-start justify-between mb-3">
                                                     <div className="flex-1">
@@ -1951,7 +1936,7 @@ export default function Dashboard() {
                                                                 : 'bg-purple-100 text-purple-800'
                                                         }`}>
                                                             {isFornecedor ? 'Fornecedor' : 'Representante'}
-                                                        </span>
+                                                    </span>
                                                     </div>
                                                     <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">
                                                         Pendente
@@ -2113,24 +2098,24 @@ export default function Dashboard() {
                                                     <Mail size={14} />
                                                     Email
                                                 </button>
-                                                <button
-                                                    onClick={() => openModal('partner', partner)}
+                                                    <button
+                                                        onClick={() => openModal('partner', partner)}
                                                     className="flex-1 text-cyan-600 hover:text-cyan-800 text-sm font-medium"
-                                                >
+                                                    >
                                                     <Edit size={16} className="inline mr-1" />
                                                     Editar
-                                                </button>
-                                                <button
+                                                    </button>
+                                                    <button
                                                     onClick={() => openDeleteDialog('partnership', partner.id, partner.company_name)}
                                                     className="flex-1 text-red-600 hover:text-red-800 text-sm font-medium"
-                                                >
+                                                    >
                                                     <Trash2 size={16} className="inline mr-1" />
                                                     Deletar
-                                                </button>
+                                                    </button>
                                             </div>
                                         </div>
-                                    )
-                                })}
+                                            )
+                                        })}
                             </div>
                         )}
                     </div>
@@ -2688,10 +2673,10 @@ export default function Dashboard() {
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                                                     {cart.product?.price ? `R$ ${(Number(cart.product.price) * cart.quantity).toFixed(2).replace('.', ',')}` : '-'}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
+                                                    </td>
+                                                    <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
                                                     {new Date(cart.updated_at).toLocaleString('pt-BR')}
-                                                </td>
+                                                    </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
                                                     {cart.user?.email && (
                                                         <button
@@ -2707,10 +2692,10 @@ export default function Dashboard() {
                                                     )}
                                                 </td>
                                             </tr>
-                                        ))}
+                                                            ))}
                                     </tbody>
                                 </table>
-                            </div>
+                                                        </div>
                         )}
                     </div>
                 )
@@ -2764,11 +2749,11 @@ export default function Dashboard() {
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
                                                     R$ {Number(item.unit_price).toFixed(2).replace('.', ',')}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                                    </td>
+                                                    <td className="py-4 px-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                                                     R$ {Number(item.total_price).toFixed(2).replace('.', ',')}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
+                                                    </td>
+                                                    <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
                                                     {new Date(item.created_at).toLocaleDateString('pt-BR')}
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap">
@@ -2792,8 +2777,8 @@ export default function Dashboard() {
                                                             Enviar Email
                                                         </button>
                                                     )}
-                                                </td>
-                                            </tr>
+                                                    </td>
+                                                </tr>
                                         ))}
                                     </tbody>
                                 </table>
