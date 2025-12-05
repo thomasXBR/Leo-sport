@@ -173,19 +173,28 @@ export default function ProductsPage() {
 
         // Atualiza automatico min/max largura/altura/preço
         if (prods.length) {
-          const allWidths = prods.map((p) => parseFloat(p.width)).filter((v) => !isNaN(v));
-          const allHeights = prods.map((p) => parseFloat(p.height)).filter((v) => !isNaN(v));
+          const allWidths = prods.map((p) => parseFloat(p.width)).filter((v) => !isNaN(v) && v > 0);
+          const allHeights = prods.map((p) => parseFloat(p.height)).filter((v) => !isNaN(v) && v > 0);
           const allPrices = prods.map((p) => p.price ?? 0).filter((v) => v > 0);
-          if (allWidths.length) {
-            setWidthRange([Math.min(...allWidths), Math.max(...allWidths)]);
+          
+          if (allWidths.length > 0) {
+            const minW = Math.min(...allWidths);
+            const maxW = Math.max(...allWidths);
+            setWidthRange([minW, maxW]);
             setWidthRangeInitialized(true);
           }
-          if (allHeights.length) {
-            setHeightRange([Math.min(...allHeights), Math.max(...allHeights)]);
+          
+          if (allHeights.length > 0) {
+            const minH = Math.min(...allHeights);
+            const maxH = Math.max(...allHeights);
+            setHeightRange([minH, maxH]);
             setHeightRangeInitialized(true);
           }
-          if (allPrices.length) {
-            setPriceRange([Math.min(...allPrices), Math.max(...allPrices)]);
+          
+          if (allPrices.length > 0) {
+            const minP = Math.min(...allPrices);
+            const maxP = Math.max(...allPrices);
+            setPriceRange([minP, maxP]);
             setPriceRangeInitialized(true);
           }
         }
@@ -367,7 +376,7 @@ export default function ProductsPage() {
           <div className="block md:hidden mb-4">
             <button
               onClick={() => setShowFilters((s) => !s)}
-              className="flex items-center gap-2 px-4 py-2 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-900 font-semibold shadow-sm"
+              className="flex items-center gap-2 px-5 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold shadow-lg transition-all duration-200 transform hover:scale-105"
             >
               <Filter className="w-5 h-5" />
               {showFilters ? 'Ocultar Filtros' : 'Mostrar Filtros'}
@@ -382,13 +391,13 @@ export default function ProductsPage() {
             `}
           >
             {/* Filtros da esquerda (coluna para categoria/esporte/cor) */}
-            <div className="md:col-span-4 xl:col-span-3 bg-gray-50 border rounded-xl p-4 shadow-sm mb-4 md:mb-0">
+            <div className="md:col-span-4 xl:col-span-3 bg-gradient-to-br from-blue-50 to-white border-2 border-blue-100 rounded-xl p-5 shadow-lg mb-4 md:mb-0">
 
               {/* Categoria */}
               <div className="mb-6">
-                <div className="flex items-center gap-2 mb-3">
-                  <Filter className="w-5 h-5 text-blue-800" />
-                  <h2 className="text-lg font-semibold text-blue-800">
+                <div className="flex items-center gap-2 mb-4">
+                  <Filter className="w-5 h-5 text-blue-700" />
+                  <h2 className="text-lg font-bold text-gray-800">
                     {getContent('products_filter_title', 'Filtrar por categoria')}
                   </h2>
                 </div>
@@ -396,10 +405,10 @@ export default function ProductsPage() {
                   <button
                     type="button"
                     onClick={() => setSelectedCategory('all')}
-                    className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-colors duration-150 ${
+                    className={`px-4 py-2 rounded-lg border-2 text-sm font-semibold transition-all duration-200 shadow-sm ${
                       selectedCategory === 'all'
-                        ? 'bg-blue-800 text-white border-blue-800'
-                        : 'bg-white text-blue-800 border-blue-200 hover:bg-blue-100'
+                        ? 'bg-blue-700 text-white border-blue-700 shadow-md scale-105'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50 hover:border-blue-400'
                     }`}
                   >
                     {getContent('products_filter_all', 'Todos')}
@@ -409,10 +418,10 @@ export default function ProductsPage() {
                       type="button"
                       key={String(category)}
                       onClick={() => setSelectedCategory(category)}
-                      className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-colors duration-150 ${
+                      className={`px-4 py-2 rounded-lg border-2 text-sm font-semibold transition-all duration-200 shadow-sm ${
                         selectedCategory === category
-                          ? 'bg-blue-800 text-white border-blue-800'
-                          : 'bg-white text-blue-800 border-blue-200 hover:bg-blue-100'
+                          ? 'bg-blue-700 text-white border-blue-700 shadow-md scale-105'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50 hover:border-blue-400'
                       }`}
                     >
                       {category}
@@ -423,16 +432,16 @@ export default function ProductsPage() {
 
               {/* Esporte */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-blue-800 mb-1">
+                <label className="block text-sm font-bold text-gray-800 mb-2">
                   Esporte:
                 </label>
                 <div className="relative">
                   <select
                     value={selectedSport}
                     onChange={(e) => setSelectedSport(e.target.value)}
-                    className="block w-full rounded-lg border-blue-300 focus:ring-2 focus:ring-blue-500 bg-white px-3 py-2 text-blue-900"
+                    className="block w-full rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white px-4 py-2.5 text-gray-700 font-medium shadow-sm transition-all"
                   >
-                    <option value="all">Todos</option>
+                    <option value="all">Todos os esportes</option>
                     {sports.map((sport) => (
                       <option key={String(sport)} value={sport}>
                         {sport}
@@ -444,20 +453,20 @@ export default function ProductsPage() {
 
               {/* Cor */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-blue-800 mb-1">
+                <label className="block text-sm font-bold text-gray-800 mb-2">
                   Cor:
                 </label>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => setSelectedColor('all')}
-                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full border text-sm font-medium transition-colors duration-150 ${
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm font-semibold transition-all duration-200 shadow-sm ${
                       selectedColor === 'all'
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-blue-800 border-blue-200 hover:bg-blue-100'
+                        ? 'bg-blue-700 text-white border-blue-700 shadow-md'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50 hover:border-blue-400'
                     }`}
                   >
-                    <span className="inline-block w-5 h-5 rounded-full border border-gray-300 bg-white mr-0.5"></span>
+                    <span className="inline-block w-5 h-5 rounded-full border-2 border-gray-400 bg-white"></span>
                     Todas
                   </button>
                   {colors.map((color) => (
@@ -465,10 +474,10 @@ export default function ProductsPage() {
                       key={String(color)}
                       type="button"
                       onClick={() => setSelectedColor(color)}
-                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full border text-sm font-medium transition-colors duration-150 ${
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm font-semibold transition-all duration-200 shadow-sm ${
                         selectedColor === color
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white text-blue-800 border-blue-200 hover:bg-blue-100'
+                          ? 'bg-blue-700 text-white border-blue-700 shadow-md'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50 hover:border-blue-400'
                       }`}
                     >
                       <ColorBadge color={String(color)} />
@@ -481,130 +490,220 @@ export default function ProductsPage() {
 
             {/* Filtros da direita (largura/altura/preço/ordenação), ocupa resto do espaço */}
             <div className="md:col-span-8 xl:col-span-9">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 bg-gray-50 border rounded-xl p-4 shadow-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl p-5 shadow-lg">
                 {/* Largura */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-blue-800">
-                    Largura (cm):
+                <div className="flex flex-col gap-2 bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
+                  <label className="text-sm font-bold text-gray-800 flex items-center gap-1">
+                    <span>📏</span> Largura (cm)
                   </label>
                   <div className="flex gap-2 items-center">
                     <input
                       type="number"
-                      min={minWidth}
-                      max={maxWidth}
-                      value={widthRange[0]}
+                      min={minWidth || 0}
+                      max={maxWidth || 1000}
+                      value={widthRange[0] || ''}
                       onChange={(e) => {
                         let v = Number(e.target.value);
-                        setWidthRange([v, widthRange[1]]);
+                        if (isNaN(v) || v < (minWidth || 0)) v = minWidth || 0;
+                        if (v > (maxWidth || 0)) v = maxWidth || 0;
+                        if (v > widthRange[1]) {
+                          setWidthRange([v, v]);
+                        } else {
+                          setWidthRange([v, widthRange[1]]);
+                        }
                       }}
-                      className="w-20 rounded-lg border-blue-300 focus:ring-blue-500 px-2.5"
+                      placeholder={minWidth > 0 ? String(minWidth) : '0'}
+                      className="w-24 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 text-gray-700 font-medium shadow-sm transition-all"
                     />
-                    <span className="text-blue-900">à</span>
+                    <span className="text-gray-600 font-semibold">à</span>
                     <input
                       type="number"
-                      min={minWidth}
-                      max={maxWidth}
-                      value={widthRange[1]}
+                      min={minWidth || 0}
+                      max={maxWidth || 1000}
+                      value={widthRange[1] || ''}
                       onChange={(e) => {
                         let v = Number(e.target.value);
-                        setWidthRange([widthRange[0], v]);
+                        if (isNaN(v) || v < (minWidth || 0)) v = minWidth || 0;
+                        if (v > (maxWidth || 0)) v = maxWidth || 0;
+                        if (v < widthRange[0]) {
+                          setWidthRange([v, v]);
+                        } else {
+                          setWidthRange([widthRange[0], v]);
+                        }
                       }}
-                      className="w-20 rounded-lg border-blue-300 focus:ring-blue-500 px-2.5"
+                      placeholder={maxWidth > 0 ? String(maxWidth) : '0'}
+                      className="w-24 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 text-gray-700 font-medium shadow-sm transition-all"
                     />
                   </div>
-                  <div className="text-xs text-blue-500 mt-1">
-                    Mín: {minWidth} &nbsp; Máx: {maxWidth}
-                  </div>
+                  {minWidth > 0 || maxWidth > 0 ? (
+                    <div className="text-xs text-gray-600 mt-1 font-medium">
+                      Mín: <span className="font-bold">{minWidth.toFixed(1)}</span> cm &nbsp; Máx: <span className="font-bold">{maxWidth.toFixed(1)}</span> cm
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-400 italic mt-1">
+                      Sem produtos com largura cadastrada
+                    </div>
+                  )}
                 </div>
 
                 {/* Altura */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-blue-800">
-                    Altura (cm):
+                <div className="flex flex-col gap-2 bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
+                  <label className="text-sm font-bold text-gray-800 flex items-center gap-1">
+                    <span>📐</span> Altura (cm)
                   </label>
                   <div className="flex gap-2 items-center">
                     <input
                       type="number"
-                      min={minHeight}
-                      max={maxHeight}
-                      value={heightRange[0]}
+                      min={minHeight || 0}
+                      max={maxHeight || 1000}
+                      value={heightRange[0] || ''}
                       onChange={(e) => {
                         let v = Number(e.target.value);
-                        setHeightRange([v, heightRange[1]]);
+                        if (isNaN(v) || v < (minHeight || 0)) v = minHeight || 0;
+                        if (v > (maxHeight || 0)) v = maxHeight || 0;
+                        if (v > heightRange[1]) {
+                          setHeightRange([v, v]);
+                        } else {
+                          setHeightRange([v, heightRange[1]]);
+                        }
                       }}
-                      className="w-20 rounded-lg border-blue-300 focus:ring-blue-500 px-2.5"
+                      placeholder={minHeight > 0 ? String(minHeight) : '0'}
+                      className="w-24 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 text-gray-700 font-medium shadow-sm transition-all"
                     />
-                    <span className="text-blue-900">à</span>
+                    <span className="text-gray-600 font-semibold">à</span>
                     <input
                       type="number"
-                      min={minHeight}
-                      max={maxHeight}
-                      value={heightRange[1]}
+                      min={minHeight || 0}
+                      max={maxHeight || 1000}
+                      value={heightRange[1] || ''}
                       onChange={(e) => {
                         let v = Number(e.target.value);
-                        setHeightRange([heightRange[0], v]);
+                        if (isNaN(v) || v < (minHeight || 0)) v = minHeight || 0;
+                        if (v > (maxHeight || 0)) v = maxHeight || 0;
+                        if (v < heightRange[0]) {
+                          setHeightRange([v, v]);
+                        } else {
+                          setHeightRange([heightRange[0], v]);
+                        }
                       }}
-                      className="w-20 rounded-lg border-blue-300 focus:ring-blue-500 px-2.5"
+                      placeholder={maxHeight > 0 ? String(maxHeight) : '0'}
+                      className="w-24 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 text-gray-700 font-medium shadow-sm transition-all"
                     />
                   </div>
-                  <div className="text-xs text-blue-500 mt-1">
-                    Mín: {minHeight} &nbsp; Máx: {maxHeight}
-                  </div>
+                  {minHeight > 0 || maxHeight > 0 ? (
+                    <div className="text-xs text-gray-600 mt-1 font-medium">
+                      Mín: <span className="font-bold">{minHeight.toFixed(1)}</span> cm &nbsp; Máx: <span className="font-bold">{maxHeight.toFixed(1)}</span> cm
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-400 italic mt-1">
+                      Sem produtos com altura cadastrada
+                    </div>
+                  )}
                 </div>
 
                 {/* Preço */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-blue-800">
-                    Preço (R$):
+                <div className="flex flex-col gap-2 bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
+                  <label className="text-sm font-bold text-gray-800 flex items-center gap-1">
+                    <span>💰</span> Preço (R$)
                   </label>
                   <div className="flex gap-2 items-center">
-                    <input
-                      type="number"
-                      min={minPrice}
-                      max={maxPrice}
-                      step="0.01"
-                      value={priceRange[0]}
-                      onChange={(e) => {
-                        let v = Number(e.target.value);
-                        setPriceRange([v, priceRange[1]]);
-                      }}
-                      className="w-24 rounded-lg border-blue-300 focus:ring-blue-500 px-2.5"
-                    />
-                    <span className="text-blue-900">à</span>
-                    <input
-                      type="number"
-                      min={minPrice}
-                      max={maxPrice}
-                      step="0.01"
-                      value={priceRange[1]}
-                      onChange={(e) => {
-                        let v = Number(e.target.value);
-                        setPriceRange([priceRange[0], v]);
-                      }}
-                      className="w-24 rounded-lg border-blue-300 focus:ring-blue-500 px-2.5"
-                    />
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">R$</span>
+                      <input
+                        type="number"
+                        min={minPrice || 0}
+                        max={maxPrice || 100000}
+                        step="0.01"
+                        value={priceRange[0] || ''}
+                        onChange={(e) => {
+                          let v = Number(e.target.value);
+                          if (isNaN(v) || v < (minPrice || 0)) v = minPrice || 0;
+                          if (v > (maxPrice || 0)) v = maxPrice || 0;
+                          if (v > priceRange[1]) {
+                            setPriceRange([v, v]);
+                          } else {
+                            setPriceRange([v, priceRange[1]]);
+                          }
+                        }}
+                        placeholder={minPrice > 0 ? minPrice.toFixed(2) : '0,00'}
+                        className="w-full pl-10 pr-3 py-2 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 font-medium shadow-sm transition-all"
+                      />
+                    </div>
+                    <span className="text-gray-600 font-semibold">à</span>
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">R$</span>
+                      <input
+                        type="number"
+                        min={minPrice || 0}
+                        max={maxPrice || 100000}
+                        step="0.01"
+                        value={priceRange[1] || ''}
+                        onChange={(e) => {
+                          let v = Number(e.target.value);
+                          if (isNaN(v) || v < (minPrice || 0)) v = minPrice || 0;
+                          if (v > (maxPrice || 0)) v = maxPrice || 0;
+                          if (v < priceRange[0]) {
+                            setPriceRange([v, v]);
+                          } else {
+                            setPriceRange([priceRange[0], v]);
+                          }
+                        }}
+                        placeholder={maxPrice > 0 ? maxPrice.toFixed(2) : '0,00'}
+                        className="w-full pl-10 pr-3 py-2 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 font-medium shadow-sm transition-all"
+                      />
+                    </div>
                   </div>
-                  <div className="text-xs text-blue-500 mt-1">
-                    Mín: R$ {minPrice.toFixed(2).replace('.', ',')} &nbsp; Máx: R$ {maxPrice.toFixed(2).replace('.', ',')}
-                  </div>
+                  {minPrice > 0 || maxPrice > 0 ? (
+                    <div className="text-xs text-gray-600 mt-1 font-medium">
+                      Mín: <span className="font-bold">R$ {minPrice.toFixed(2).replace('.', ',')}</span> &nbsp; Máx: <span className="font-bold">R$ {maxPrice.toFixed(2).replace('.', ',')}</span>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-400 italic mt-1">
+                      Sem produtos com preço cadastrado
+                    </div>
+                  )}
                 </div>
 
                 {/* Ordenação */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-blue-800">
-                    Ordenar por
+                <div className="flex flex-col gap-2 bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
+                  <label className="text-sm font-bold text-gray-800 flex items-center gap-1">
+                    <span>🔀</span> Ordenar por
                   </label>
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="rounded-lg border-blue-300 focus:ring-blue-500 px-2.5 py-2 bg-white"
+                    className="w-full rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2.5 bg-white text-gray-700 font-medium shadow-sm transition-all"
                   >
-                    <option value="relevance">Relevância</option>
-                    <option value="price_asc">Menor preço</option>
-                    <option value="price_desc">Maior preço</option>
+                    <option value="relevance">⭐ Relevância</option>
+                    <option value="price_asc">💰 Menor preço</option>
+                    <option value="price_desc">💎 Maior preço</option>
                   </select>
                 </div>
               </div>
+              
+              {/* Botão para resetar filtros */}
+              {(selectedCategory !== 'all' || selectedSport !== 'all' || selectedColor !== 'all' || 
+                (widthRangeInitialized && (widthRange[0] !== minWidth || widthRange[1] !== maxWidth)) ||
+                (heightRangeInitialized && (heightRange[0] !== minHeight || heightRange[1] !== maxHeight)) ||
+                (priceRangeInitialized && (priceRange[0] !== minPrice || priceRange[1] !== maxPrice))) && (
+                <div className="mt-4 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategory('all');
+                      setSelectedSport('all');
+                      setSelectedColor('all');
+                      if (widthRangeInitialized) setWidthRange([minWidth, maxWidth]);
+                      if (heightRangeInitialized) setHeightRange([minHeight, maxHeight]);
+                      if (priceRangeInitialized) setPriceRange([minPrice, maxPrice]);
+                      setSortBy('relevance');
+                    }}
+                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg border-2 border-gray-300 transition-all duration-200 shadow-sm hover:shadow-md"
+                  >
+                    🔄 Limpar Filtros
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -630,8 +729,30 @@ export default function ProductsPage() {
           </div>
 
           {filteredProducts.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 text-lg">Nenhum produto encontrado.</p>
+            <div className="text-center py-16">
+              <div className="max-w-md mx-auto">
+                <div className="text-6xl mb-4">🔍</div>
+                <h3 className="text-2xl font-bold text-gray-800 mb-2">Nenhum produto encontrado</h3>
+                <p className="text-gray-600 mb-6">
+                  Tente ajustar os filtros ou buscar por outro termo.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCategory('all');
+                    setSelectedSport('all');
+                    setSelectedColor('all');
+                    setSearchTerm('');
+                    if (widthRangeInitialized) setWidthRange([minWidth, maxWidth]);
+                    if (heightRangeInitialized) setHeightRange([minHeight, maxHeight]);
+                    if (priceRangeInitialized) setPriceRange([minPrice, maxPrice]);
+                    setSortBy('relevance');
+                  }}
+                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg transition-all duration-200 transform hover:scale-105"
+                >
+                  🔄 Limpar Todos os Filtros
+                </button>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
