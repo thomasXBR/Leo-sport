@@ -185,22 +185,17 @@ export default function PerfilPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900">Meu Perfil</h1>
-          <p className="mt-2 text-gray-600">Gerencie suas informações pessoais e configurações</p>
-        </div>
+    <div className="flex flex-col min-h-screen bg-gray-100">
+      <main className="flex-grow p-4 sm:p-6">
+        <h1 className="text-3xl font-bold text-gray-800 mb-8">Meu Perfil</h1>
 
-        {/* Tabs */}
         <div className="grid grid-cols-2 gap-3 mb-6">
           <button 
             onClick={() => setActiveTab('information')} 
             className={`p-4 rounded-lg font-semibold transition-all duration-200 ${
               activeTab === 'information' 
-                ? 'bg-blue-900 text-white shadow-lg scale-105' 
-                : 'bg-white text-gray-700 hover:bg-blue-50'
+                ? 'bg-cyan-600 text-white shadow-lg scale-105' 
+                : 'bg-white text-gray-700 hover:bg-cyan-50'
             }`}
           >
             Informações
@@ -209,8 +204,8 @@ export default function PerfilPage() {
             onClick={() => setActiveTab('purchases')} 
             className={`p-4 rounded-lg font-semibold transition-all duration-200 ${
               activeTab === 'purchases' 
-                ? 'bg-blue-900 text-white shadow-lg scale-105' 
-                : 'bg-white text-gray-700 hover:bg-blue-50'
+                ? 'bg-cyan-600 text-white shadow-lg scale-105' 
+                : 'bg-white text-gray-700 hover:bg-cyan-50'
             }`}
           >
             Compras
@@ -552,7 +547,7 @@ export default function PerfilPage() {
             </>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
