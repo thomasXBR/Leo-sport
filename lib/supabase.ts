@@ -1116,18 +1116,18 @@ export async function getUserOrders(userId: string) {
   
   if (error) throw error;
   
-  // Buscar items de cada pedido
+  // Buscar items de cada pedido da tabela sale_items
   const ordersWithItems = await Promise.all(
     (orders || []).map(async (order) => {
       try {
-        const { data: orderItems } = await supabase
-          .from('order_items')
-          .select('*, products(*)')
-          .eq('order_id', order.id);
+        const { data: saleItems } = await supabase
+          .from('sale_items')
+          .select('*, product:products(*)')
+          .eq('sale_id', order.id);
         
         return {
           ...order,
-          items: orderItems || []
+          items: saleItems || []
         };
       } catch {
         return {

@@ -287,8 +287,24 @@ export default function Header() {
 
           {/* Actions */}
           <div className="flex items-center space-x-4 relative">
-            {/* Cart Sidebar */}
+            {/* Cart Sidebar - aparece automaticamente quando há produtos */}
             <CartSidebar />
+            
+            {/* Indicador de carrinho no header */}
+            {cartCount > 0 && (
+              <Link href="/carrinho" className="relative">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="relative hover:bg-gray-100"
+                >
+                  <ShoppingCart className="w-6 h-6 text-gray-700" />
+                  <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                    {cartCount > 9 ? '9+' : cartCount}
+                  </span>
+                </Button>
+              </Link>
+            )}
 
             {/* Login/Profile Button */}
             <Button

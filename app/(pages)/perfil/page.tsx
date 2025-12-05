@@ -393,19 +393,28 @@ export default function PerfilPage() {
                     </div>
                     {order.items && order.items.length > 0 && (
                       <div className="mt-4 pt-4 border-t">
-                        <p className="text-sm font-medium text-gray-700 mb-2">Itens do pedido:</p>
-                        <div className="space-y-2">
+                        <p className="text-sm font-medium text-gray-700 mb-3">Itens do pedido:</p>
+                        <div className="space-y-3">
                           {order.items.map((item: any, index: number) => (
-                            <div key={index} className="flex items-center justify-between text-sm">
-                              <span className="text-gray-600">
-                                {item.products?.name || item.product_name || 'Produto'} 
-                                {item.quantity > 1 && ` x${item.quantity}`}
-                              </span>
-                              {item.price && (
-                                <span className="text-gray-900 font-medium">
-                                  {formatCurrency(item.price * (item.quantity || 1))}
-                                </span>
+                            <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                              {item.product?.image_url && (
+                                <img 
+                                  src={item.product.image_url} 
+                                  alt={item.product.name || 'Produto'}
+                                  className="w-16 h-16 object-cover rounded"
+                                />
                               )}
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">
+                                  {item.product?.name || item.product_name || 'Produto'}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Quantidade: {item.quantity || 1}
+                                </p>
+                                <p className="text-sm font-semibold text-gray-900 mt-2">
+                                  {formatCurrency(item.total_price || (item.unit_price * (item.quantity || 1)))}
+                                </p>
+                              </div>
                             </div>
                           ))}
                         </div>
