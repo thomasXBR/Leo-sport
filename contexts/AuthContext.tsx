@@ -195,6 +195,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Aguardar um pouco para garantir que tudo foi salvo
       await new Promise(resolve => setTimeout(resolve, 500));
 
+      // Enviar email de boas-vindas com cupom (não bloquear o cadastro se falhar)
+      try {
+        const welcomeEmailResponse = await fetch('/api/email/welcome', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: email.trim(),
+            name: name.trim(),
+          }),
+        });
+
+        if (!welcomeEmailResponse.ok) {
+          console.warn('Email de boas-vindas não foi enviado, mas a conta foi criada com sucesso');
+        }
+      } catch (emailError) {
+        // Não falhar o cadastro se o email não for enviado
+        console.warn('Erro ao enviar email de boas-vindas:', emailError);
+      }
+
       return { error: null };
     } catch (error: any) {
       console.error('Erro no signUp:', error);
