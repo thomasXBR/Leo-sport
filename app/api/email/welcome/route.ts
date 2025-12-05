@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Resend } from 'resend';
 import { supabase, getCoupons } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
@@ -15,23 +16,49 @@ export async function POST(request: NextRequest) {
     // Buscar cupons ativos do banco de dados
     const coupons = await getCoupons();
     
+    if (!coupons || coupons.length === 0) {
+      console.warn('Nenhum cupom encontrado no banco de dados');
+    }
+    
     // Buscar um cupom de boas-vindas específico ou o primeiro cupom ativo
     // Primeiro, tentar encontrar um cupom com código específico de boas-vindas
-    let welcomeCoupon = coupons.find((coupon: any) => 
-      coupon.status === 'Ativo' && 
-      (coupon.code.toLowerCase().includes('bemvindo') || 
-       coupon.code.toLowerCase().includes('welcome') ||
-       coupon.code.toLowerCase().includes('boasvindas'))
-    );
-
-    // Se não encontrar, pegar o primeiro cupom ativo e válido
-    if (!welcomeCoupon) {
-      const now = new Date();
-      welcomeCoupon = coupons.find((coupon: any) => {
-        if (coupon.status !== 'Ativo') return false;
+    const now = new Date();
+    let welcomeCoupon = coupons?.find((coupon: any) => {
+      if (coupon.status !== 'Ativo') return false;
+      
+      // Verificar se está dentro do período de validade
+      if (coupon.valid_until) {
         const validUntil = new Date(coupon.valid_until);
+        if (validUntil < now) return false;
+      }
+      if (coupon.valid_from) {
         const validFrom = new Date(coupon.valid_from);
-        return validUntil >= now && validFrom <= now;
+        if (validFrom > now) return false;
+      }
+      
+      // Verificar se é um cupom de boas-vindas
+      const codeLower = coupon.code?.toLowerCase() || '';
+      return codeLower.includes('bemvindo') || 
+             codeLower.includes('welcome') ||
+             codeLower.includes('boasvindas');
+    });
+
+    // Se não encontrar cupom de boas-vindas, pegar o primeiro cupom ativo e válido
+    if (!welcomeCoupon) {
+      welcomeCoupon = coupons?.find((coupon: any) => {
+        if (coupon.status !== 'Ativo') return false;
+        
+        // Verificar se está dentro do período de validade
+        if (coupon.valid_until) {
+          const validUntil = new Date(coupon.valid_until);
+          if (validUntil < now) return false;
+        }
+        if (coupon.valid_from) {
+          const validFrom = new Date(coupon.valid_from);
+          if (validFrom > now) return false;
+        }
+        
+        return true;
       });
     }
 
@@ -127,22 +154,32 @@ export async function POST(request: NextRequest) {
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
     
     if (RESEND_API_KEY) {
-      const resendResponse = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      try {
+        const resend = new Resend(RESEND_API_KEY);
+        
+        const { data, error } = await resend.emails.send({
           from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
           to: email,
           subject: emailSubject,
           html: emailHtml,
-        }),
-      });
+        });
 
-      if (!resendResponse.ok) {
-        const error = await resendResponse.json();
+        if (error) {
+          console.error('Erro ao enviar email de boas-vindas:', error);
+          // Não falhar o cadastro se o email não for enviado
+          return NextResponse.json({ 
+            success: true, 
+            message: 'Conta criada, mas email não foi enviado',
+            warning: error.message 
+          });
+        }
+
+        return NextResponse.json({ 
+          success: true, 
+          id: data?.id,
+          message: 'Email de boas-vindas enviado com sucesso'
+        });
+      } catch (error: any) {
         console.error('Erro ao enviar email de boas-vindas:', error);
         // Não falhar o cadastro se o email não for enviado
         return NextResponse.json({ 
@@ -151,9 +188,6 @@ export async function POST(request: NextRequest) {
           warning: error.message 
         });
       }
-
-      const data = await resendResponse.json();
-      return NextResponse.json({ success: true, id: data.id });
     } else {
       // Em desenvolvimento, apenas logar o email
       console.log('Email de boas-vindas que seria enviado:', { 
