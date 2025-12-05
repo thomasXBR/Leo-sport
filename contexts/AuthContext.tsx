@@ -234,6 +234,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (data.user) {
         await loadProfile(data.user.id);
+        
+        // Verificar se o usuário aceitou os termos e condições
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('accept_terms')
+          .eq('id', data.user.id)
+          .single();
+        
+        if (!profileError && profileData && profileData.accept_terms === false) {
+          // Fazer logout do usuário que não aceitou os termos
+          await supabase.auth.signOut();
+          setUser(null);
+          setProfile(null);
+          setSession(null);
+          return { error: { message: 'Você precisa aceitar os termos e condições para fazer login. Por favor, aceite os termos no cadastro.' } };
+        }
       }
 
       return { error: null };

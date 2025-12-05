@@ -42,7 +42,6 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
     image_url: (initialData as any)?.image_url ?? '',
     status: (initialData as any)?.status ?? 'Ativo',
     color: (initialData as any)?.color ?? '',
-    relevance: (initialData as any)?.relevance ? String((initialData as any).relevance) : '0',
     features: Array.isArray((initialData as any)?.features)
       ? ((initialData as any).features as string[]).join('\n')
       : typeof (initialData as any)?.features === 'string'
@@ -217,7 +216,6 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
         height: formData.height ? parseFloat(String(formData.height)) : undefined,
         image_url: formData.image_url || undefined,
         color: (formData as any).color || undefined,
-        relevance: formData.relevance ? parseFloat(String(formData.relevance)) : undefined,
         status: formData.status as 'Ativo' | 'Inativo' | 'Esgotado',
         // Salvar features como JSON string de array
         features: formData.features ? JSON.stringify(parseFeatures(formData.features)) : undefined,
@@ -252,7 +250,6 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
           image_url: '',
           status: 'Ativo',
           color: '',
-          relevance: '0',
           features: '',
           specifications: '',
           no_shipping: false,
@@ -280,10 +277,10 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
   const discount = calculateDiscount();
 
   return (
-    <div className="w-full max-w-screen-xl mx-auto p-6 bg-white rounded-lg shadow-lg ring-1 ring-gray-100">
+    <div className="w-full max-w-[95vw] mx-auto p-6 bg-white rounded-lg shadow-lg ring-1 ring-gray-100 overflow-hidden">
       <h1 className="text-3xl font-bold text-gray-900 mb-1">{productId ? 'Editar Produto' : 'Registrar Produto'}</h1>
       <p className="text-sm text-gray-600 mb-6">{productId ? 'Atualize os campos do produto e salve as alterações' : 'Preencha os campos obrigatórios para adicionar um produto'}</p>
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6 max-h-[80vh] overflow-y-auto pr-4">
         {error && (
           <div className="flex items-center gap-2 p-2 bg-red-50 border border-red-200 rounded">
             <AlertCircle className="w-4 h-4 text-red-600" />
@@ -346,11 +343,6 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
                   <div>
                     <Label htmlFor="color" className="text-sm font-medium text-gray-700 mb-1">Cor</Label>
                     <Input id="color" name="color" value={(formData as any).color} onChange={handleInputChange} />
-                  </div>
-                  <div>
-                    <Label htmlFor="relevance" className="text-sm font-medium text-gray-700 mb-1">Relevância (0-100)</Label>
-                    <Input id="relevance" name="relevance" type="number" min="0" max="100" value={formData.relevance} onChange={handleInputChange} />
-                    <p className="text-xs text-gray-500 mt-1">Quanto maior, mais relevante o produto aparecerá</p>
                   </div>
                   <div>
                     <Label htmlFor="status" className="text-sm font-medium text-gray-700 mb-1">Status</Label>
@@ -547,7 +539,7 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
 
         <div className="border-t pt-4 flex gap-3 justify-end">
           <Button type="button" variant="outline" onClick={() => setFormData({
-            name: '', description: '', sku: '', category_id: '', brand: '', price: '', fake_price: '', stock_quantity: '', weight: '', dimensions: '', width: '', height: '', image_url: '', status: 'Ativo', color: '', relevance: '0', features: '', specifications: '', no_shipping: false, devolution_months: '1', warranty_months: '12'
+            name: '', description: '', sku: '', category_id: '', brand: '', price: '', fake_price: '', stock_quantity: '', weight: '', dimensions: '', width: '', height: '', image_url: '', status: 'Ativo', color: '', features: '', specifications: '', no_shipping: false, devolution_months: '1', warranty_months: '12'
           })} className="px-4 py-1 text-sm">Limpar</Button>
           <Button type="submit" disabled={loading} className="px-4 py-1 text-sm bg-blue-600 text-white hover:bg-blue-700">{loading ? (productId ? 'Atualizando...' : 'Registrando...') : (productId ? 'Atualizar Produto' : 'Registrar Produto')}</Button>
         </div>

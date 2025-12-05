@@ -12,7 +12,7 @@ import {
     Tooltip,
     Legend,
 } from 'chart.js'
-import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload, Loader2, ChevronLeft, ChevronRight, ShoppingCart, Package, DollarSign, Image as ImageIcon, Mail, Menu, X as XIcon, ChevronRight as ChevronRightIcon, CheckCircle, Calendar } from 'lucide-react'
+import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload, Loader2, ChevronLeft, ChevronRight, ShoppingCart, Package, DollarSign, Mail, Calendar, Filter } from 'lucide-react'
 import Image from 'next/image'
 import ProductRegistrationForm from '@/components/forms/ProductRegistrationForm'
 import {
@@ -35,14 +35,12 @@ import {
 import {
     getProducts, createProduct, updateProduct, deleteProduct,
     getInventoryItems, createInventoryMovement, deleteInventoryMovement,
-    getSales, getSalesDataForChart, getSalesWithItems, getSaleById,
+    getSales, getSalesDataForChart,
     getInvoices, createInvoice, updateInvoice, deleteInvoice,
     getPartnerships, createPartnership, updatePartnership, deletePartnership,
     getCoupons, createCoupon, updateCoupon, deleteCoupon,
-    getSiteContent, updateSiteContent, getFAQs, createFAQ, updateFAQ, deleteFAQ, getPurchases, createPurchase, updatePurchase, deletePurchase,
-    getSiteImages, createSiteImage, updateSiteImage, deleteSiteImage,
-    getAllUsers, getAllUserCarts, getAllSaleItems,
-    type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent, type FAQ, type Purchase, type SiteImage,
+    getSiteContent, updateSiteContent, getFAQs, createFAQ, updateFAQ, deleteFAQ, getPurchases, createPurchase, updatePurchase, deletePurchase, getAllUsers, getAllUserCarts, getUserCart,
+    type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent, type FAQ, type Purchase,
 } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
 
@@ -278,6 +276,72 @@ const CouponForm = ({ initialData, onSave, onCancel }: { initialData: any, onSav
     )
 }
 
+// Componente de Formulário de Envio de Email
+const EmailForm = ({ userEmail, userName, onSend, onCancel }: { userEmail: string, userName: string, onSend: (data: { subject: string, message: string }) => Promise<void>, onCancel: () => void }) => {
+    const [subject, setSubject] = useState('')
+    const [message, setMessage] = useState('')
+    const [sending, setSending] = useState(false)
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setSending(true)
+        try {
+            await onSend({ subject, message })
+            setSubject('')
+            setMessage('')
+        } catch (error) {
+            console.error('Erro ao enviar email:', error)
+        } finally {
+            setSending(false)
+        }
+    }
+
+    return (
+        <form onSubmit={handleSubmit}>
+            <div className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Para</label>
+                    <input
+                        type="text"
+                        value={`${userName} <${userEmail}>`}
+                        disabled
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-50"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Assunto *</label>
+                    <input
+                        type="text"
+                        value={subject}
+                        onChange={(e) => setSubject(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        required
+                        placeholder="Assunto do email"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Mensagem *</label>
+                    <textarea
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 h-32"
+                        required
+                        placeholder="Digite sua mensagem..."
+                    />
+                </div>
+            </div>
+            <DialogFooter className="mt-6">
+                <button type="button" onClick={onCancel} className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400">
+                    Cancelar
+                </button>
+                <button type="submit" disabled={sending} className="bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 disabled:opacity-50">
+                    {sending ? 'Enviando...' : 'Enviar Email'}
+                </button>
+            </DialogFooter>
+        </form>
+    )
+}
+
 // Componente de Formulário de Nota Fiscal
 const InvoiceForm = ({ initialData, onSave, onCancel }: { initialData: any, onSave: (data: any) => void, onCancel: () => void }) => {
     const [invoiceNumber, setInvoiceNumber] = useState(initialData?.invoice_number || '')
@@ -433,91 +497,100 @@ const InvoiceForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
     )
 }
 
-// Componente de Formulário de Email
-const EmailForm = ({ recipient, recipientName, onSend, onCancel }: { recipient: string, recipientName: string, onSend: (to: string, subject: string, message: string) => void, onCancel: () => void }) => {
-    const [subject, setSubject] = useState('')
-    const [message, setMessage] = useState('')
-    const [sending, setSending] = useState(false)
+// Componente de Formulário de Estoque
+const InventoryForm = ({ initialData, products, onSave, onCancel }: { initialData: any, products: Product[], onSave: (data: any) => void, onCancel: () => void }) => {
+    const [productId, setProductId] = useState(initialData?.product_id || '')
+    const [movementType, setMovementType] = useState<'Entrada' | 'Saída' | 'Ajuste'>(initialData?.movement_type || 'Entrada')
+    const [quantity, setQuantity] = useState<string>(initialData?.quantity ? String(initialData.quantity) : '')
+    const [newQuantity, setNewQuantity] = useState<string>(initialData?.new_quantity ? String(initialData.new_quantity) : '')
+    const [reason, setReason] = useState(initialData?.reason || '')
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        if (!subject || !message) {
-            alert('Por favor, preencha todos os campos.')
-            return
-        }
-
-        setSending(true)
-        try {
-            await onSend(recipient, subject, message)
-            setSubject('')
-            setMessage('')
-        } catch (error) {
-            // Erro já tratado na função handleSendEmail
-        } finally {
-            setSending(false)
-        }
+        onSave({
+            product_id: productId,
+            movement_type: movementType,
+            quantity: movementType === 'Ajuste' ? 0 : parseInt(quantity) || 0,
+            new_quantity: movementType === 'Ajuste' ? parseInt(newQuantity) : undefined,
+            reason: reason || undefined,
+        })
     }
 
     return (
         <form onSubmit={handleSubmit}>
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Para</label>
-                    <input
-                        type="email"
-                        value={recipient}
-                        disabled
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-100"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Nome: {recipientName}</p>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Assunto *</label>
-                    <input
-                        type="text"
-                        value={subject}
-                        onChange={(e) => setSubject(e.target.value)}
+                    <label className="block text-sm font-medium text-gray-700">Produto *</label>
+                    <select
+                        value={productId}
+                        onChange={(e) => setProductId(e.target.value)}
                         className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                         required
-                        placeholder="Assunto do email"
-                    />
+                    >
+                        <option value="">Selecione um produto</option>
+                        {products.map((product) => (
+                            <option key={product.id} value={product.id}>
+                                {product.name} - Estoque: {product.stock_quantity || 0}
+                            </option>
+                        ))}
+                    </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Mensagem *</label>
-                    <textarea
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 h-48"
+                    <label className="block text-sm font-medium text-gray-700">Tipo de Movimentação *</label>
+                    <select
+                        value={movementType}
+                        onChange={(e) => setMovementType(e.target.value as 'Entrada' | 'Saída' | 'Ajuste')}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                         required
-                        placeholder="Digite sua mensagem aqui..."
+                    >
+                        <option value="Entrada">Entrada (Adicionar)</option>
+                        <option value="Saída">Saída (Remover)</option>
+                        <option value="Ajuste">Ajuste (Definir quantidade)</option>
+                    </select>
+                </div>
+                {movementType === 'Ajuste' ? (
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Nova Quantidade *</label>
+                        <input
+                            type="number"
+                            min="0"
+                            value={newQuantity}
+                            onChange={(e) => setNewQuantity(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                            placeholder="Quantidade final desejada"
+                        />
+                    </div>
+                ) : (
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Quantidade *</label>
+                        <input
+                            type="number"
+                            min="1"
+                            value={quantity}
+                            onChange={(e) => setQuantity(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                            placeholder={movementType === 'Entrada' ? 'Quantidade a adicionar' : 'Quantidade a remover'}
+                        />
+                    </div>
+                )}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Motivo</label>
+                    <textarea
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 h-20"
+                        placeholder="Motivo da movimentação (opcional)"
                     />
                 </div>
             </div>
             <DialogFooter className="mt-6">
-                <button
-                    type="button"
-                    onClick={onCancel}
-                    className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400"
-                    disabled={sending}
-                >
+                <button type="button" onClick={onCancel} className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400">
                     Cancelar
                 </button>
-                <button
-                    type="submit"
-                    className="bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 flex items-center gap-2"
-                    disabled={sending}
-                >
-                    {sending ? (
-                        <>
-                            <Loader2 className="animate-spin" size={16} />
-                            Enviando...
-                        </>
-                    ) : (
-                        <>
-                            <Mail size={16} />
-                            Enviar Email
-                        </>
-                    )}
+                <button type="submit" className="bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700">
+                    <Save size={20} className="inline mr-2" /> Salvar
                 </button>
             </DialogFooter>
         </form>
@@ -581,24 +654,18 @@ export default function Dashboard() {
     const [sales, setSales] = useState<any[]>([])
     const [invoices, setInvoices] = useState<Invoice[]>([])
     const [partnersList, setPartnersList] = useState<Partnership[]>([])
-    // Requests submitted via the public "venda-na-leosport" form
-    // These are partnership applications pending admin review
-    const [partnershipRequests, setPartnershipRequests] = useState<any[]>([])
     const [coupons, setCoupons] = useState<Coupon[]>([])
     const [siteContent, setSiteContent] = useState<SupabaseSiteContent[]>([])
     const [faqs, setFaqs] = useState<FAQ[]>([])
     const [purchases, setPurchases] = useState<Purchase[]>([])
-    const [siteImages, setSiteImages] = useState<SiteImage[]>([])
     const [users, setUsers] = useState<any[]>([])
-    const [salesWithItems, setSalesWithItems] = useState<any[]>([])
     const [userCarts, setUserCarts] = useState<any[]>([])
-    const [purchasedItems, setPurchasedItems] = useState<any[]>([])
-    const [sidebarOpen, setSidebarOpen] = useState(true)
-    const [emailModalOpen, setEmailModalOpen] = useState(false)
+    const [filterConsentEmails, setFilterConsentEmails] = useState(false)
     const [selectedUserForEmail, setSelectedUserForEmail] = useState<any>(null)
-    const [filterAcceptedTerms, setFilterAcceptedTerms] = useState(false)
+    const [emailModalOpen, setEmailModalOpen] = useState(false)
+    const [chartFilter, setChartFilter] = useState<'week' | 'month' | 'year'>('month')
     
-    const FAQS_PER_PAGE = 2
+    const FAQS_PER_PAGE = 6
     const [currentPage, setCurrentPage] = useState(1)
     const totalFAQs = faqs.length
     const calculatedTotalPages = Math.ceil(totalFAQs / FAQS_PER_PAGE)
@@ -617,92 +684,82 @@ export default function Dashboard() {
     }, [faqs, calculatedTotalPages])
 
     const [salesData, setSalesData] = useState({
-        labels: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho'],
+        labels: [] as string[],
         datasets: [{
-            label: 'Vendas Mensais (R$)',
-            data: [0, 0, 0, 0, 0, 0],
+            label: 'Vendas (R$)',
+            data: [] as number[],
             backgroundColor: '#0891b2',
             borderRadius: 5,
         }],
     })
 
-    // Accept a pending partnership request: update status to 'Ativo' in Supabase
-    const handleAcceptPartnership = async (requestId: string) => {
-        const partnership = partnershipRequests.find((p: any) => p.id === requestId)
-        const partnershipName = partnership?.company_name || partnership?.nomeEmpresa || 'Esta parceria'
-        
-        if (!confirm(`Tem certeza que deseja ACEITAR a solicitação de parceria de "${partnershipName}"?`)) {
-            return
-        }
-
-        try {
-            await updatePartnership(requestId, { status: 'Ativo' })
-            // Recarregar dados para manter sincronização
-            await loadAllData()
-            alert(`Parceria de "${partnershipName}" aceita e ativada com sucesso!`)
-        } catch (err) {
-            console.error('Erro ao aceitar parceria:', err)
-            alert('Erro ao aceitar parceria. Confira o console.')
-        }
+    const updateChartData = (data: any[], filter: 'week' | 'month' | 'year') => {
+        const { labels, totals } = processSalesDataForChart(data, filter)
+        setSalesData({
+            labels,
+            datasets: [{
+                label: filter === 'week' ? 'Vendas Semanais (R$)' : filter === 'year' ? 'Vendas Anuais (R$)' : 'Vendas Mensais (R$)',
+                data: totals,
+                backgroundColor: '#0891b2',
+                borderRadius: 5,
+            }],
+        })
     }
 
-    // Reject a pending partnership request: marcar como 'Inativo' (ou usar deletePartnership conforme sua política)
-    const handleRejectPartnership = async (requestId: string) => {
-        const partnership = partnershipRequests.find((p: any) => p.id === requestId)
-        const partnershipName = partnership?.company_name || partnership?.nomeEmpresa || 'Esta parceria'
-        
-        if (!confirm(`Tem certeza que deseja RECUSAR a solicitação de parceria de "${partnershipName}"? Esta ação pode ser revertida depois.`)) {
-            return
+    useEffect(() => {
+        if (sales.length > 0) {
+            updateChartData(sales, chartFilter)
         }
-
-        try {
-            await updatePartnership(requestId, { status: 'Inativo' })
-            await loadAllData()
-            alert(`Solicitação de parceria de "${partnershipName}" foi recusada.`)
-        } catch (err) {
-            console.error('Erro ao recusar parceria:', err)
-            alert('Erro ao recusar parceria. Confira o console.')
-        }
-    }
+    }, [chartFilter])
 
     // Estados dos modais
     const [isModalOpen, setIsModalOpen] = useState(false)
-    const [modalType, setModalType] = useState<'invoice' | 'partner' | 'coupon' | 'product' | 'inventory' | 'faq' | 'purchase' | null>(null)
+    const [modalType, setModalType] = useState<'invoice' | 'partner' | 'coupon' | 'products' | 'inventory' | 'faq' | 'purchase' | null>(null)
     const [editingItem, setEditingItem] = useState<any>(null)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [itemToDelete, setItemToDelete] = useState<{ type: string; id: string; name: string } | null>(null)
     const fileInputRef = useRef<HTMLInputElement | null>(null)
     const [uploadingPurchaseId, setUploadingPurchaseId] = useState<string | null>(null)
     const [uploadingInvoiceId, setUploadingInvoiceId] = useState<string | null>(null)
-    const [uploadingFileType, setUploadingFileType] = useState<'purchase' | 'invoice' | 'site-image' | null>(null)
+    const [uploadingFileType, setUploadingFileType] = useState<'purchase' | 'invoice' | null>(null)
     const [uploading, setUploading] = useState(false)
-    const [uploadingImageId, setUploadingImageId] = useState<string | null>(null)
-    const imageInputRef = useRef<HTMLInputElement | null>(null)
 
     const chartOptions = {
         responsive: true,
         maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1000,
+                    callback: function(value: any) {
+                        return 'R$ ' + value.toLocaleString('pt-BR')
+                    }
+                }
+            }
+        },
         plugins: {
             legend: { position: 'top' as const },
-            title: { display: true, text: 'Performance de Vendas nos Últimos 6 Meses' },
+            title: { display: true, text: chartFilter === 'week' ? 'Performance de Vendas nas Últimas 4 Semanas' : chartFilter === 'year' ? 'Performance de Vendas nos Últimos 12 Meses' : 'Performance de Vendas nos Últimos 6 Meses' },
+            tooltip: {
+                callbacks: {
+                    label: function(context: any) {
+                        return 'R$ ' + context.parsed.y.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                    }
+                }
+            }
         },
     }
 
-    const openFileSelector = (id: string, type: 'purchase' | 'invoice' | 'site-image') => {
+    const openFileSelector = (id: string, type: 'purchase' | 'invoice') => {
         if (type === 'purchase') {
             setUploadingPurchaseId(id)
-        } else if (type === 'invoice') {
+        } else {
             setUploadingInvoiceId(id)
-        } else if (type === 'site-image') {
-            setUploadingImageId(id)
         }
         setUploadingFileType(type)
         // trigger native file selector
-        if (type === 'site-image') {
-            imageInputRef.current?.click()
-        } else {
-            fileInputRef.current?.click()
-        }
+        fileInputRef.current?.click()
     }
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -710,7 +767,7 @@ export default function Dashboard() {
         const purchaseId = uploadingPurchaseId
         const invoiceId = uploadingInvoiceId
         const fileType = uploadingFileType
-        if (!file || (!purchaseId && !invoiceId) || !fileType || fileType === 'site-image') return
+        if (!file || (!purchaseId && !invoiceId) || !fileType) return
         setUploading(true)
         try {
             const id = fileType === 'purchase' ? purchaseId : invoiceId
@@ -749,64 +806,6 @@ export default function Dashboard() {
         }
     }
 
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
-        const imageId = uploadingImageId
-        if (!file || !imageId || uploadingFileType !== 'site-image') return
-        
-        // Validar tipo de arquivo
-        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
-        if (!validTypes.includes(file.type)) {
-            alert('Por favor, selecione uma imagem válida (JPG, PNG ou WEBP)')
-            return
-        }
-
-        // Validar tamanho (máximo 5MB)
-        const maxSize = 5 * 1024 * 1024 // 5MB
-        if (file.size > maxSize) {
-            alert('A imagem deve ter no máximo 5MB')
-            return
-        }
-
-        setUploading(true)
-        try {
-            // Upload to Supabase Storage
-            const bucketName = 'site-images'
-            const imageRecord = siteImages.find(img => img.id === imageId)
-            const fileName = imageRecord ? `${imageRecord.image_key}_${Date.now()}.${file.name.split('.').pop()}` : `${Date.now()}_${file.name}`
-            const path = `images/${fileName}`
-            
-            const { error: uploadError } = await supabase.storage.from(bucketName).upload(path, file, { 
-                upsert: true,
-                cacheControl: '3600'
-            })
-            if (uploadError) throw uploadError
-
-            // Get public URL
-            const { data: urlData } = supabase.storage.from(bucketName).getPublicUrl(path)
-            const publicUrl = urlData.publicUrl
-
-            // Update image record
-            await updateSiteImage(imageId, { image_url: publicUrl })
-
-            // Reload data
-            await loadAllData()
-            alert('Imagem enviada com sucesso!')
-        } catch (err: any) {
-            console.error('Erro ao enviar imagem:', err)
-            if (err.message?.includes('Bucket not found')) {
-                alert('Erro: O bucket "site-images" não existe. Por favor, crie-o no Supabase Dashboard > Storage.')
-            } else {
-                alert('Erro ao enviar imagem. Verifique o console.')
-            }
-        } finally {
-            setUploading(false)
-            setUploadingImageId(null)
-            setUploadingFileType(null)
-            if (imageInputRef.current) imageInputRef.current.value = ''
-        }
-    }
-
     // Carregar dados do Supabase
     useEffect(() => {
         loadAllData()
@@ -815,7 +814,7 @@ export default function Dashboard() {
     async function loadAllData() {
         try {
             setLoading(true)
-            const [productsData, inventoryData, salesData, invoicesData, partnersData, couponsData, contentData, faqsData, purchasesData, imagesData, usersData, salesWithItemsData, userCartsData, purchasedItemsData] = await Promise.all([
+            const [productsData, inventoryData, salesData, invoicesData, partnersData, couponsData, contentData, faqsData, purchasesData, usersData, cartsData] = await Promise.all([
                 getProducts().catch(() => []),
                 getInventoryItems().catch(() => []),
                 getSales().catch(() => []),
@@ -825,53 +824,25 @@ export default function Dashboard() {
                 getSiteContent().catch(() => []),
                 getFAQs().catch(() => []),
                 getPurchases().catch(() => []),
-                getSiteImages().catch(() => []),
                 getAllUsers().catch(() => []),
-                getSalesWithItems().catch(() => []),
                 getAllUserCarts().catch(() => []),
-                getAllSaleItems().catch(() => []),
             ])
 
             setProducts(productsData || [])
             setInventoryItems(inventoryData || [])
             setSales(salesData || [])
             setInvoices(invoicesData || [])
-            // Separar solicitações pendentes das parcerias ativas/inativas
-            const allPartners = partnersData || []
-            // Filtrar por status 'Pendente' e ordenar por data de criação (mais recentes primeiro)
-            const pending = (allPartners || [])
-                .filter((p: any) => p.status === 'Pendente')
-                .sort((a: any, b: any) => {
-                    const dateA = new Date(a.created_at || 0).getTime()
-                    const dateB = new Date(b.created_at || 0).getTime()
-                    return dateB - dateA // Mais recentes primeiro
-                })
-            const others = allPartners.filter((p: any) => p.status !== 'Pendente')
-            setPartnershipRequests(pending || [])
-            setPartnersList(others || [])
+            setPartnersList(partnersData || [])
             setCoupons(couponsData || [])
             setSiteContent(contentData || [])
             setFaqs(faqsData || [])
             setPurchases(purchasesData || [])
-            setSiteImages(imagesData || [])
             setUsers(usersData || [])
-            setSalesWithItems(salesWithItemsData || [])
-            setUserCarts(userCartsData || [])
-            setPurchasedItems(purchasedItemsData || [])
+            setUserCarts(cartsData || [])
 
             // Carregar dados do gráfico
             const chartSalesData = await getSalesDataForChart().catch(() => [])
-            if (chartSalesData && chartSalesData.length > 0) {
-                // Processar dados para o gráfico (agrupar por mês)
-                const monthlyData = processSalesDataForChart(chartSalesData)
-                setSalesData(prev => ({
-                    ...prev,
-                    datasets: [{
-                        ...prev.datasets[0],
-                        data: monthlyData
-                    }]
-                }))
-            }
+            updateChartData(chartSalesData || [], chartFilter)
         } catch (error) {
             console.error('Erro ao carregar dados:', error)
         } finally {
@@ -879,20 +850,69 @@ export default function Dashboard() {
         }
     }
 
-    function processSalesDataForChart(data: any[]) {
-        // Agrupar vendas por mês
-        const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho']
-        const monthlyTotals = [0, 0, 0, 0, 0, 0]
+    function processSalesDataForChart(data: any[], filter: 'week' | 'month' | 'year' = 'month') {
+        const now = new Date()
+        let labels: string[] = []
+        let totals: number[] = []
 
-        data.forEach(sale => {
-            const date = new Date(sale.created_at)
-            const monthIndex = date.getMonth()
-            if (monthIndex >= 0 && monthIndex < 6) {
-                monthlyTotals[monthIndex] += parseFloat(sale.total_amount) || 0
+        if (filter === 'month') {
+            // Últimos 6 meses
+            labels = []
+            totals = Array(6).fill(0)
+            const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+            
+            for (let i = 5; i >= 0; i--) {
+                const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1)
+                labels.push(monthNames[monthDate.getMonth()])
             }
-        })
 
-        return monthlyTotals
+            data.forEach(sale => {
+                const date = new Date(sale.created_at)
+                const monthsDiff = (now.getFullYear() - date.getFullYear()) * 12 + (now.getMonth() - date.getMonth())
+                if (monthsDiff >= 0 && monthsDiff < 6) {
+                    totals[5 - monthsDiff] += parseFloat(sale.total_amount) || 0
+                }
+            })
+        } else if (filter === 'week') {
+            // Últimas 4 semanas
+            labels = []
+            totals = Array(4).fill(0)
+            
+            for (let i = 3; i >= 0; i--) {
+                const weekDate = new Date(now)
+                weekDate.setDate(now.getDate() - (i * 7))
+                labels.push(`Sem ${weekDate.getDate()}/${weekDate.getMonth() + 1}`)
+            }
+
+            data.forEach(sale => {
+                const date = new Date(sale.created_at)
+                const daysDiff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
+                const weekIndex = Math.floor(daysDiff / 7)
+                if (weekIndex >= 0 && weekIndex < 4) {
+                    totals[3 - weekIndex] += parseFloat(sale.total_amount) || 0
+                }
+            })
+        } else if (filter === 'year') {
+            // Últimos 12 meses
+            labels = []
+            totals = Array(12).fill(0)
+            const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+            
+            for (let i = 11; i >= 0; i--) {
+                const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1)
+                labels.push(`${monthNames[monthDate.getMonth()]}/${monthDate.getFullYear().toString().slice(-2)}`)
+            }
+
+            data.forEach(sale => {
+                const date = new Date(sale.created_at)
+                const monthsDiff = (now.getFullYear() - date.getFullYear()) * 12 + (now.getMonth() - date.getMonth())
+                if (monthsDiff >= 0 && monthsDiff < 12) {
+                    totals[11 - monthsDiff] += parseFloat(sale.total_amount) || 0
+                }
+            })
+        }
+
+        return { labels, totals }
     }
 
     const getStatusClass = (status: string) => {
@@ -951,7 +971,7 @@ export default function Dashboard() {
                     await deleteInventoryMovement(itemToDelete.id)
                     loadAllData() // Recarregar para atualizar estoque
                     break
-                case 'product':
+                case 'products':
                     await deleteProduct(itemToDelete.id)
                     // Recarregar dados do Supabase
                     const updatedProducts = await getProducts()
@@ -965,10 +985,6 @@ export default function Dashboard() {
                     break
                 case 'faq':
                     await deleteFAQ(itemToDelete.id)
-                    loadAllData() // Recarregar para atualizar a lista
-                    break
-                case 'site-image':
-                    await deleteSiteImage(itemToDelete.id)
                     loadAllData() // Recarregar para atualizar a lista
                     break
             }
@@ -1011,6 +1027,58 @@ export default function Dashboard() {
         }
     }
 
+    const handleSaveInventory = async (formData: any) => {
+        try {
+            // Buscar produto para obter dados necessários
+            const { data: product } = await supabase
+                .from('products')
+                .select('stock_quantity, name')
+                .eq('id', formData.product_id)
+                .single()
+            
+            if (!product) {
+                throw new Error('Produto não encontrado')
+            }
+            
+            const previousQuantity = product.stock_quantity || 0
+            let newQuantity = previousQuantity
+            
+            // Calcular nova quantidade baseada no tipo de movimentação
+            if (formData.movement_type === 'Entrada') {
+                newQuantity = previousQuantity + (formData.quantity || 0)
+            } else if (formData.movement_type === 'Saída') {
+                newQuantity = Math.max(0, previousQuantity - (formData.quantity || 0))
+            } else if (formData.movement_type === 'Ajuste' && formData.new_quantity !== undefined) {
+                newQuantity = parseInt(String(formData.new_quantity))
+            }
+            
+            // Criar movimentação de estoque
+            const movementData: any = {
+                product_id: formData.product_id,
+                product_name: product.name,
+                movement_type: formData.movement_type,
+                quantity: formData.quantity || 0,
+                previous_quantity: previousQuantity,
+                new_quantity: newQuantity,
+                reason: formData.reason || undefined,
+            }
+            
+            await createInventoryMovement(movementData)
+            
+            // Atualizar estoque do produto
+            await supabase
+                .from('products')
+                .update({ stock_quantity: newQuantity })
+                .eq('id', formData.product_id)
+            
+            closeModal()
+            loadAllData()
+        } catch (error: any) {
+            console.error('Erro ao salvar movimentação de estoque:', error)
+            alert(`Erro ao salvar movimentação: ${error.message || 'Tente novamente.'}`)
+        }
+    }
+
     const handleSaveCoupon = async (formData: any) => {
         try {
             // Formatar dados para envio ao Supabase
@@ -1031,87 +1099,55 @@ export default function Dashboard() {
                 if (formData.status) {
                     couponData.status = formData.status
                 }
-                // Só adiciona show_in_navbar se a coluna existir (não causa erro se não existir)
-                if (formData.show_in_navbar !== undefined) {
-                    couponData.show_in_navbar = formData.show_in_navbar
+                // Sempre incluir show_in_navbar, mesmo que a coluna não exista
+                // O Supabase vai ignorar campos desconhecidos ou vamos tratar o erro
+                couponData.show_in_navbar = formData.show_in_navbar || false
+                
+                try {
+                    await updateCoupon(editingItem.id, couponData)
+                } catch (err: any) {
+                    // Se der erro por causa de show_in_navbar, tentar novamente sem esse campo
+                    if (err?.message?.includes('show_in_navbar') || err?.code === 'PGRST116') {
+                        delete couponData.show_in_navbar
+                        await updateCoupon(editingItem.id, couponData)
+                    } else {
+                        throw err
+                    }
                 }
-                await updateCoupon(editingItem.id, couponData)
                 // Recarregar dados do Supabase para garantir sincronização
                 const updatedCoupons = await getCoupons()
                 setCoupons(updatedCoupons || [])
+                alert('Cupom atualizado com sucesso!')
             } else {
-                // Criar novo cupom - remover show_in_navbar se a coluna não existir
+                // Criar novo cupom
                 const newCouponData: any = {
                     ...couponData,
                     usage_count: 0,
                     status: formData.status || 'Ativo',
+                    show_in_navbar: formData.show_in_navbar || false,
                 }
-                // Só adiciona show_in_navbar se estiver definido (evita erro se coluna não existir)
-                if (formData.show_in_navbar !== undefined) {
-                    newCouponData.show_in_navbar = formData.show_in_navbar
+                
+                try {
+                    await createCoupon(newCouponData)
+                } catch (err: any) {
+                    // Se der erro por causa de show_in_navbar, tentar novamente sem esse campo
+                    if (err?.message?.includes('show_in_navbar') || err?.code === 'PGRST116') {
+                        delete newCouponData.show_in_navbar
+                        await createCoupon(newCouponData)
+                    } else {
+                        throw err
+                    }
                 }
-                await createCoupon(newCouponData)
                 // Recarregar dados do Supabase para garantir sincronização
                 const updatedCoupons = await getCoupons()
                 setCoupons(updatedCoupons || [])
+                alert('Cupom criado com sucesso!')
             }
             closeModal()
         } catch (error: any) {
-            // Capturar todas as propriedades do erro do Supabase
-            const errorInfo: any = {}
-
-            if (error) {
-                if (typeof error === 'string') {
-                    errorInfo.message = error
-                } else if (typeof error === 'object') {
-                    errorInfo.message = error.message || error.msg || 'Erro desconhecido'
-                    errorInfo.details = error.details || error.hint || null
-                    errorInfo.code = error.code || null
-                    errorInfo.hint = error.hint || null
-
-                    // Se for erro do Supabase, pode ter mais propriedades
-                    if (error.error_description) errorInfo.error_description = error.error_description
-                    if (error.status) errorInfo.status = error.status
-                }
-            }
-
-            // Log completo do erro
             console.error('Erro ao salvar cupom:', error)
-            console.error('Detalhes do erro:', errorInfo)
-
-            // Mensagem para o usuário
-            const errorMessage = errorInfo.message || errorInfo.details || errorInfo.hint || 'Erro desconhecido ao salvar cupom'
-
-            // Verificar se é erro de coluna não encontrada
-            const isColumnError = errorMessage.includes('column') ||
-                errorMessage.includes('show_in_navbar') ||
-                errorInfo.code === 'PGRST116' ||
-                errorInfo.details?.includes('column')
-
-            if (isColumnError) {
-                alert('A coluna "show_in_navbar" não existe no banco de dados.\n\nPor favor, adicione-a no Supabase:\n1. Vá para Table Editor → coupons\n2. Adicione coluna: show_in_navbar (boolean, nullable)')
-            } else {
-                alert(`Erro ao salvar cupom: ${errorMessage}`)
-            }
-        }
-    }
-
-    const handleSaveInventory = async (formData: any) => {
-        try {
-            await createInventoryMovement({
-                product_id: formData.product_id,
-                product_name: '',
-                movement_type: formData.movement_type,
-                quantity: parseInt(formData.quantity),
-                previous_quantity: 0,
-                new_quantity: 0,
-                reason: formData.reason || '',
-            })
-            closeModal()
-            loadAllData()
-        } catch (error) {
-            console.error('Erro ao salvar movimento de estoque:', error)
-            alert('Erro ao salvar. Tente novamente.')
+            const errorMessage = error?.message || error?.details || error?.hint || 'Erro desconhecido ao salvar cupom'
+            alert(`Erro ao salvar cupom: ${errorMessage}`)
         }
     }
 
@@ -1149,6 +1185,7 @@ export default function Dashboard() {
         }
     }
 
+
     const handleSaveFAQ = async (formData: { pergunta: string, resposta: string }) => {
         try {
             if (editingItem) {
@@ -1164,8 +1201,13 @@ export default function Dashboard() {
         }
     }
 
-    const handleSendEmail = async (to: string, subject: string, message: string) => {
+    const handleSendEmail = async (data: { subject: string, message: string }) => {
         try {
+            if (!selectedUserForEmail || !selectedUserForEmail.email) {
+                alert('Email do usuário não encontrado')
+                return
+            }
+
             const { data: { session } } = await supabase.auth.getSession()
             if (!session) {
                 alert('Sessão expirada. Por favor, faça login novamente.')
@@ -1179,10 +1221,9 @@ export default function Dashboard() {
                     'Authorization': `Bearer ${session.access_token}`,
                 },
                 body: JSON.stringify({
-                    to,
-                    subject,
-                    message,
-                    html: `<p>${message.replace(/\n/g, '<br>')}</p>`,
+                    to: selectedUserForEmail.email,
+                    subject: data.subject,
+                    message: data.message,
                 }),
             })
 
@@ -1197,7 +1238,7 @@ export default function Dashboard() {
             setSelectedUserForEmail(null)
         } catch (error: any) {
             console.error('Erro ao enviar email:', error)
-            alert(error.message || 'Erro ao enviar email. Tente novamente.')
+            alert(`Erro ao enviar email: ${error.message || 'Tente novamente.'}`)
         }
     }
 
@@ -1245,7 +1286,7 @@ export default function Dashboard() {
                     />
                 )
                 break
-            case 'product':
+            case 'products':
                 modalTitle = isEdit ? 'Editar Produto' : 'Adicionar Novo Produto'
                 modalContent = (
                     <ProductRegistrationForm
@@ -1264,8 +1305,14 @@ export default function Dashboard() {
                 break
             case 'inventory':
                 modalTitle = isEdit ? 'Editar Movimentação' : 'Nova Movimentação de Estoque'
-                // Aqui você precisaria de um componente InventoryForm
-                modalContent = <p>Formulário de Estoque Pendente</p>
+                modalContent = (
+                    <InventoryForm
+                        initialData={editingItem}
+                        products={products}
+                        onSave={handleSaveInventory}
+                        onCancel={closeModal}
+                    />
+                )
                 break
             case 'partner':
                 modalTitle = isEdit ? 'Editar Parceria' : 'Adicionar Nova Parceria'
@@ -1278,7 +1325,7 @@ export default function Dashboard() {
 
         return (
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className={modalType === 'coupon' || modalType === 'invoice' ? 'sm:max-w-[700px] max-h-[90vh]' : 'sm:max-w-[425px]'}>
+                <DialogContent className={modalType === 'coupon' || modalType === 'invoice' || modalType === 'products' ? 'sm:max-w-[900px] max-h-[90vh] overflow-y-auto' : 'sm:max-w-[425px]'}>
                     <DialogHeader>
                         <DialogTitle>{modalTitle}</DialogTitle>
                     </DialogHeader>
@@ -1293,7 +1340,29 @@ export default function Dashboard() {
             case 'sales':
                 return (
                     <div>
-                        <h2 className="text-2xl font-semibold mb-4 text-gray-700">Análise de Vendas</h2>
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-2xl font-semibold text-gray-700">Análise de Vendas</h2>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setChartFilter('week')}
+                                    className={`px-4 py-2 rounded-lg font-semibold transition-all ${chartFilter === 'week' ? 'bg-cyan-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                >
+                                    Semana
+                                </button>
+                                <button
+                                    onClick={() => setChartFilter('month')}
+                                    className={`px-4 py-2 rounded-lg font-semibold transition-all ${chartFilter === 'month' ? 'bg-cyan-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                >
+                                    Mês
+                                </button>
+                                <button
+                                    onClick={() => setChartFilter('year')}
+                                    className={`px-4 py-2 rounded-lg font-semibold transition-all ${chartFilter === 'year' ? 'bg-cyan-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                >
+                                    Ano
+                                </button>
+                            </div>
+                        </div>
                         <div className="relative h-[400px]">
                             <Bar options={chartOptions} data={salesData} />
                         </div>
@@ -1362,69 +1431,63 @@ export default function Dashboard() {
                     </div>
                 );
             case 'users':
-                const usersToShow = filterAcceptedTerms 
-                    ? users.filter((u: any) => u.accept_terms === true)
+                const usersToShow = filterConsentEmails
+                    ? users.filter((u: any) => u.consent_emails === true)
                     : users
+                
                 return (
                     <div>
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-semibold text-gray-700 flex items-center">
-                                <User className="mr-2" size={24} />
-                                Usuários
-                            </h2>
-                            <div className="flex items-center gap-4">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={filterAcceptedTerms}
-                                        onChange={(e) => setFilterAcceptedTerms(e.target.checked)}
-                                        className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
-                                    />
-                                    <span className="text-sm font-medium text-gray-700">
-                                        Apenas usuários que aceitaram termos
-                                    </span>
-                                </label>
-                            </div>
+                            <h2 className="text-2xl font-semibold text-gray-700">Gestão de Usuários</h2>
                         </div>
-                        {usersToShow.length === 0 ? (
-                            <p className="text-center py-8 text-gray-500">
-                                {filterAcceptedTerms 
-                                    ? 'Nenhum usuário que aceitou os termos encontrado.' 
-                                    : 'Nenhum usuário encontrado.'}
-                            </p>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full bg-white">
-                                    <thead className="bg-gray-50">
+                        <div className="mb-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={filterConsentEmails}
+                                    onChange={(e) => setFilterConsentEmails(e.target.checked)}
+                                    className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
+                                />
+                                <span className="text-sm font-medium text-gray-700">
+                                    Apenas usuários que aceitaram e-mails
+                                </span>
+                            </label>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full bg-white">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aceitou E-mails</th>
+                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data de Cadastro</th>
+                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {usersToShow.length === 0 ? (
                                         <tr>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aceitou Termos</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data de Criação</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                            <td colSpan={6} className="py-8 text-center text-gray-500">
+                                                {filterConsentEmails ? 'Nenhum usuário encontrado com consentimento de e-mails.' : 'Nenhum usuário encontrado.'}
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200">
-                                        {usersToShow.map((user: any) => (
-                                            <tr key={user.id} className={user.accept_terms ? 'bg-green-50' : ''}>
-                                                <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">
-                                                    {user.name || '-'}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
-                                                    {user.email || '-'}
-                                                </td>
+                                    ) : (
+                                        usersToShow.map((user: any) => (
+                                            <tr key={user.id}>
+                                                <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">{user.name || 'Sem nome'}</td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">{user.email || '-'}</td>
                                                 <td className="py-4 px-4 whitespace-nowrap">
                                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                        user.user_type === 'admin' ? 'bg-red-100 text-red-800' :
+                                                        user.user_type === 'admin' ? 'bg-purple-100 text-purple-800' :
                                                         user.user_type === 'vendedor' ? 'bg-blue-100 text-blue-800' :
                                                         'bg-gray-100 text-gray-800'
                                                     }`}>
-                                                        {user.user_type || 'N/A'}
+                                                        {user.user_type === 'admin' ? 'Admin' : user.user_type === 'vendedor' ? 'Vendedor' : 'Comprador'}
                                                     </span>
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap">
-                                                    {user.accept_terms ? (
+                                                    {user.consent_emails ? (
                                                         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                                                             ✓ Sim
                                                         </span>
@@ -1438,7 +1501,7 @@ export default function Dashboard() {
                                                     {user.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : '-'}
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
-                                                    {user.accept_terms && user.email ? (
+                                                    {user.consent_emails && user.email ? (
                                                         <button
                                                             onClick={() => {
                                                                 setSelectedUserForEmail(user)
@@ -1454,11 +1517,11 @@ export default function Dashboard() {
                                                     )}
                                                 </td>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 );
             case 'products':
@@ -1467,7 +1530,7 @@ export default function Dashboard() {
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-semibold text-gray-700">Gestão de Produtos</h2>
                             <button
-                                onClick={() => openModal('product')}
+                                onClick={() => openModal('products')}
                                 className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
                             >
                                 <PlusCircle size={20} className="mr-2" />
@@ -1480,7 +1543,7 @@ export default function Dashboard() {
                                     Nenhum produto cadastrado
                                 </div>
                             ) : (
-                                products.map(product => (
+                                products.map((product) => (
                                     <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden group">
                                         <Image
                                             src={product.image_url || 'https://placehold.co/400x400/e2e8f0/334155?text=Produto'}
@@ -1492,20 +1555,20 @@ export default function Dashboard() {
                                         <div className="p-4">
                                             <h3 className="font-semibold text-gray-800 truncate">{product.name}</h3>
                                             <p className="text-sm text-gray-600 mb-1">SKU: {product.sku}</p>
-                                            <p className="text-sm text-gray-600 mb-2">Estoque: {product.stock_quantity}</p>
+                                            <p className="text-sm text-gray-600 mb-2">Estoque: {product.stock_quantity || 0}</p>
                                             <p className="text-lg font-bold text-gray-900 mb-3">
-                                                R$ {product.price.toFixed(2).replace('.', ',')}
+                                                R$ {typeof product.price === 'number' ? product.price.toFixed(2).replace('.', ',') : String(product.price || '0,00')}
                                             </p>
                                             <div className="mb-4">
-                                                {product.fake_price && product.fake_price > 0 ? (
+                                                {product.fake_price && typeof product.fake_price === 'number' && product.fake_price > 0 ? (
                                                     <p className="text-sm text-gray-400 line-through">
                                                         R$ {product.fake_price.toFixed(2).replace('.', ',')}
                                                     </p>
                                                 ) : null}
                                                 <p className="text-xl font-extrabold text-red-600">
-                                                    R$ {product.price.toFixed(2).replace('.', ',')}
+                                                    R$ {typeof product.price === 'number' ? product.price.toFixed(2).replace('.', ',') : String(product.price || '0,00')}
                                                 </p>
-                                                {product.fake_price && product.fake_price > product.price ? (
+                                                {product.fake_price && typeof product.fake_price === 'number' && typeof product.price === 'number' && product.fake_price > product.price ? (
                                                     <span className="inline-block mt-1 px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-800 rounded-full">
                                                         {Math.round((1 - product.price / product.fake_price) * 100)}% OFF
                                                     </span>
@@ -1513,13 +1576,13 @@ export default function Dashboard() {
                                             </div>
                                             <div className="flex gap-2">
                                                 <button
-                                                    onClick={() => openModal('product', product)}
+                                                    onClick={() => openModal('products', product)}
                                                     className="flex-1 bg-cyan-600 text-white py-2 rounded-lg hover:bg-cyan-700 transition-colors font-semibold text-sm"
                                                 >
                                                     <Edit size={16} className="mx-auto" />
                                                 </button>
                                                 <button
-                                                    onClick={() => openDeleteDialog('product', product.id, product.name)}
+                                                    onClick={() => openDeleteDialog('products', product.id, product.name)}
                                                     className="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors"
                                                 >
                                                     <Trash2 size={16} />
@@ -1634,241 +1697,94 @@ export default function Dashboard() {
                                 <Handshake className="mr-2" size={24} />
                                 Gestão de Parcerias
                             </h2>
-                            <button
-                                onClick={() => openModal('partner')}
-                                className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
-                            >
-                                <PlusCircle size={20} className="mr-2" />
-                                Adicionar Parceria Manualmente
-                            </button>
                         </div>
-                        {/* Pending partnership requests submitted from the public form */}
-                        {partnershipRequests.length > 0 && (
-                            <div className="mb-8">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-                                        <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-semibold">
-                                            {partnershipRequests.length}
-                                        </span>
-                                        Solicitações Pendentes de Parceria
-                                    </h3>
-                                    <span className="text-sm text-gray-500">
-                                        {new Date().toLocaleDateString('pt-BR')}
-                                    </span>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {partnershipRequests.map((req: any) => {
-                                        // Parsear form_payload se necessário
-                                        let parsedData: any = {}
-                                        if (req.form_payload) {
-                                            try {
-                                                parsedData = JSON.parse(req.form_payload)
-                                            } catch (e) {
-                                                console.error('Erro ao parsear form_payload:', e)
-                                            }
-                                        }
-
-                                        // Determinar tipo de parceria
-                                        const partnershipType = req.form_type || parsedData.activeForm || 'fornecedor'
-                                        const isFornecedor = partnershipType === 'fornecedor'
-                                        
-                                        // Obter dados do formulário
-                                        const nomeEmpresa = req.company_name || parsedData.nomeEmpresa || parsedData.nome || 'Não informado'
-                                        const email = req.contact_email || parsedData.email || 'Não informado'
-                                        const telefone = req.contact_phone || parsedData.telefone || '-'
-                                        const dataSolicitacao = req.created_at ? new Date(req.created_at).toLocaleDateString('pt-BR') : '-'
-
-                                        return (
-                                            <div key={req.id} className="p-5 border-2 border-yellow-200 rounded-lg bg-gradient-to-br from-white to-yellow-50 shadow-md hover:shadow-lg transition-all">
-                                                <div className="flex items-start justify-between mb-3">
-                                                    <div className="flex-1">
-                                                        <h4 className="font-bold text-gray-900 text-lg mb-1">{nomeEmpresa}</h4>
-                                                        <span className={`inline-block px-2 py-1 text-xs rounded-full font-semibold ${
-                                                            isFornecedor 
-                                                                ? 'bg-blue-100 text-blue-800' 
-                                                                : 'bg-purple-100 text-purple-800'
-                                                        }`}>
-                                                            {isFornecedor ? 'Fornecedor' : 'Representante'}
-                                                        </span>
-                                                    </div>
-                                                    <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">
-                                                        Pendente
-                                                    </span>
-                                                </div>
-
-                                                <div className="space-y-2 mb-4 text-sm">
-                                                    <div className="flex items-center gap-2">
-                                                        <Mail size={14} className="text-gray-400" />
-                                                        <span className="text-gray-600">{email}</span>
-                                                    </div>
-                                                    {telefone && telefone !== '-' && (
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-gray-400">📞</span>
-                                                            <span className="text-gray-600">{telefone}</span>
-                                                        </div>
-                                                    )}
-                                                    <div className="flex items-center gap-2">
-                                                        <Calendar size={14} className="text-gray-400" />
-                                                        <span className="text-gray-500 text-xs">Solicitado em: {dataSolicitacao}</span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="border-t pt-3 mb-4">
-                                                    {isFornecedor ? (
-                                                        <div className="text-sm text-gray-700 space-y-2">
-                                                            {parsedData.anosMercado && (
-                                                                <div>
-                                                                    <strong className="text-gray-800">Anos no mercado:</strong>
-                                                                    <p className="text-gray-600">{parsedData.anosMercado} anos</p>
-                                                                </div>
-                                                            )}
-                                                            {parsedData.oQueFabrica && (
-                                                                <div>
-                                                                    <strong className="text-gray-800">O que fabrica:</strong>
-                                                                    <p className="text-gray-600 line-clamp-2">{parsedData.oQueFabrica}</p>
-                                                                </div>
-                                                            )}
-                                                            {parsedData.canaisVendaAtuais && (
-                                                                <div>
-                                                                    <strong className="text-gray-800">Canais de venda:</strong>
-                                                                    <p className="text-gray-600 line-clamp-2">{parsedData.canaisVendaAtuais}</p>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    ) : (
-                                                        <div className="text-sm text-gray-700 space-y-2">
-                                                            {parsedData.localAtuacao && (
-                                                                <div>
-                                                                    <strong className="text-gray-800">Área de atuação:</strong>
-                                                                    <p className="text-gray-600">{parsedData.localAtuacao}</p>
-                                                                </div>
-                                                            )}
-                                                            {parsedData.produtoRevender && (
-                                                                <div>
-                                                                    <strong className="text-gray-800">Produto a revender:</strong>
-                                                                    <p className="text-gray-600 line-clamp-2">{parsedData.produtoRevender}</p>
-                                                                </div>
-                                                            )}
-                                                            {parsedData.estrategiasVenda && (
-                                                                <div>
-                                                                    <strong className="text-gray-800">Estratégias de venda:</strong>
-                                                                    <p className="text-gray-600 line-clamp-2">{parsedData.estrategiasVenda}</p>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                <div className="flex flex-col gap-2 mt-4">
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            onClick={() => handleAcceptPartnership(req.id)}
-                                                            className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-                                                        >
-                                                            <CheckCircle size={16} />
-                                                            Aceitar
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleRejectPartnership(req.id)}
-                                                            className="flex-1 bg-red-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
-                                                        >
-                                                            <X size={16} />
-                                                            Recusar
-                                                        </button>
-                                                    </div>
-                                                    <button
-                                                        onClick={() => {
-                                                            setSelectedUserForEmail({ email, name: nomeEmpresa })
-                                                            setEmailModalOpen(true)
-                                                        }}
-                                                        className="w-full bg-cyan-600 text-white px-3 py-2 rounded-lg hover:bg-cyan-700 transition-colors flex items-center justify-center gap-2 text-sm"
-                                                    >
-                                                        <Mail size={14} />
-                                                        Enviar Email
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-                        )}
-
-                        {partnershipRequests.length === 0 && (
-                            <div className="mb-8 p-6 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 text-center">
-                                <Handshake className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                                <p className="text-gray-600 font-medium">Nenhuma solicitação pendente no momento</p>
-                                <p className="text-sm text-gray-500 mt-1">As novas solicitações da página de vendas aparecerão aqui</p>
-                            </div>
-                        )}
-
                         {partnersList.length === 0 ? (
                             <p className="text-center py-8 text-gray-500">Nenhuma parceria cadastrada.</p>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {partnersList.map((partner: any) => {
-                                    // Tentar obter o tipo de parceria do form_type ou form_payload
-                                    let partnershipType = partner.form_type || 'N/A'
-                                    if (!partnershipType && partner.form_payload) {
-                                        try {
-                                            const payload = JSON.parse(partner.form_payload)
-                                            if (payload.activeForm) {
-                                                partnershipType = payload.activeForm === 'fornecedor' ? 'Fornecedor' : 'Representante'
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full bg-white">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome da Empresa</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telefone</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Informações do Formulário</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {partnersList.map((partner: any) => {
+                                            let formData = null
+                                            try {
+                                                if (partner.form_payload) {
+                                                    formData = typeof partner.form_payload === 'string' ? JSON.parse(partner.form_payload) : partner.form_payload
+                                                }
+                                            } catch (e) {
+                                                console.error('Erro ao parsear form_payload:', e)
                                             }
-                                        } catch (e) {
-                                            // Se não conseguir parsear, usar form_type ou 'N/A'
-                                        }
-                                    }
-                                    const displayType = partnershipType === 'fornecedor' ? 'Fornecedor' : 
-                                                       partnershipType === 'representante' ? 'Representante' : 
-                                                       partnershipType || 'N/A'
-                                    
-                                    return (
-                                        <div key={partner.id} className="p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <h3 className="font-semibold text-gray-800">{partner.company_name}</h3>
-                                                <span className={`px-2 py-1 text-xs rounded-full font-semibold ${
-                                                    displayType === 'Fornecedor' ? 'bg-blue-100 text-blue-800' : 
-                                                    displayType === 'Representante' ? 'bg-purple-100 text-purple-800' : 
-                                                    'bg-gray-100 text-gray-800'
-                                                }`}>
-                                                    {displayType}
-                                                </span>
-                                            </div>
-                                            <p className="text-sm text-gray-600 mb-1">Email: {partner.contact_email}</p>
-                                            <p className="text-sm text-gray-600 mb-3">Telefone: {partner.contact_phone || '-'}</p>
-                                            <span className={`px-2 py-1 text-xs rounded-full font-semibold ${getStatusClass(partner.status)}`}>
-                                                {partner.status}
-                                            </span>
-                                            <div className="mt-4 flex gap-2">
-                                                <button
-                                                    onClick={() => {
-                                                        setSelectedUserForEmail({ email: partner.contact_email, name: partner.company_name })
-                                                        setEmailModalOpen(true)
-                                                    }}
-                                                    className="flex-1 bg-cyan-600 text-white px-3 py-2 rounded-lg hover:bg-cyan-700 text-sm font-medium flex items-center justify-center gap-2"
-                                                >
-                                                    <Mail size={14} />
-                                                    Email
-                                                </button>
-                                                <button
-                                                    onClick={() => openModal('partner', partner)}
-                                                    className="flex-1 text-cyan-600 hover:text-cyan-800 text-sm font-medium"
-                                                >
-                                                    <Edit size={16} className="inline mr-1" />
-                                                    Editar
-                                                </button>
-                                                <button
-                                                    onClick={() => openDeleteDialog('partnership', partner.id, partner.company_name)}
-                                                    className="flex-1 text-red-600 hover:text-red-800 text-sm font-medium"
-                                                >
-                                                    <Trash2 size={16} className="inline mr-1" />
-                                                    Deletar
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )
-                                })}
+                                            
+                                            return (
+                                            <tr key={partner.id}>
+                                                <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">{partner.company_name || 'Não informado'}</td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">{partner.contact_email || '-'}</td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">{partner.contact_phone || '-'}</td>
+                                                <td className="py-4 px-4 whitespace-nowrap">
+                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(partner.status)}`}>
+                                                        {partner.status}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {partner.form_type === 'fornecedor' ? 'Fornecedor' : partner.form_type === 'representante' ? 'Representante' : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 text-sm text-gray-500 max-w-md">
+                                                    {formData ? (
+                                                        <div className="space-y-1">
+                                                            {formData.activeForm === 'fornecedor' && (
+                                                                <>
+                                                                    {formData.nomeEmpresa && <p><strong>Empresa:</strong> {formData.nomeEmpresa}</p>}
+                                                                    {formData.anosMercado && <p><strong>Anos no mercado:</strong> {formData.anosMercado}</p>}
+                                                                    {formData.oQueFabrica && <p><strong>O que fabrica:</strong> {formData.oQueFabrica}</p>}
+                                                                    {formData.canaisVendaAtuais && <p><strong>Canais de venda:</strong> {formData.canaisVendaAtuais}</p>}
+                                                                </>
+                                                            )}
+                                                            {formData.activeForm === 'representante' && (
+                                                                <>
+                                                                    {formData.localAtuacao && <p><strong>Local de atuação:</strong> {formData.localAtuacao}</p>}
+                                                                    {formData.produtoRevender && <p><strong>Produtos a revender:</strong> {formData.produtoRevender}</p>}
+                                                                    {formData.estrategiasVenda && <p><strong>Estratégias de venda:</strong> {formData.estrategiasVenda}</p>}
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        partner.notes || '-'
+                                                    )}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {partner.partnership_date ? new Date(partner.partnership_date).toLocaleDateString('pt-BR') : '-'}
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
+                                                    <button
+                                                        onClick={() => openModal('partner', partner)}
+                                                        className="text-cyan-600 hover:text-cyan-900 mr-3"
+                                                    >
+                                                        <Edit size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openDeleteDialog('partner', partner.id, partner.company_name)}
+                                                        className="text-red-600 hover:text-red-900"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            )
+                                        })}
+                                    </tbody>
+                                </table>
                             </div>
                         )}
                     </div>
@@ -2107,117 +2023,11 @@ export default function Dashboard() {
                         )}
                     </div>
                 );
-            case 'images':
-                // Agrupar imagens por seção
-                const imagesBySection = siteImages.reduce((acc: any, image) => {
-                    const section = image.section || 'Outros';
-                    if (!acc[section]) {
-                        acc[section] = [];
-                    }
-                    acc[section].push(image);
-                    return acc;
-                }, {});
-
-                return (
-                    <div>
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-semibold text-gray-700 flex items-center">
-                                <ImageIcon className="mr-2" size={24} />
-                                Edição de Imagens do Site
-                            </h2>
-                        </div>
-                        {siteImages.length === 0 ? (
-                            <p className="text-center py-8 text-gray-500">Nenhuma imagem encontrada. As imagens padrão serão usadas.</p>
-                        ) : (
-                            <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
-                                {Object.entries(imagesBySection).map(([section, images]: [string, any]) => (
-                                    <div key={section} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                                        <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-300">
-                                            {section}
-                                        </h3>
-                                        <div className="space-y-4">
-                                            {images.map((image: SiteImage) => (
-                                                <div key={image.id} className="bg-white p-4 rounded border border-gray-200">
-                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                        {image.label}
-                                                    </label>
-                                                    <div className="mb-3">
-                                                        {image.image_url ? (
-                                                            <div className="relative w-full max-w-md h-48 border border-gray-300 rounded-lg overflow-hidden">
-                                                                <img
-                                                                    src={image.image_url}
-                                                                    alt={image.alt_text || image.label}
-                                                                    className="w-full h-full object-contain"
-                                                                />
-                                                            </div>
-                                                        ) : (
-                                                            <div className="w-full max-w-md h-48 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
-                                                                <p className="text-gray-500">Nenhuma imagem carregada</p>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <button
-                                                            onClick={() => openFileSelector(image.id, 'site-image')}
-                                                            disabled={uploading && uploadingImageId === image.id}
-                                                            className="flex items-center gap-2 bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                                        >
-                                                            {uploading && uploadingImageId === image.id ? (
-                                                                <>
-                                                                    <Loader2 className="animate-spin" size={16} />
-                                                                    <span>Enviando...</span>
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <Upload size={16} />
-                                                                    <span>{image.image_url ? 'Trocar Imagem' : 'Upload Imagem'}</span>
-                                                                </>
-                                                            )}
-                                                        </button>
-                                                        {image.image_url && (
-                                                            <a
-                                                                href={image.image_url}
-                                                                target="_blank"
-                                                                rel="noreferrer"
-                                                                className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
-                                                            >
-                                                                Visualizar
-                                                            </a>
-                                                        )}
-                                                        <button
-                                                            onClick={() => openDeleteDialog('site-image', image.id, image.label || image.image_key || 'Imagem')}
-                                                            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
-                                                    </div>
-                                                    <div className="mt-2">
-                                                        <span className="text-xs text-gray-500">Chave: {image.image_key}</span>
-                                                        {image.description && (
-                                                            <p className="text-xs text-gray-500 mt-1">{image.description}</p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                );
             case 'purchases':
                 return (
                     <div>
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-semibold text-gray-700">Compras</h2>
-                            <button
-                                onClick={() => openModal('purchase')}
-                                className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
-                            >
-                                <PlusCircle size={20} className="mr-2" />
-                                Nova Compra
-                            </button>
                         </div>
 
                         {purchases.length === 0 ? (
@@ -2265,132 +2075,14 @@ export default function Dashboard() {
             case 'carts':
                 return (
                     <div>
-                        <h2 className="text-2xl font-semibold mb-6 text-gray-700 flex items-center">
-                            <ShoppingCart className="mr-2" size={24} />
-                            Carrinhos de Usuários
-                        </h2>
-                        <p className="text-gray-600 mb-4">
-                            Visualize os produtos nos carrinhos dos usuários. Os carrinhos são armazenados localmente no navegador de cada usuário.
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {users.length === 0 ? (
-                                <div className="col-span-full text-center py-8 text-gray-500">
-                                    Nenhum usuário encontrado
-                                </div>
-                            ) : (
-                                users.map((user: any) => (
-                                    <div key={user.id} className="p-4 border rounded-lg bg-white shadow-sm">
-                                        <h3 className="font-semibold text-gray-800 mb-2">{user.name || user.email}</h3>
-                                        <p className="text-sm text-gray-600 mb-1">Email: {user.email}</p>
-                                        <p className="text-sm text-gray-600 mb-3">Tipo: {user.user_type || 'N/A'}</p>
-                                        <button
-                                            onClick={() => {
-                                                setSelectedUserForEmail(user)
-                                                setEmailModalOpen(true)
-                                            }}
-                                            className="w-full bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 transition-colors flex items-center justify-center gap-2"
-                                        >
-                                            <Mail size={16} />
-                                            Enviar Email
-                                        </button>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                )
-            case 'purchased':
-                return (
-                    <div>
-                        <h2 className="text-2xl font-semibold mb-6 text-gray-700 flex items-center">
-                            <Package className="mr-2" size={24} />
-                            Produtos Comprados
-                        </h2>
-                        {salesWithItems.length === 0 ? (
-                            <p className="text-center py-8 text-gray-500">Nenhum pedido encontrado.</p>
-                        ) : (
-                            <div className="space-y-6">
-                                {salesWithItems.map((sale: any) => (
-                                    <div key={sale.id} className="p-6 border rounded-lg bg-white shadow-sm">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div>
-                                                <h3 className="font-semibold text-gray-800 text-lg">
-                                                    Pedido #{sale.order_number || sale.id}
-                                                </h3>
-                                                <p className="text-sm text-gray-600">Cliente: {sale.customer_name}</p>
-                                                <p className="text-sm text-gray-600">Email: {sale.customer_email}</p>
-                                                <p className="text-sm text-gray-500">
-                                                    Data: {new Date(sale.created_at).toLocaleDateString('pt-BR')}
-                                                </p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-lg font-bold text-gray-900">
-                                                    R$ {Number(sale.total_amount).toFixed(2).replace('.', ',')}
-                                                </p>
-                                                <span className={`px-2 py-1 text-xs rounded-full font-semibold ${getStatusClass(sale.status)}`}>
-                                                    {sale.status}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        {sale.items && sale.items.length > 0 ? (
-                                            <div className="mt-4">
-                                                <h4 className="font-semibold text-gray-700 mb-2">Produtos:</h4>
-                                                <div className="space-y-2">
-                                                    {sale.items.map((item: any, index: number) => (
-                                                        <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                                                            <div className="flex-1">
-                                                                <p className="font-medium text-gray-800">
-                                                                    {item.products?.name || `Produto ${item.product_id}`}
-                                                                </p>
-                                                                <p className="text-sm text-gray-600">
-                                                                    Quantidade: {item.quantity} x R$ {Number(item.unit_price || 0).toFixed(2).replace('.', ',')}
-                                                                </p>
-                                                            </div>
-                                                            <p className="font-semibold text-gray-900">
-                                                                R$ {Number(item.total_price || 0).toFixed(2).replace('.', ',')}
-                                                            </p>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <p className="text-sm text-gray-500 mt-4">Detalhes dos produtos não disponíveis</p>
-                                        )}
-                                        <div className="mt-4 flex gap-2">
-                                            <button
-                                                onClick={() => {
-                                                    setSelectedUserForEmail({ email: sale.customer_email, name: sale.customer_name })
-                                                    setEmailModalOpen(true)
-                                                }}
-                                                className="flex items-center gap-2 bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 transition-colors"
-                                            >
-                                                <Mail size={16} />
-                                                Enviar Email ao Cliente
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )
-            case 'carts':
-                return (
-                    <div>
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-semibold text-gray-700 flex items-center">
                                 <ShoppingCart className="mr-2" size={24} />
-                                Carrinhos de Usuários em Tempo Real
+                                Carrinhos de Usuários
                             </h2>
-                            <button
-                                onClick={loadAllData}
-                                className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
-                            >
-                                Atualizar
-                            </button>
                         </div>
                         {userCarts.length === 0 ? (
-                            <p className="text-center py-8 text-gray-500">Nenhum carrinho ativo no momento.</p>
+                            <p className="text-center py-8 text-gray-500">Nenhum carrinho encontrado.</p>
                         ) : (
                             <div className="overflow-x-auto">
                                 <table className="min-w-full bg-white">
@@ -2398,141 +2090,46 @@ export default function Dashboard() {
                                         <tr>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuário</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantidade</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preço Unit.</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Última Atualização</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200">
-                                        {userCarts.map((cart: any) => (
-                                            <tr key={cart.id} className="hover:bg-gray-50">
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                    {cart.user?.name || 'Usuário não identificado'}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
-                                                    {cart.user?.email || '-'}
-                                                </td>
-                                                <td className="py-4 px-4 text-sm text-gray-900">
-                                                    {cart.product?.name || 'Produto não encontrado'}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
-                                                    {cart.quantity}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
-                                                    {cart.product?.price ? `R$ ${Number(cart.product.price).toFixed(2).replace('.', ',')}` : '-'}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                                                    {cart.product?.price ? `R$ ${(Number(cart.product.price) * cart.quantity).toFixed(2).replace('.', ',')}` : '-'}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {new Date(cart.updated_at).toLocaleString('pt-BR')}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
-                                                    {cart.user?.email && (
-                                                        <button
-                                                            onClick={() => {
-                                                                setSelectedUserForEmail(cart.user)
-                                                                setEmailModalOpen(true)
-                                                            }}
-                                                            className="text-cyan-600 hover:text-cyan-900 flex items-center gap-1"
-                                                        >
-                                                            <Mail size={16} />
-                                                            Enviar Email
-                                                        </button>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
-                )
-            case 'purchased':
-                return (
-                    <div>
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-semibold text-gray-700 flex items-center">
-                                <Package className="mr-2" size={24} />
-                                Produtos Comprados
-                            </h2>
-                            <button
-                                onClick={loadAllData}
-                                className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
-                            >
-                                Atualizar
-                            </button>
-                        </div>
-                        {purchasedItems.length === 0 ? (
-                            <p className="text-center py-8 text-gray-500">Nenhum produto comprado ainda.</p>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full bg-white">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pedido</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantidade</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preço Unit.</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produtos</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-200">
-                                        {purchasedItems.map((item: any) => (
-                                            <tr key={item.id} className="hover:bg-gray-50">
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                    {item.sale?.order_number || item.sale_id?.substring(0, 8) || '-'}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-900">
-                                                    {item.sale?.customer_name || '-'}
-                                                </td>
-                                                <td className="py-4 px-4 text-sm text-gray-900">
-                                                    {item.product?.name || item.product_name}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
-                                                    {item.quantity}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
-                                                    R$ {Number(item.unit_price).toFixed(2).replace('.', ',')}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                                                    R$ {Number(item.total_price).toFixed(2).replace('.', ',')}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {new Date(item.created_at).toLocaleDateString('pt-BR')}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap">
-                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(item.sale?.status || 'Pendente')}`}>
-                                                        {item.sale?.status || 'Pendente'}
-                                                    </span>
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
-                                                    {item.sale?.customer_email && (
-                                                        <button
-                                                            onClick={() => {
-                                                                setSelectedUserForEmail({
-                                                                    email: item.sale.customer_email,
-                                                                    name: item.sale.customer_name
-                                                                })
-                                                                setEmailModalOpen(true)
-                                                            }}
-                                                            className="text-cyan-600 hover:text-cyan-900 flex items-center gap-1"
-                                                        >
-                                                            <Mail size={16} />
-                                                            Enviar Email
-                                                        </button>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {userCarts.map((cart: any) => {
+                                            const cartItems = cart.items || []
+                                            const total = cartItems.reduce((sum: number, item: any) => {
+                                                const price = parseFloat(item.price || item.product?.price || '0')
+                                                const quantity = item.quantity || 1
+                                                return sum + (price * quantity)
+                                            }, 0)
+                                            
+                                            return (
+                                                <tr key={cart.id}>
+                                                    <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">
+                                                        {users.find((u: any) => u.id === cart.user_id)?.name || 'Usuário desconhecido'}
+                                                    </td>
+                                                    <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {users.find((u: any) => u.id === cart.user_id)?.email || '-'}
+                                                    </td>
+                                                    <td className="py-4 px-4 text-sm text-gray-500">
+                                                        <div className="space-y-1">
+                                                            {cartItems.map((item: any, idx: number) => (
+                                                                <div key={idx} className="text-xs">
+                                                                    {item.product?.name || item.name || 'Produto desconhecido'} - Qtd: {item.quantity || 1}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4 px-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                                        R$ {total.toFixed(2).replace('.', ',')}
+                                                    </td>
+                                                    <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {cart.updated_at ? new Date(cart.updated_at).toLocaleDateString('pt-BR') : '-'}
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
@@ -2545,90 +2142,33 @@ export default function Dashboard() {
     }
 
 
-    const menuItems = [
-        { id: 'sales', label: 'Vendas', icon: DollarSign },
-        { id: 'inventory', label: 'Estoque', icon: Package },
-        { id: 'users', label: 'Usuários', icon: User },
-        { id: 'products', label: 'Produtos', icon: ShoppingCart },
-        { id: 'invoices', label: 'Notas Fiscais', icon: FileText },
-        { id: 'partnerships', label: 'Parcerias', icon: Handshake },
-        { id: 'coupons', label: 'Cupons', icon: Ticket },
-        { id: 'content', label: 'Textos do Site', icon: Type },
-        { id: 'images', label: 'Imagens', icon: ImageIcon },
-        { id: 'faq', label: 'FAQ', icon: FileText },
-        { id: 'purchases', label: 'Compras', icon: Package },
-        { id: 'carts', label: 'Carrinhos', icon: ShoppingCart },
-        { id: 'purchased', label: 'Produtos Comprados', icon: Package },
-    ]
-
     return (
-        <div className="flex min-h-screen bg-gray-100">
-            {/* Sidebar */}
-            <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-cyan-900 text-white transition-all duration-300 flex flex-col fixed h-screen`}>
-                <div className="p-4 flex items-center justify-between border-b border-cyan-800">
-                    {sidebarOpen && <h1 className="text-xl font-bold">Painel Admin</h1>}
-                    <button
-                        onClick={() => setSidebarOpen(!sidebarOpen)}
-                        className="p-2 hover:bg-cyan-800 rounded-lg transition-colors"
-                    >
-                        {sidebarOpen ? <XIcon size={20} /> : <Menu size={20} />}
-                    </button>
-                </div>
-                <nav className="flex-1 overflow-y-auto p-2">
-                    {menuItems.map((item) => {
-                        const Icon = item.icon
-                        return (
-                            <button
-                                key={item.id}
-                                onClick={() => setActiveTab(item.id)}
-                                className={`w-full flex items-center gap-3 p-3 rounded-lg mb-1 transition-all duration-200 ${
-                                    activeTab === item.id
-                                        ? 'bg-cyan-700 text-white shadow-lg'
-                                        : 'text-cyan-100 hover:bg-cyan-800'
-                                }`}
-                                title={!sidebarOpen ? item.label : ''}
-                            >
-                                <Icon size={20} className="flex-shrink-0" />
-                                {sidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
-                            </button>
-                        )
-                    })}
-                </nav>
-            </aside>
+        <div className="flex flex-col min-h-screen bg-gray-100">
+            <main className="flex-grow p-4 sm:p-6">
+                <h1 className="text-3xl font-bold text-gray-800 mb-8">Painel Administrativo</h1>
 
-            {/* Main Content */}
-            <main className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'} p-4 sm:p-6`}>
-                <div className="bg-white rounded-lg p-6 shadow-lg min-h-[calc(100vh-2rem)]">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-10 gap-3 mb-6">
+                    <button onClick={() => setActiveTab('sales')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'sales' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Vendas</button>
+                    <button onClick={() => setActiveTab('inventory')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'inventory' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Estoque</button>
+                    <button onClick={() => setActiveTab('users')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'users' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Usuários</button>
+                    <button onClick={() => setActiveTab('products')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'products' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Produtos</button>
+                    <button onClick={() => setActiveTab('invoices')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'invoices' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Notas Fiscais</button>
+                    <button onClick={() => setActiveTab('partnerships')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'partnerships' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Parcerias</button>
+                    <button onClick={() => setActiveTab('coupons')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'coupons' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Cupons</button>
+                    <button onClick={() => setActiveTab('content')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'content' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Textos do Site</button>
+                    <button onClick={() => setActiveTab('faq')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'faq' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>FAQ </button>
+                    <button onClick={() => setActiveTab('carts')} className={`p-4 rounded-lg font-semibold transition-all duration-200 ${activeTab === 'carts' ? 'bg-cyan-600 text-white shadow-lg scale-105' : 'bg-white text-gray-700 hover:bg-cyan-50'}`}>Carrinhos</button>
+                </div>
+
+                <div className="bg-white rounded-lg p-6 shadow-lg min-h-[500px]">
                     {renderTabContent()}
                 </div>
 
                 {/* hidden file input used for attaching PDFs to purchases */}
                 <input ref={fileInputRef} type="file" accept="application/pdf" className="hidden" onChange={handleFileChange} />
-                {/* hidden file input used for uploading site images */}
-                <input ref={imageInputRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden" onChange={handleImageUpload} />
 
                 {/* Modais de Edição */}
                 {renderModals()}
-
-                {/* Modal de Envio de Email */}
-                <Dialog open={emailModalOpen} onOpenChange={setEmailModalOpen}>
-                    <DialogContent className="sm:max-w-[600px]">
-                        <DialogHeader>
-                            <DialogTitle>Enviar Email</DialogTitle>
-                        </DialogHeader>
-                        {selectedUserForEmail && (
-                            <EmailForm
-                                recipient={selectedUserForEmail.email || selectedUserForEmail}
-                                recipientName={selectedUserForEmail.name || selectedUserForEmail.email || 'Usuário'}
-                                onSend={handleSendEmail}
-                                onCancel={() => {
-                                    setEmailModalOpen(false)
-                                    setSelectedUserForEmail(null)
-                                }}
-                            />
-                        )}
-                    </DialogContent>
-                </Dialog>
 
                 {/* Dialog de Confirmação de Exclusão */}
                 <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -2647,6 +2187,26 @@ export default function Dashboard() {
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
+
+                {/* Modal de Envio de Email */}
+                <Dialog open={emailModalOpen} onOpenChange={setEmailModalOpen}>
+                    <DialogContent className="sm:max-w-[600px]">
+                        <DialogHeader>
+                            <DialogTitle>Enviar Email para {selectedUserForEmail?.name || 'Usuário'}</DialogTitle>
+                        </DialogHeader>
+                        {selectedUserForEmail && (
+                            <EmailForm
+                                userEmail={selectedUserForEmail.email}
+                                userName={selectedUserForEmail.name}
+                                onSend={handleSendEmail}
+                                onCancel={() => {
+                                    setEmailModalOpen(false)
+                                    setSelectedUserForEmail(null)
+                                }}
+                            />
+                        )}
+                    </DialogContent>
+                </Dialog>
             </main>
         </div>
     )

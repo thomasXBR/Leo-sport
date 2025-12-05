@@ -17,6 +17,7 @@ import { getUserOrders, getUserInvoices, type Sale, type Invoice } from '@/lib/s
 export default function PerfilPage() {
   const { user, profile, updateProfile, updatePassword, loading } = useAuth();
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<'information' | 'purchases'>('information');
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -192,8 +193,35 @@ export default function PerfilPage() {
           <p className="mt-2 text-gray-600">Gerencie suas informações pessoais e configurações</p>
         </div>
 
-        {/* Personal Information */}
-        <Card>
+        {/* Tabs */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <button 
+            onClick={() => setActiveTab('information')} 
+            className={`p-4 rounded-lg font-semibold transition-all duration-200 ${
+              activeTab === 'information' 
+                ? 'bg-blue-900 text-white shadow-lg scale-105' 
+                : 'bg-white text-gray-700 hover:bg-blue-50'
+            }`}
+          >
+            Informações
+          </button>
+          <button 
+            onClick={() => setActiveTab('purchases')} 
+            className={`p-4 rounded-lg font-semibold transition-all duration-200 ${
+              activeTab === 'purchases' 
+                ? 'bg-blue-900 text-white shadow-lg scale-105' 
+                : 'bg-white text-gray-700 hover:bg-blue-50'
+            }`}
+          >
+            Compras
+          </button>
+        </div>
+
+        <div className="bg-white rounded-lg p-6 shadow-lg min-h-[500px]">
+          {activeTab === 'information' ? (
+            <>
+              {/* Personal Information */}
+              <Card className="mb-6">
           <CardHeader>
             <CardTitle>Informações Pessoais</CardTitle>
             <CardDescription>Atualize suas informações básicas</CardDescription>
@@ -337,10 +365,12 @@ export default function PerfilPage() {
               </div>
             </div>
           </CardContent>
-        </Card>
-
-        {/* Histórico de Compras */}
-        <Card>
+              </Card>
+            </>
+          ) : (
+            <>
+              {/* Histórico de Compras */}
+              <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShoppingBag className="w-5 h-5" />
@@ -518,7 +548,10 @@ export default function PerfilPage() {
               </div>
             )}
           </CardContent>
-        </Card>
+              </Card>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
