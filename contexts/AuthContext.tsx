@@ -197,6 +197,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Enviar email de boas-vindas com cupom (não bloquear o cadastro se falhar)
       try {
+        console.log('📧 Iniciando envio de email de boas-vindas para:', email.trim());
+        
         const welcomeEmailResponse = await fetch('/api/email/welcome', {
           method: 'POST',
           headers: {
@@ -208,12 +210,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }),
         });
 
+        const responseData = await welcomeEmailResponse.json();
+        
         if (!welcomeEmailResponse.ok) {
-          console.warn('Email de boas-vindas não foi enviado, mas a conta foi criada com sucesso');
+          console.error('❌ Erro ao enviar email de boas-vindas:', {
+            status: welcomeEmailResponse.status,
+            statusText: welcomeEmailResponse.statusText,
+            data: responseData
+          });
+        } else {
+          console.log('✅ Resposta do email de boas-vindas:', responseData);
+          if (responseData.success) {
+            console.log('📬 Email enviado com sucesso! ID:', responseData.id);
+          } else {
+            console.warn('⚠️ Email não foi enviado:', responseData.message);
+          }
         }
-      } catch (emailError) {
+      } catch (emailError: any) {
         // Não falhar o cadastro se o email não for enviado
-        console.warn('Erro ao enviar email de boas-vindas:', emailError);
+        console.error('❌ Erro ao chamar API de email de boas-vindas:', emailError);
+        console.error('Detalhes:', emailError.message);
+        console.error('Stack:', emailError.stack);
       }
 
       return { error: null };
