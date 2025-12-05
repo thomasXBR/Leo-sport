@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mail, Calendar, User as UserIcon, Shield, Save, ShoppingBag, FileText, Download, Eye } from 'lucide-react';
+import { Mail, Calendar, User as UserIcon, Shield, Save, ShoppingBag, FileText, Download, Eye, Menu, X as XIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { getUserOrders, getUserInvoices, type Sale, type Invoice } from '@/lib/supabase';
 
@@ -18,6 +18,7 @@ export default function PerfilPage() {
   const { user, profile, updateProfile, updatePassword, loading } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'information' | 'purchases'>('information');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -184,35 +185,49 @@ export default function PerfilPage() {
     return null;
   }
 
-  return (
-    <div className="flex flex-col min-h-screen bg-gray-100">
-      <main className="flex-grow p-4 sm:p-6">
-        <h1 className="text-3xl font-bold text-gray-800 mb-8">Meu Perfil</h1>
+  const menuItems = [
+    { id: 'information', label: 'Informações', icon: UserIcon },
+    { id: 'purchases', label: 'Compras', icon: ShoppingBag },
+  ];
 
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          <button 
-            onClick={() => setActiveTab('information')} 
-            className={`p-4 rounded-lg font-semibold transition-all duration-200 ${
-              activeTab === 'information' 
-                ? 'bg-cyan-600 text-white shadow-lg scale-105' 
-                : 'bg-white text-gray-700 hover:bg-cyan-50'
-            }`}
+  return (
+    <div className="flex min-h-screen bg-gray-100">
+      {/* Sidebar */}
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-cyan-900 text-white transition-all duration-300 flex flex-col fixed`} style={{ top: '104px', height: 'calc(100vh - 104px)' }}>
+        <div className="p-4 flex items-center justify-between border-b border-cyan-800">
+          {sidebarOpen && <h1 className="text-xl font-bold">Meu Perfil</h1>}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 hover:bg-cyan-800 rounded-lg transition-colors"
           >
-            Informações
-          </button>
-          <button 
-            onClick={() => setActiveTab('purchases')} 
-            className={`p-4 rounded-lg font-semibold transition-all duration-200 ${
-              activeTab === 'purchases' 
-                ? 'bg-cyan-600 text-white shadow-lg scale-105' 
-                : 'bg-white text-gray-700 hover:bg-cyan-50'
-            }`}
-          >
-            Compras
+            {sidebarOpen ? <XIcon size={20} /> : <Menu size={20} />}
           </button>
         </div>
+        <nav className="flex-1 overflow-y-auto p-2">
+          {menuItems.map((item) => {
+            const Icon = item.icon
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id as 'information' | 'purchases')}
+                className={`w-full flex items-center gap-3 p-3 rounded-lg mb-1 transition-all duration-200 ${
+                  activeTab === item.id
+                    ? 'bg-cyan-700 text-white shadow-lg'
+                    : 'text-cyan-100 hover:bg-cyan-800'
+                }`}
+                title={!sidebarOpen ? item.label : ''}
+              >
+                <Icon size={20} className="flex-shrink-0" />
+                {sidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
+              </button>
+            )
+          })}
+        </nav>
+      </aside>
 
-        <div className="bg-white rounded-lg p-6 shadow-lg min-h-[500px]">
+      {/* Main Content */}
+      <main className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'} p-4 sm:p-6`}>
+        <div className="bg-white rounded-lg p-6 shadow-lg min-h-[calc(100vh-2rem)]">
           {activeTab === 'information' ? (
             <>
               {/* Personal Information */}

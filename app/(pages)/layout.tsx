@@ -17,7 +17,7 @@ export default function PublicLayout({
         <div className="min-h-screen flex flex-col overflow-x-hidden">
           <CouponCarousel />
           <Header />
-          <main className="flex-1 overflow-x-hidden">
+          <main className="flex-1 overflow-x-hidden" style={{ paddingTop: '104px' }}>
             {children}
           </main>
           <Footer />
