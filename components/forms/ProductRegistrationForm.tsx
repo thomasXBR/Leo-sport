@@ -37,6 +37,8 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
     stock_quantity: (initialData as any)?.stock_quantity ? String((initialData as any).stock_quantity) : '',
     weight: (initialData as any)?.weight ?? '',
     dimensions: (initialData as any)?.dimensions ?? '',
+    width: (initialData as any)?.width ? String((initialData as any).width) : '',
+    height: (initialData as any)?.height ? String((initialData as any).height) : '',
     image_url: (initialData as any)?.image_url ?? '',
     status: (initialData as any)?.status ?? 'Ativo',
     color: (initialData as any)?.color ?? '',
@@ -210,6 +212,8 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
         stock_quantity: parseInt(String(formData.stock_quantity)),
         weight: formData.weight || undefined,
         dimensions: formData.dimensions || undefined,
+        width: formData.width ? parseFloat(String(formData.width)) : undefined,
+        height: formData.height ? parseFloat(String(formData.height)) : undefined,
         image_url: formData.image_url || undefined,
         color: (formData as any).color || undefined,
         status: formData.status as 'Ativo' | 'Inativo' | 'Esgotado',
@@ -241,6 +245,8 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
           stock_quantity: '',
           weight: '',
           dimensions: '',
+          width: '',
+          height: '',
           image_url: '',
           status: 'Ativo',
           color: '',
@@ -271,10 +277,10 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
   const discount = calculateDiscount();
 
   return (
-    <div className="w-full max-w-screen-xl mx-auto p-6 bg-white rounded-lg shadow-lg ring-1 ring-gray-100">
+    <div className="w-full max-w-[95vw] mx-auto p-6 bg-white rounded-lg shadow-lg ring-1 ring-gray-100 overflow-hidden">
       <h1 className="text-3xl font-bold text-gray-900 mb-1">{productId ? 'Editar Produto' : 'Registrar Produto'}</h1>
       <p className="text-sm text-gray-600 mb-6">{productId ? 'Atualize os campos do produto e salve as alterações' : 'Preencha os campos obrigatórios para adicionar um produto'}</p>
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6 max-h-[80vh] overflow-y-auto pr-4">
         {error && (
           <div className="flex items-center gap-2 p-2 bg-red-50 border border-red-200 rounded">
             <AlertCircle className="w-4 h-4 text-red-600" />
@@ -415,7 +421,15 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
                   </div>
                   <div>
                     <Label htmlFor="dimensions" className="text-sm font-medium text-gray-700 mb-1">Dimensões (LxAxP em cm)</Label>
-                    <Input id="dimensions" name="dimensions" value={formData.dimensions} onChange={handleInputChange} />
+                    <Input id="dimensions" name="dimensions" value={formData.dimensions} onChange={handleInputChange} placeholder="30x45x15" />
+                  </div>
+                  <div>
+                    <Label htmlFor="width" className="text-sm font-medium text-gray-700 mb-1">Largura (cm)</Label>
+                    <Input id="width" name="width" type="number" step="0.01" value={formData.width} onChange={handleInputChange} />
+                  </div>
+                  <div>
+                    <Label htmlFor="height" className="text-sm font-medium text-gray-700 mb-1">Altura (cm)</Label>
+                    <Input id="height" name="height" type="number" step="0.01" value={formData.height} onChange={handleInputChange} />
                   </div>
                 </div>
               </div>
@@ -525,7 +539,7 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
 
         <div className="border-t pt-4 flex gap-3 justify-end">
           <Button type="button" variant="outline" onClick={() => setFormData({
-            name: '', description: '', sku: '', category_id: '', brand: '', price: '', fake_price: '', stock_quantity: '', weight: '', dimensions: '', image_url: '', status: 'Ativo', color: '', features: '', specifications: '', no_shipping: false, devolution_months: '1', warranty_months: '12'
+            name: '', description: '', sku: '', category_id: '', brand: '', price: '', fake_price: '', stock_quantity: '', weight: '', dimensions: '', width: '', height: '', image_url: '', status: 'Ativo', color: '', features: '', specifications: '', no_shipping: false, devolution_months: '1', warranty_months: '12'
           })} className="px-4 py-1 text-sm">Limpar</Button>
           <Button type="submit" disabled={loading} className="px-4 py-1 text-sm bg-blue-600 text-white hover:bg-blue-700">{loading ? (productId ? 'Atualizando...' : 'Registrando...') : (productId ? 'Atualizar Produto' : 'Registrar Produto')}</Button>
         </div>

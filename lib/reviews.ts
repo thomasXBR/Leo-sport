@@ -4,7 +4,7 @@
 import { supabase } from "@/lib/supabase";
 
 export async function getReviews(productId: string) {
-  // Usa o client importado diretamente
+  // Buscar reviews
   const { data, error } = await supabase
     .from("reviews")
     .select("*")
@@ -16,18 +16,56 @@ export async function getReviews(productId: string) {
     return [];
   }
 
-  return data;
+  if (!data || data.length === 0) {
+    return [];
+  }
+
+  // Buscar nomes dos perfis dos usuários que têm user_id
+  const userIds = data
+    .filter((r: any) => r.user_id)
+    .map((r: any) => r.user_id)
+    .filter((id: string | null, index: number, self: (string | null)[]) => 
+      id && self.indexOf(id) === index
+    ) as string[];
+
+  let userProfiles: Record<string, string> = {};
+  
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, name")
+      .in("id", userIds);
+
+    if (profiles) {
+      userProfiles = profiles.reduce((acc: Record<string, string>, profile: any) => {
+        if (profile.name) {
+          acc[profile.id] = profile.name;
+        }
+        return acc;
+      }, {});
+    }
+  }
+
+  // Mapear reviews usando o nome do perfil se disponível, senão usar o nome salvo
+  return data.map((review: any) => ({
+    ...review,
+    name: review.user_id && userProfiles[review.user_id] 
+      ? userProfiles[review.user_id] 
+      : (review.name || "Anônimo")
+  }));
 }
 
 export async function addReview({
   productId,
   stars,
   comment,
+  name,
   userId,
 }: {
   productId: string;
   stars: number;
   comment: string;
+  name: string;
   userId: string | null;
 }) {
   // Validação básica
@@ -52,17 +90,26 @@ export async function addReview({
     };
   }
 
+  if (!name || !name.trim()) {
+    return { 
+      error: { message: "Nome é obrigatório" },
+      errorMessage: "Por favor, informe seu nome."
+    };
+  }
+
   try {
     // Preparar o objeto de review
     const reviewData: {
       product_id: string;
       stars: number;
       comment: string;
+      name: string;
       user_id: string | null;
     } = {
       product_id: productId,
       stars,
       comment: comment.trim(),
+      name: name.trim(),
       user_id: userId,
     };
 
@@ -98,6 +145,7 @@ export async function addReview({
               productId,
               stars,
               comment: comment.trim(),
+              name: name.trim(),
               userId,
             }),
           });

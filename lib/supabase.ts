@@ -12,9 +12,6 @@ export type UserProfile = {
   avatar_url?: string;
   description?: string;
   user_type: 'comprador' | 'vendedor' | 'admin';
-  phone?: string;
-  accept_terms?: boolean;
-  consent_emails?: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -41,8 +38,6 @@ export type Partnership = {
   status: 'Ativo' | 'Inativo' | 'Pendente';
   partnership_date: string;
   notes?: string;
-  form_type?: 'fornecedor' | 'representante';
-  form_payload?: string;
   created_at: string;
   updated_at: string;
 };
@@ -52,6 +47,7 @@ export type Product = {
   name: string;
   description?: string;
   sku: string;
+  content_id?: string;
   category_id?: string;
   brand?: string;
   price: number;
@@ -59,10 +55,13 @@ export type Product = {
   stock_quantity: number;
   weight?: string;
   dimensions?: string;
+  width?: number;
+  height?: number;
   image_url?: string;
   color?: string;
   features?: string;
   specifications?: string;
+  relevance?: number;
   no_shipping?: boolean;
   devolution_months?: number;
   warranty_months?: number;
@@ -78,6 +77,7 @@ export type Review = {
   user_id: string | null;
   stars: number;
   comment: string;
+  name: string;
   created_at: string;
 };
 
@@ -160,18 +160,6 @@ export type SiteContent = {
   label: string;
   value: string;
   content_type: 'text' | 'textarea' | 'html';
-  created_at: string;
-  updated_at: string;
-};
-
-export type SiteImage = {
-  id: string;
-  image_key: string;
-  section: string;
-  label: string;
-  image_url?: string;
-  alt_text?: string;
-  description?: string;
   created_at: string;
   updated_at: string;
 };
@@ -313,10 +301,12 @@ export async function getProducts() {
 }
 
 export async function getProductById(id: string) {
-  // Busca produto com categoria, mas não inclui reviews (são carregadas separadamente)
+  // Se quiser incluir reviews ao buscar um produto, basta fazer um join:
+  // Exemplo:
+  // .select('*, categories(name, slug), reviews(*)')
   const { data, error } = await supabase
     .from('products')
-    .select('*, categories(name, slug)')
+    .select('*, categories(name, slug), reviews(*)')
     .eq('id', id)
     .single();
   
@@ -619,35 +609,53 @@ export async function getCoupons() {
 
 export async function getNavbarCoupons() {
   try {
-    const { data, error } = await supabase
+    // Primeiro, tentar buscar com filtro de show_in_navbar
+    let query = supabase
       .from('coupons')
       .select('*')
       .eq('status', 'Ativo')
       .gte('valid_until', new Date().toISOString().split('T')[0])
       .order('created_at', { ascending: false });
     
+    // Tentar adicionar filtro de show_in_navbar, mas se não existir, buscar tudo e filtrar depois
+    const { data, error } = await query;
+    
     if (error) {
-      // Se o erro for sobre coluna não encontrada, retorna array vazio
-      if (error.message?.includes('column') && error.message?.includes('show_in_navbar')) {
-        console.warn('Coluna show_in_navbar não existe ainda. Retornando array vazio.');
-        return [];
+      // Se o erro for sobre coluna não encontrada, tentar buscar sem filtro
+      if (error.message?.includes('column') || error.code === 'PGRST116') {
+        console.warn('Coluna show_in_navbar não existe ainda. Buscando todos os cupons ativos.');
+        // Buscar todos os cupons ativos sem o filtro de show_in_navbar
+        const { data: allCoupons, error: allError } = await supabase
+          .from('coupons')
+          .select('*')
+          .eq('status', 'Ativo')
+          .gte('valid_until', new Date().toISOString().split('T')[0])
+          .order('created_at', { ascending: false });
+        
+        if (allError) throw allError;
+        
+        // Se a coluna não existe, retornar array vazio (pois não podemos filtrar)
+        // Ou retornar todos se preferir mostrar todos os cupons quando a coluna não existe
+        return allCoupons || [];
       }
       throw error;
     }
     
-    // Filtrar client-side se a coluna existe, caso contrário retornar vazio
-    if (data && data.length > 0 && 'show_in_navbar' in data[0]) {
-      return data.filter(coupon => coupon.show_in_navbar === true) || [];
+    // Se temos dados, verificar se a coluna show_in_navbar existe
+    if (data && data.length > 0) {
+      // Se a propriedade show_in_navbar existe, filtrar
+      if ('show_in_navbar' in data[0]) {
+        return data.filter((coupon: any) => coupon.show_in_navbar === true) || [];
+      } else {
+        // Se não existe, retornar todos (ou vazio, dependendo da preferência)
+        return [];
+      }
     }
     
     return [];
   } catch (error: any) {
-    // Se for erro de coluna não encontrada, retorna array vazio silenciosamente
-    if (error?.message?.includes('column') || error?.code === 'PGRST116') {
-      console.warn('Coluna show_in_navbar não existe no banco de dados ainda.');
-      return [];
-    }
-    throw error;
+    console.error('Erro ao buscar cupons da navbar:', error);
+    return [];
   }
 }
 
@@ -725,13 +733,43 @@ export async function getPartnerships() {
 }
 
 export async function createPartnership(partnership: Omit<Partnership, 'id' | 'created_at' | 'updated_at'>) {
+  // Limpar campos undefined/null para evitar erros
+  const cleanPartnership = Object.fromEntries(
+    Object.entries(partnership).filter(([_, value]) => value !== undefined && value !== null)
+  ) as Omit<Partnership, 'id' | 'created_at' | 'updated_at'>;
+  
+  // Garantir que campos obrigatórios existam
+  if (!cleanPartnership.company_name) {
+    cleanPartnership.company_name = 'Não informado';
+  }
+  if (!cleanPartnership.contact_email) {
+    throw new Error('Email é obrigatório');
+  }
+  if (!cleanPartnership.status) {
+    cleanPartnership.status = 'Pendente';
+  }
+  if (!cleanPartnership.partnership_date) {
+    cleanPartnership.partnership_date = new Date().toISOString().split('T')[0];
+  }
+  
   const { data, error } = await supabase
     .from('partnerships')
-    .insert([partnership])
+    .insert([cleanPartnership])
     .select()
     .single();
   
-  if (error) throw error;
+  if (error) {
+    console.error('Erro ao criar parceria no Supabase:', {
+      error,
+      partnership: cleanPartnership,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code
+    });
+    throw error;
+  }
+  
   return data;
 }
 
@@ -844,28 +882,214 @@ export async function deletePurchase(id: string) {
 }
 
 // ============================================
-// FUNÇÕES CRUD - IMAGENS DO SITE
+// FUNÇÕES CRUD - CARRINHOS DE USUÁRIOS
 // ============================================
 
-export async function getSiteImages() {
+export type UserCart = {
+  id: string;
+  user_id: string;
+  product_id: string;
+  quantity: number;
+  updated_at: string;
+  created_at: string;
+  product?: Product;
+};
+
+export async function getUserCart(userId: string) {
   const { data, error } = await supabase
-    .from('site_images')
-    .select('*')
-    .order('section, image_key');
+    .from('user_carts')
+    .select('*, product:products(*)')
+    .eq('user_id', userId)
+    .order('updated_at', { ascending: false });
+  
+  if (error) throw error;
+  return data as UserCart[];
+}
+
+export async function getAllUserCarts() {
+  const { data, error } = await supabase
+    .from('user_carts')
+    .select('*, product:products(*), user:profiles(id, name, email)')
+    .order('updated_at', { ascending: false });
   
   if (error) throw error;
   return data;
 }
 
-export async function getSiteImageByKey(imageKey: string) {
+export async function addToUserCart(userId: string, productId: string, quantity: number = 1) {
+  // Verificar se já existe
+  const { data: existing } = await supabase
+    .from('user_carts')
+    .select('id, quantity')
+    .eq('user_id', userId)
+    .eq('product_id', productId)
+    .single();
+
+  if (existing) {
+    // Atualizar quantidade
+    const { data, error } = await supabase
+      .from('user_carts')
+      .update({ quantity: existing.quantity + quantity, updated_at: new Date().toISOString() })
+      .eq('id', existing.id)
+      .select('*, product:products(*)')
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } else {
+    // Criar novo
+    const { data, error } = await supabase
+      .from('user_carts')
+      .insert([{ user_id: userId, product_id: productId, quantity }])
+      .select('*, product:products(*)')
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+}
+
+export async function updateUserCartItem(cartId: string, quantity: number) {
+  if (quantity <= 0) {
+    return deleteUserCartItem(cartId);
+  }
+  
   const { data, error } = await supabase
-    .from('site_images')
-    .select('*')
-    .eq('image_key', imageKey)
+    .from('user_carts')
+    .update({ quantity, updated_at: new Date().toISOString() })
+    .eq('id', cartId)
+    .select('*, product:products(*)')
     .single();
   
   if (error) throw error;
   return data;
+}
+
+export async function deleteUserCartItem(cartId: string) {
+  const { error } = await supabase
+    .from('user_carts')
+    .delete()
+    .eq('id', cartId);
+  
+  if (error) throw error;
+}
+
+export async function clearUserCart(userId: string) {
+  const { error } = await supabase
+    .from('user_carts')
+    .delete()
+    .eq('user_id', userId);
+  
+  if (error) throw error;
+}
+
+// ============================================
+// FUNÇÕES CRUD - ITENS DE VENDA
+// ============================================
+
+export type SaleItem = {
+  id: string;
+  sale_id: string;
+  product_id?: string;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  created_at: string;
+  product?: Product;
+};
+
+export async function getSaleItems(saleId: string) {
+  const { data, error } = await supabase
+    .from('sale_items')
+    .select('*, product:products(*)')
+    .eq('sale_id', saleId)
+    .order('created_at', { ascending: false });
+  
+  if (error) throw error;
+  return data as SaleItem[];
+}
+
+export async function getAllSaleItems() {
+  const { data, error } = await supabase
+    .from('sale_items')
+    .select('*, product:products(*), sale:sales(*)')
+    .order('created_at', { ascending: false });
+  
+  if (error) throw error;
+  return data as SaleItem[];
+}
+
+export async function createSaleItem(item: Omit<SaleItem, 'id' | 'created_at'>) {
+  const { data, error } = await supabase
+    .from('sale_items')
+    .insert([item])
+    .select('*, product:products(*)')
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function getSalesWithItems() {
+  const { data, error } = await supabase
+    .from('sales')
+    .select('*, sale_items:sale_items(*, product:products(*))')
+    .order('created_at', { ascending: false });
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function getSaleById(id: string) {
+  const { data, error } = await supabase
+    .from('sales')
+    .select('*, sale_items:sale_items(*, product:products(*))')
+    .eq('id', id)
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+// ============================================
+// FUNÇÕES CRUD - USUÁRIOS
+// ============================================
+
+export async function getAllUsers() {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .order('created_at', { ascending: false });
+  
+  if (error) throw error;
+  return data;
+}
+
+// ============================================
+// FUNÇÕES CRUD - IMAGENS DO SITE
+// ============================================
+
+export type SiteImage = {
+  id: string;
+  image_key: string;
+  image_url: string;
+  description?: string;
+  section?: string;
+  label?: string;
+  alt_text?: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function getSiteImages() {
+  const { data, error } = await supabase
+    .from('site_images')
+    .select('*')
+    .order('created_at', { ascending: false });
+  
+  if (error) throw error;
+  return data as SiteImage[];
 }
 
 export async function createSiteImage(image: Omit<SiteImage, 'id' | 'created_at' | 'updated_at'>) {
@@ -900,87 +1124,6 @@ export async function deleteSiteImage(id: string) {
   if (error) throw error;
 }
 
-// ============================================
-// FUNÇÕES CRUD - USUÁRIOS
-// ============================================
-
-export async function getAllUsers() {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .order('created_at', { ascending: false });
-  
-  if (error) throw error;
-  return data || [];
-}
-
-// ============================================
-// FUNÇÕES CRUD - PEDIDOS E ITENS
-// ============================================
-
-export async function getSalesWithItems() {
-  // Buscar vendas com informações dos produtos (se houver order_items)
-  const { data: sales, error: salesError } = await supabase
-    .from('sales')
-    .select('*')
-    .order('created_at', { ascending: false });
-  
-  if (salesError) throw salesError;
-  
-  // Tentar buscar items dos pedidos se a tabela existir
-  const salesWithItems = await Promise.all(
-    (sales || []).map(async (sale) => {
-      try {
-        // Tentar buscar order_items relacionados
-        const { data: orderItems } = await supabase
-          .from('order_items')
-          .select('*, products(*)')
-          .eq('order_id', sale.id);
-        
-        return {
-          ...sale,
-          items: orderItems || []
-        };
-      } catch {
-        // Se a tabela não existir, retornar sem items
-        return {
-          ...sale,
-          items: []
-        };
-      }
-    })
-  );
-  
-  return salesWithItems;
-}
-
-export async function getSaleById(id: string) {
-  const { data: sale, error } = await supabase
-    .from('sales')
-    .select('*')
-    .eq('id', id)
-    .single();
-  
-  if (error) throw error;
-  
-  // Tentar buscar items do pedido
-  try {
-    const { data: orderItems } = await supabase
-      .from('order_items')
-      .select('*, products(*)')
-      .eq('order_id', id);
-    
-    return {
-      ...sale,
-      items: orderItems || []
-    };
-  } catch {
-    return {
-      ...sale,
-      items: []
-    };
-  }
-}
 
 // Buscar pedidos de um usuário específico
 export async function getUserOrders(userId: string) {
@@ -992,18 +1135,18 @@ export async function getUserOrders(userId: string) {
   
   if (error) throw error;
   
-  // Buscar items de cada pedido
+  // Buscar items de cada pedido da tabela sale_items
   const ordersWithItems = await Promise.all(
     (orders || []).map(async (order) => {
       try {
-        const { data: orderItems } = await supabase
-          .from('order_items')
-          .select('*, products(*)')
-          .eq('order_id', order.id);
+        const { data: saleItems } = await supabase
+          .from('sale_items')
+          .select('*, product:products(*)')
+          .eq('sale_id', order.id);
         
         return {
           ...order,
-          items: orderItems || []
+          items: saleItems || []
         };
       } catch {
         return {

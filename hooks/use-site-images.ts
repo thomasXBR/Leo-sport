@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getSiteImages, getSiteImageByKey, type SiteImage } from '@/lib/supabase';
+import { getSiteImages, type SiteImage } from '@/lib/supabase';
 
 /**
  * Hook personalizado para gerenciar imagens editáveis do site
@@ -61,5 +61,6 @@ export function useSiteImages() {
     reload,
   };
 }
+
 
 

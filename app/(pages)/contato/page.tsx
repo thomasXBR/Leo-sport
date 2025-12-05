@@ -10,6 +10,7 @@ import { MapPin, Phone, Mail, Clock } from 'lucide-react';
 import Image from 'next/image';
 import { useSiteContent } from '@/hooks/use-site-content';
 import { useSiteImages } from '@/hooks/use-site-images';
+import FAQCarousel from '@/components/layout/FAQCarousel';
 
 export default function ContatoPage() {
   const { getContent, loading } = useSiteContent();
@@ -126,29 +127,7 @@ export default function ContatoPage() {
               <h3 className="text-xl font-bold text-gray-900 mb-6">
                 {getContent('contact_faq_title', 'Perguntas Frequentes')}
               </h3>
-              <div className="space-y-4">
-                <Card>
-                  <CardContent className="p-4">
-                    <h4 className="font-semibold text-gray-900 mb-2">
-                      {getContent('contact_faq_1_question', 'Como funciona o processo de venda?')}
-                    </h4>
-                    <p className="text-gray-600">
-                      {getContent('contact_faq_1_answer', 'Após aprovação como parceiro, você pode enviar propostas de produtos que serão analisadas pela nossa equipe antes de serem publicadas.')}
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-4">
-                    <h4 className="font-semibold text-gray-900 mb-2">
-                      {getContent('contact_faq_2_question', 'Qual é a taxa de comissão?')}
-                    </h4>
-                    <p className="text-gray-600">
-                      {getContent('contact_faq_2_answer', 'Nossa taxa é competitiva e varia conforme o volume de vendas. Entre em contato para conhecer nossos planos.')}
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
+              <FAQCarousel />
             </div>
           </div>
 

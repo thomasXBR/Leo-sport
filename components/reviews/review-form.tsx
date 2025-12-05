@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { addReview } from "@/lib/reviews";
@@ -11,12 +11,20 @@ export default function ReviewForm({ productId }: { productId: string }) {
   const { user, profile } = useAuth();
   const [stars, setStars] = useState(0);
   const [comment, setComment] = useState("");
+  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Verificar se o usuário é admin
   const isAdmin = profile?.user_type === 'admin';
+
+  // Usar o nome do perfil do usuário logado automaticamente
+  useEffect(() => {
+    if (profile?.name) {
+      setName(profile.name);
+    }
+  }, [profile]);
 
   async function submit() {
     // Validação antes de enviar
@@ -35,6 +43,14 @@ export default function ReviewForm({ productId }: { productId: string }) {
       return;
     }
 
+    // Usar o nome do perfil do usuário logado
+    const userName = profile?.name || name.trim();
+    
+    if (!userName || userName.length < 2) {
+      setError("Por favor, faça login para deixar uma avaliação.");
+      return;
+    }
+
     setError(null);
     setLoading(true);
 
@@ -42,10 +58,12 @@ export default function ReviewForm({ productId }: { productId: string }) {
     const userId = user?.id || null;
 
     try {
+
       const { error: reviewError, errorMessage } = await addReview({
         productId,
         stars,
         comment: comment.trim(),
+        name: userName,
         userId,
       });
 
@@ -53,6 +71,7 @@ export default function ReviewForm({ productId }: { productId: string }) {
         setDone(true);
         setComment("");
         setStars(0);
+        // Manter o nome do perfil (não limpar)
         // Dispara evento para recarregar a lista de reviews
         window.dispatchEvent(new Event("reviewAdded"));
         // Recarrega a página após 2 segundos para garantir
@@ -103,6 +122,30 @@ export default function ReviewForm({ productId }: { productId: string }) {
         </div>
       )}
 
+      {/* Campo de nome - preenchido automaticamente com o nome do usuário logado */}
+      {profile?.name ? (
+        <div className="mb-3">
+          <div className="w-full border rounded-lg p-2 bg-gray-100 text-gray-700">
+            <span className="text-sm text-gray-500">Avaliando como:</span>
+            <p className="font-semibold">{profile.name}</p>
+          </div>
+        </div>
+      ) : (
+        <div className="mb-3">
+          <input
+            type="text"
+            className="w-full border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Seu nome..."
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              setError(null);
+            }}
+            disabled={loading}
+          />
+        </div>
+      )}
+
       {/* Estrelas */}
       <div className="flex gap-2 mb-3">
         {[1, 2, 3, 4, 5].map((n) => (
@@ -133,7 +176,7 @@ export default function ReviewForm({ productId }: { productId: string }) {
 
       <button
         onClick={submit}
-        disabled={stars === 0 || loading || !comment.trim()}
+        disabled={stars === 0 || loading || !comment.trim() || (!profile?.name && !name.trim())}
         className="mt-3 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
       >
         {loading ? "Enviando..." : "Enviar avaliação"}

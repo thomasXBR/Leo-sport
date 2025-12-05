@@ -7,40 +7,35 @@ import { ArrowLeft, Heart, Share2, Star, Truck, Shield, RotateCcw } from 'lucide
 import ProductCard from '@/components/products/ProductCard'
 import AddToCartButton from '@/components/products/AddToCartButton'
 import { getProductById, getProducts, productsData } from '@/lib/products-data'
-import { getProductById as getSupabaseProductById, getProducts as getSupabaseProducts } from '@/lib/supabase'
+import { getProductById as getSupabaseProductById } from '@/lib/supabase'
+import { getReviews, computeAverage } from '@/lib/reviews'
 import ReviewForm from '@/components/reviews/review-form'
-import ReviewsSection from '@/components/reviews/reviews-section'
-import ProductRating from '@/components/reviews/product-rating'
 
+// Permitir renderização dinâmica para produtos UUID não gerados estaticamente
 export const dynamicParams = true
 
+// ---- Types ----
 interface ProductPageProps {
   params: Promise<{
     id: string
   }>
 }
 
+// ---- Metadata ----
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const { id } = await params
 
-  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
-
+  // Try Supabase first, then fall back to mock data
   let product = null
-  
-  if (isUUID) {
-    // Apenas tentar buscar no Supabase se o ID for um UUID válido
-    try {
-      product = await getSupabaseProductById(id)
-    } catch (error: any) {
-      // Ignorar erros silenciosamente e tentar produtos mock
-    }
-  }
-
-  // Se não encontrou no Supabase ou não é UUID, tentar produtos mock
-  if (!product) {
-    const numericId = parseInt(id, 10)
-    if (!isNaN(numericId)) {
-      product = getProductById(numericId)
+  try {
+    product = await getSupabaseProductById(id)
+  } catch (error: any) {
+    // Se não encontrou no Supabase, tenta buscar nos mocks
+    if (error?.code === 'PGRST116' || error?.message?.includes('No rows')) {
+      const numericId = parseInt(id, 10)
+      if (!isNaN(numericId)) {
+        product = getProductById(numericId)
+      }
     }
   }
 
@@ -57,62 +52,70 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   }
 }
 
+// ---- Static Params ----
 export async function generateStaticParams() {
   try {
-    const supabaseProducts = await getSupabaseProducts()
+    const supabaseProducts = await getProducts()
     if (supabaseProducts && supabaseProducts.length > 0) {
-      // Filtrar apenas produtos com UUIDs válidos
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-      return supabaseProducts
-        .filter((product: any) => product.id && uuidRegex.test(product.id.toString()))
-        .map((product: any) => ({
-          id: product.id.toString(),
-        }))
+      return supabaseProducts.map((product: any) => ({
+        id: product.id.toString(),
+      }))
     }
   } catch (error: any) {
     console.log('Using mock products for static generation:', error?.message || error)
   }
 
-  // Retornar apenas produtos mock se não houver produtos do Supabase
+  // Fallback para produtos mock
   return productsData.map((product) => ({
     id: product.id.toString(),
   }))
 }
 
+// ---- Page ----
 export default async function ProductPage({ params }: ProductPageProps) {
   const { id } = await params
 
+  // Verifica se é um UUID válido (formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
   const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
 
   let product = null
   let isSupabaseProduct = false
 
+  // Se for UUID, só busca no Supabase (não tenta mocks numéricos)
   if (isUUID) {
-    // Apenas tentar buscar no Supabase se o ID for um UUID válido
+    try {
+      product = await getSupabaseProductById(id)
+      if (product) {
+        isSupabaseProduct = true
+      } else {
+        // UUID não encontrado no Supabase
+        notFound()
+        return
+      }
+    } catch (error: any) {
+      // Qualquer erro com UUID retorna 404 (não tenta mocks numéricos)
+      console.error('Error fetching UUID product from Supabase:', error?.message || error)
+      notFound()
+      return
+    }
+  } else {
+    // Se não for UUID, tenta Supabase primeiro, depois mocks numéricos
     try {
       product = await getSupabaseProductById(id)
       if (product) {
         isSupabaseProduct = true
       }
     } catch (error: any) {
-      const isNotFoundError = error?.code === 'PGRST116' || 
-                              error?.message?.includes('No rows') ||
-                              error?.message?.includes('not found')
-      
-      if (isNotFoundError) {
-        notFound()
-        return
-      }
-      
-      console.error('Error fetching UUID product from Supabase:', error?.message || error)
-      notFound()
-      return
+      // Se não encontrou no Supabase e não é UUID, tenta buscar nos mocks numéricos
+      console.log('Supabase product not found, trying mock data:', error?.message || error)
     }
-  } else {
-    // Se não é UUID, buscar diretamente nos produtos mock (não tentar Supabase)
-    const numericId = parseInt(id, 10)
-    if (!isNaN(numericId)) {
-      product = getProductById(numericId)
+
+    // Fallback para produtos mock numéricos apenas se não for UUID
+    if (!product) {
+      const numericId = parseInt(id, 10)
+      if (!isNaN(numericId)) {
+        product = getProductById(numericId)
+      }
     }
   }
 
@@ -121,7 +124,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
     return
   }
 
+  // Normalize product data to work with both Supabase and mock products
   try {
+    // Validação básica do produto
     if (!product || !product.id) {
       notFound()
       return
@@ -131,81 +136,38 @@ export default async function ProductPage({ params }: ProductPageProps) {
     const realPrice = typeof product.price === 'number' ? product.price : parseFloat(String(product.price || 0))
     const hasFakePrice = fakePrice > 0 && fakePrice > realPrice
     
-    // Parse features: JSON array string (from Supabase) or array (from mock data)
+    // Parse features: can be string (from Supabase) or array (from mock data)
     const parseFeatures = (features: any): string[] => {
-      if (Array.isArray(features)) {
-        return features
-      }
+      if (Array.isArray(features)) return features
       if (typeof features === 'string' && features.trim()) {
-        try {
-          // Try to parse as JSON first (new format: ["item1", "item2"])
-          const parsed = JSON.parse(features)
-          if (Array.isArray(parsed)) return parsed
-        } catch (e) {
-          // If not JSON, try splitting by newlines (legacy format)
-          return features.split('\n').map(f => f.trim()).filter(f => f.length > 0)
-        }
+        return features.split('\n').map(f => f.trim()).filter(f => f.length > 0)
       }
       return []
     }
     
-    // Parse specifications: JSON object string (from Supabase) or object (from mock data)
+    // Parse specifications: can be string (from Supabase) or object (from mock data)
     const parseSpecifications = (specs: any): Record<string, string> => {
-      // If it's already an object, return as is
       if (typeof specs === 'object' && specs !== null && !Array.isArray(specs)) {
         return specs
       }
-      
-      // If it's a string, try to parse it
       if (typeof specs === 'string' && specs.trim()) {
-        try {
-          // Try to parse as JSON first (new format: {"key": "value"})
-          const parsed = JSON.parse(specs)
-          if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-            return parsed
+        const result: Record<string, string> = {}
+        specs.split('\n').forEach((line: string) => {
+          const parts = line.split(':')
+          if (parts.length >= 2) {
+            const key = parts[0].trim()
+            const value = parts.slice(1).join(':').trim()
+            if (key) result[key] = value
           }
-        } catch (e) {
-          // If JSON parse fails, try line-by-line parsing (legacy format)
-          // Format: "Chave: Valor\nChave2: Valor2"
-          const result: Record<string, string> = {}
-          specs.split('\n').forEach((line: string) => {
-            const trimmedLine = line.trim()
-            if (trimmedLine) {
-              const parts = trimmedLine.split(':')
-              if (parts.length >= 2) {
-                const key = parts[0].trim()
-                const value = parts.slice(1).join(':').trim()
-                if (key && value) {
-                  result[key] = value
-                }
-              }
-            }
-          })
-          if (Object.keys(result).length > 0) {
-            return result
-          }
-        }
+        })
+        return result
       }
-      
       return {}
     }
     
     const normalizedFeatures = parseFeatures(product.features)
     const normalizedSpecs = parseSpecifications(product.specifications)
     
-    // Função para converter meses em texto
-    const monthsToText = (months: number | string | undefined): string => {
-      const m = typeof months === 'string' ? parseInt(months, 10) : months || 0
-      if (!m || isNaN(m)) return '0 meses'
-      if (m >= 12) {
-        const years = Math.floor(m / 12)
-        const rem = m % 12
-        if (rem === 0) return `${years} ${years > 1 ? 'anos' : 'ano'}`
-        return `${years} ${years > 1 ? 'anos' : 'ano'} e ${rem} meses`
-      }
-      return `${m} ${m > 1 ? 'meses' : 'mês'}`
-    }
-
     const normalizedProduct = {
       id: product.id?.toString?.() ?? '',
       name: product.name ?? 'Produto sem nome',
@@ -224,13 +186,21 @@ export default async function ProductPage({ params }: ProductPageProps) {
       status: product.status || 'Ativo',
       features: normalizedFeatures,
       specifications: normalizedSpecs,
-      no_shipping: product.no_shipping || false,
-      warranty_months: product.warranty_months || 12,
-      devolution_months: product.devolution_months || 1,
-      warrantyText: monthsToText(product.warranty_months),
-      devolutionText: monthsToText(product.devolution_months),
     }
 
+    // Carregar avaliações e calcular média
+    let reviews: any[] = []
+    let avg: number | null = null
+    try {
+      reviews = await getReviews(normalizedProduct.id)
+      avg = computeAverage(reviews)
+    } catch (error: any) {
+      console.error('Error loading reviews:', error?.message || error)
+      reviews = []
+      avg = null
+    }
+
+    // Produtos relacionados
     const relatedProducts = productsData
       .filter((p) => p.category === normalizedProduct.category && p.id.toString() !== normalizedProduct.id)
       .slice(0, 4)
@@ -312,8 +282,26 @@ export default async function ProductPage({ params }: ProductPageProps) {
               <h1 className="text-3xl font-bold text-gray-900 mb-4">{normalizedProduct.name}</h1>
 
               {/* Rating */}
-              <div className="mb-4">
-                <ProductRating productId={normalizedProduct.id} />
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex items-center">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      size={16}
+                      className={`${avg && star <= Math.round(avg)
+                        ? 'text-yellow-400 fill-current'
+                        : 'text-gray-300'
+                        }`}
+                    />
+                  ))}
+                </div>
+                {reviews.length > 0 ? (
+                  <span className="text-sm text-gray-600">
+                    ({avg?.toFixed?.(1) ?? '0.0'}) • {reviews.length} avaliação{reviews.length > 1 && 's'}
+                  </span>
+                ) : (
+                  <span className="text-sm text-gray-500">(sem avaliações)</span>
+                )}
               </div>
 
               {/* Price with fake_price support */}
@@ -367,13 +355,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">
                   Especificações Técnicas
                 </h3>
-                <ul className="space-y-2">
+                <ul className="list-disc pl-5 space-y-2">
                   {Object.entries(normalizedProduct.specifications).map(([key, value]) => (
-                    <li key={key} className="flex items-start gap-2 text-gray-700">
-                      <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
-                      <div>
-                        <span className="font-semibold text-gray-900">{key}:</span> {String(value)}
-                      </div>
+                    <li key={key} className="text-gray-900">
+                      <span className="font-semibold text-gray-700">{key}:</span> {String(value)}
                     </li>
                   ))}
                 </ul>
@@ -409,34 +394,57 @@ export default async function ProductPage({ params }: ProductPageProps) {
               <div className="flex items-center gap-3">
                 <Truck className="w-6 h-6 text-blue-600" />
                 <div>
-                  <p className="font-medium text-gray-900">
-                    {normalizedProduct.no_shipping ? 'Frete Grátis' : 'Frete Calculado'}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {normalizedProduct.no_shipping ? 'Para todo o Brasil' : 'Acima de R$ 200'}
-                  </p>
+                  <p className="font-medium text-gray-900">Frete Grátis</p>
+                  <p className="text-sm text-gray-600">Acima de R$ 200</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <Shield className="w-6 h-6 text-blue-600" />
                 <div>
                   <p className="font-medium text-gray-900">Garantia</p>
-                  <p className="text-sm text-gray-600">{normalizedProduct.warrantyText}</p>
+                  <p className="text-sm text-gray-600">1 ano</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <RotateCcw className="w-6 h-6 text-blue-600" />
                 <div>
                   <p className="font-medium text-gray-900">Devolução</p>
-                  <p className="text-sm text-gray-600">{normalizedProduct.devolutionText}</p>
+                  <p className="text-sm text-gray-600">30 dias</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Reviews Section */}
-        <ReviewsSection productId={normalizedProduct.id} />
+        {/* Avaliações */}
+        <div className="mt-16 max-w-2xl mx-auto">
+          <h2 className="text-2xl font-bold text-gray-900 mb-8">Avaliações</h2>
+
+          {/* Formulário de avaliação */}
+          <div className="mb-8">
+            <ReviewForm productId={normalizedProduct.id} />
+          </div>
+
+          {/* Lista de avaliações */}
+          {reviews.length === 0 && <p className="text-gray-700">Nenhuma avaliação ainda.</p>}
+
+          {reviews.map((r: any) => (
+            <div key={r.id} className="border rounded-xl p-4 mb-4">
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Star
+                    key={n}
+                    className={`w-4 h-4 ${n <= r.stars ? 'text-yellow-500' : 'text-gray-300'}`}
+                  />
+                ))}
+              </div>
+              <p className="mt-2">{r.comment}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {new Date(r.created_at).toLocaleDateString()}
+              </p>
+            </div>
+          ))}
+        </div>
 
         {/* Related Products */}
         {relatedProducts.length > 0 && (
