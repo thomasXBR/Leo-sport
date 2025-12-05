@@ -314,7 +314,7 @@ const InvoiceForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        
+
         // Preparar dados para salvar (sem PDF ainda, será feito depois se necessário)
         onSave({
             invoice_number: invoiceNumber,
@@ -458,9 +458,9 @@ const InvoiceForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
                             {pdfFile ? `Arquivo selecionado: ${pdfFile.name}` : initialData?.pdf_url ? 'PDF já anexado. Selecione um novo arquivo para substituir.' : 'Tamanho máximo: 5MB'}
                         </p>
                         {initialData?.pdf_url && !pdfFile && (
-                            <a 
-                                href={initialData.pdf_url} 
-                                target="_blank" 
+                            <a
+                                href={initialData.pdf_url}
+                                target="_blank"
                                 rel="noopener noreferrer"
                                 className="mt-2 inline-block text-sm text-cyan-600 hover:underline"
                             >
@@ -589,13 +589,13 @@ const PartnerForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
     const [status, setStatus] = useState<'Ativo' | 'Inativo' | 'Pendente'>(initialData?.status || 'Pendente')
     const [partnershipDate, setPartnershipDate] = useState(initialData?.partnership_date || new Date().toISOString().split('T')[0])
     const [notes, setNotes] = useState(initialData?.notes || '')
-    
+
     // Parsear form_payload se existir
     let formPayload = null
     try {
         if (initialData?.form_payload) {
-            formPayload = typeof initialData.form_payload === 'string' 
-                ? JSON.parse(initialData.form_payload) 
+            formPayload = typeof initialData.form_payload === 'string'
+                ? JSON.parse(initialData.form_payload)
                 : initialData.form_payload
         }
     } catch (e) {
@@ -624,7 +624,7 @@ const PartnerForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
                         <div className="space-y-2 text-sm">
                             <div className="grid grid-cols-2 gap-2">
                                 {formPayload.nome && (
-                <div>
+                                    <div>
                                         <span className="font-medium text-gray-600">Nome:</span>
                                         <p className="text-gray-900">{formPayload.nome}</p>
                                     </div>
@@ -650,7 +650,7 @@ const PartnerForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
                                     </div>
                                 )}
                             </div>
-                            
+
                             {formPayload.activeForm === 'fornecedor' && (
                                 <div className="mt-3 pt-3 border-t border-gray-300">
                                     <h4 className="font-semibold text-gray-700 mb-2">Dados do Fornecedor</h4>
@@ -682,7 +682,7 @@ const PartnerForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
                                     </div>
                                 </div>
                             )}
-                            
+
                             {formPayload.activeForm === 'representante' && (
                                 <div className="mt-3 pt-3 border-t border-gray-300">
                                     <h4 className="font-semibold text-gray-700 mb-2">Dados do Representante</h4>
@@ -708,7 +708,7 @@ const PartnerForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
                                     </div>
                                 </div>
                             )}
-                            
+
                             {formPayload.submittedAt && (
                                 <div className="mt-3 pt-3 border-t border-gray-300">
                                     <span className="font-medium text-gray-600">Data de Envio:</span>
@@ -720,7 +720,7 @@ const PartnerForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
                         </div>
                     </div>
                 )}
-                
+
                 {/* Campos Editáveis */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Nome da Empresa *</label>
@@ -742,16 +742,16 @@ const PartnerForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
                         required
                     />
                 </div>
-                    <div>
+                <div>
                     <label className="block text-sm font-medium text-gray-700">Telefone de Contato</label>
-                        <input
+                    <input
                         type="tel"
                         value={contactPhone}
                         onChange={(e) => setContactPhone(e.target.value)}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                         placeholder="(00) 00000-0000"
-                        />
-                    </div>
+                    />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Status *</label>
@@ -822,16 +822,16 @@ const PurchaseForm = ({ initialData, onSave, onCancel }: { initialData: any, onS
                         required
                     />
                 </div>
-                    <div>
+                <div>
                     <label className="block text-sm font-medium text-gray-700">Valor Total (R$)</label>
-                        <input
-                            type="number"
-                            step="0.01"
-                            value={total}
-                            onChange={(e) => setTotal(e.target.value)}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                            required
-                        />
+                    <input
+                        type="number"
+                        step="0.01"
+                        value={total}
+                        onChange={(e) => setTotal(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        required
+                    />
                 </div>
             </div>
             <DialogFooter className="mt-6">
@@ -872,7 +872,7 @@ export default function Dashboard() {
     const [emailModalOpen, setEmailModalOpen] = useState(false)
     const [selectedUserForEmail, setSelectedUserForEmail] = useState<any>(null)
     const [filterAcceptedTerms, setFilterAcceptedTerms] = useState(false)
-    
+
     const FAQS_PER_PAGE = 2
     const [currentPage, setCurrentPage] = useState(1)
     const totalFAQs = faqs.length
@@ -905,7 +905,7 @@ export default function Dashboard() {
     const handleAcceptPartnership = async (requestId: string) => {
         const partnership = partnershipRequests.find((p: any) => p.id === requestId)
         const partnershipName = partnership?.company_name || partnership?.nomeEmpresa || 'Esta parceria'
-        
+
         if (!confirm(`Tem certeza que deseja ACEITAR a solicitação de parceria de "${partnershipName}"?`)) {
             return
         }
@@ -925,7 +925,7 @@ export default function Dashboard() {
     const handleRejectPartnership = async (requestId: string) => {
         const partnership = partnershipRequests.find((p: any) => p.id === requestId)
         const partnershipName = partnership?.company_name || partnership?.nomeEmpresa || 'Esta parceria'
-        
+
         if (!confirm(`Tem certeza que deseja RECUSAR a solicitação de parceria de "${partnershipName}"? Esta ação pode ser revertida depois.`)) {
             return
         }
@@ -976,7 +976,7 @@ export default function Dashboard() {
         if (type === 'site-image') {
             imageInputRef.current?.click()
         } else {
-        fileInputRef.current?.click()
+            fileInputRef.current?.click()
         }
     }
 
@@ -1028,7 +1028,7 @@ export default function Dashboard() {
         const file = e.target.files?.[0]
         const imageId = uploadingImageId
         if (!file || !imageId || uploadingFileType !== 'site-image') return
-        
+
         // Validar tipo de arquivo
         const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
         if (!validTypes.includes(file.type)) {
@@ -1046,12 +1046,12 @@ export default function Dashboard() {
         setUploading(true)
         try {
             // Upload to Supabase Storage
-            const bucketName = 'site-images'
+            const bucketName = 'site_images'
             const imageRecord = siteImages.find(img => img.id === imageId)
             const fileName = imageRecord ? `${imageRecord.image_key}_${Date.now()}.${file.name.split('.').pop()}` : `${Date.now()}_${file.name}`
             const path = `images/${fileName}`
-            
-            const { error: uploadError } = await supabase.storage.from(bucketName).upload(path, file, { 
+
+            const { error: uploadError } = await supabase.storage.from(bucketName).upload(path, file, {
                 upsert: true,
                 cacheControl: '3600'
             })
@@ -1070,7 +1070,7 @@ export default function Dashboard() {
         } catch (err: any) {
             console.error('Erro ao enviar imagem:', err)
             if (err.message?.includes('Bucket not found')) {
-                alert('Erro: O bucket "site-images" não existe. Por favor, crie-o no Supabase Dashboard > Storage.')
+                alert('Erro: O bucket "site_images" não existe. Por favor, crie-o no Supabase Dashboard > Storage.')
             } else {
                 alert('Erro ao enviar imagem. Verifique o console.')
             }
@@ -1159,13 +1159,13 @@ export default function Dashboard() {
         const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho']
         const monthlyTotals = [0, 0, 0, 0, 0, 0]
 
-            data.forEach(sale => {
-                const date = new Date(sale.created_at)
+        data.forEach(sale => {
+            const date = new Date(sale.created_at)
             const monthIndex = date.getMonth()
             if (monthIndex >= 0 && monthIndex < 6) {
                 monthlyTotals[monthIndex] += parseFloat(sale.total_amount) || 0
-                }
-            })
+            }
+        })
 
         return monthlyTotals
     }
@@ -1259,11 +1259,11 @@ export default function Dashboard() {
         try {
             let invoiceId: string
             let pdfUrl = formData.pdf_url || undefined
-            
+
             if (editingItem) {
                 // Editar invoice existente
                 invoiceId = editingItem.id
-                
+
                 // Se houver um novo arquivo PDF, fazer upload
                 if (formData.pdf_file) {
                     setUploading(true)
@@ -1278,7 +1278,7 @@ export default function Dashboard() {
                         setUploading(false)
                     }
                 }
-                
+
                 // Atualizar invoice
                 const updateData: any = {
                     invoice_number: formData.invoice_number,
@@ -1286,7 +1286,7 @@ export default function Dashboard() {
                     customer_name: formData.customer_name,
                     customer_email: formData.customer_email || undefined,
                     customer_cpf_cnpj: formData.customer_cpf_cnpj || undefined,
-                    total_amount: typeof formData.total_amount === 'string' 
+                    total_amount: typeof formData.total_amount === 'string'
                         ? parseFloat(formData.total_amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0
                         : formData.total_amount || 0,
                     status: formData.status || 'Pendente',
@@ -1295,7 +1295,7 @@ export default function Dashboard() {
                     notes: formData.notes || undefined,
                 }
                 if (pdfUrl) updateData.pdf_url = pdfUrl
-                
+
                 await updateInvoice(editingItem.id, updateData)
                 setInvoices(invoices.map(i => i.id === editingItem.id ? { ...i, ...updateData } : i))
             } else {
@@ -1307,7 +1307,7 @@ export default function Dashboard() {
                     customer_name: formData.customer_name,
                     customer_email: formData.customer_email || '',
                     customer_cpf_cnpj: formData.customer_cpf_cnpj || undefined,
-                    total_amount: typeof formData.total_amount === 'string' 
+                    total_amount: typeof formData.total_amount === 'string'
                         ? parseFloat(formData.total_amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0
                         : formData.total_amount || 0,
                     status: formData.status || 'Pendente',
@@ -1315,17 +1315,17 @@ export default function Dashboard() {
                     due_date: formData.due_date || undefined,
                     notes: formData.notes || undefined,
                 }
-                
+
                 // Criar invoice primeiro para obter o ID
                 const newInvoice = await createInvoice(invoiceData)
                 invoiceId = newInvoice.id
-                
+
                 // Se houver um novo arquivo PDF, fazer upload
                 if (formData.pdf_file) {
                     setUploading(true)
                     try {
                         pdfUrl = await uploadInvoicePdf(formData.pdf_file, invoiceId)
-                        
+
                         // Atualizar invoice com a URL do PDF
                         await updateInvoice(invoiceId, { pdf_url: pdfUrl })
                         invoiceData.pdf_url = pdfUrl
@@ -1338,10 +1338,10 @@ export default function Dashboard() {
                         setUploading(false)
                     }
                 }
-                
+
                 setInvoices([{ ...newInvoice, ...invoiceData }, ...invoices])
             }
-            
+
             closeModal()
             loadAllData()
         } catch (error) {
@@ -1374,7 +1374,7 @@ export default function Dashboard() {
                 if (formData.show_in_navbar !== undefined) {
                     couponData.show_in_navbar = formData.show_in_navbar
                 }
-                        await updateCoupon(editingItem.id, couponData)
+                await updateCoupon(editingItem.id, couponData)
                 // Recarregar dados do Supabase para garantir sincronização
                 const updatedCoupons = await getCoupons()
                 setCoupons(updatedCoupons || [])
@@ -1389,7 +1389,7 @@ export default function Dashboard() {
                 if (formData.show_in_navbar !== undefined) {
                     newCouponData.show_in_navbar = formData.show_in_navbar
                 }
-                        await createCoupon(newCouponData)
+                await createCoupon(newCouponData)
                 // Recarregar dados do Supabase para garantir sincronização
                 const updatedCoupons = await getCoupons()
                 setCoupons(updatedCoupons || [])
@@ -1430,7 +1430,7 @@ export default function Dashboard() {
             if (isColumnError) {
                 alert('A coluna "show_in_navbar" não existe no banco de dados.\n\nPor favor, adicione-a no Supabase:\n1. Vá para Table Editor → coupons\n2. Adicione coluna: show_in_navbar (boolean, nullable)')
             } else {
-            alert(`Erro ao salvar cupom: ${errorMessage}`)
+                alert(`Erro ao salvar cupom: ${errorMessage}`)
             }
         }
     }
@@ -1649,7 +1649,7 @@ export default function Dashboard() {
                 break
             default:
                 break
-            }
+        }
 
         return (
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
@@ -1737,7 +1737,7 @@ export default function Dashboard() {
                     </div>
                 );
             case 'users':
-                const usersToShow = filterAcceptedTerms 
+                const usersToShow = filterAcceptedTerms
                     ? users.filter((u: any) => u.accept_terms === true)
                     : users
                 return (
@@ -1748,53 +1748,52 @@ export default function Dashboard() {
                                 Usuários
                             </h2>
                             <div className="flex items-center gap-4">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="checkbox"
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
                                         checked={filterAcceptedTerms}
                                         onChange={(e) => setFilterAcceptedTerms(e.target.checked)}
-                                    className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
-                                />
-                                <span className="text-sm font-medium text-gray-700">
+                                        className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
+                                    />
+                                    <span className="text-sm font-medium text-gray-700">
                                         Apenas usuários que aceitaram termos
-                                </span>
-                            </label>
-                        </div>
+                                    </span>
+                                </label>
+                            </div>
                         </div>
                         {usersToShow.length === 0 ? (
                             <p className="text-center py-8 text-gray-500">
-                                {filterAcceptedTerms 
-                                    ? 'Nenhum usuário que aceitou os termos encontrado.' 
+                                {filterAcceptedTerms
+                                    ? 'Nenhum usuário que aceitou os termos encontrado.'
                                     : 'Nenhum usuário encontrado.'}
                             </p>
                         ) : (
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full bg-white">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full bg-white">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aceitou Termos</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data de Criação</th>
-                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200">
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
                                         {usersToShow.map((user: any) => (
                                             <tr key={user.id} className={user.accept_terms ? 'bg-green-50' : ''}>
                                                 <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">
                                                     {user.name || '-'}
-                                            </td>
+                                                </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
                                                     {user.email || '-'}
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap">
-                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                        user.user_type === 'admin' ? 'bg-red-100 text-red-800' :
-                                                        user.user_type === 'vendedor' ? 'bg-blue-100 text-blue-800' :
-                                                        'bg-gray-100 text-gray-800'
-                                                    }`}>
+                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.user_type === 'admin' ? 'bg-red-100 text-red-800' :
+                                                            user.user_type === 'vendedor' ? 'bg-blue-100 text-blue-800' :
+                                                                'bg-gray-100 text-gray-800'
+                                                        }`}>
                                                         {user.user_type || 'N/A'}
                                                     </span>
                                                 </td>
@@ -1830,9 +1829,9 @@ export default function Dashboard() {
                                                 </td>
                                             </tr>
                                         ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </tbody>
+                                </table>
+                            </div>
                         )}
                     </div>
                 );
@@ -2039,25 +2038,24 @@ export default function Dashboard() {
                                         // Determinar tipo de parceria
                                         const partnershipType = req.form_type || parsedData.activeForm || 'fornecedor'
                                         const isFornecedor = partnershipType === 'fornecedor'
-                                        
+
                                         // Obter dados do formulário
                                         const nomeEmpresa = req.company_name || parsedData.nomeEmpresa || parsedData.nome || 'Não informado'
                                         const email = req.contact_email || parsedData.email || 'Não informado'
                                         const telefone = req.contact_phone || parsedData.telefone || '-'
                                         const dataSolicitacao = req.created_at ? new Date(req.created_at).toLocaleDateString('pt-BR') : '-'
-                                            
-                                            return (
+
+                                        return (
                                             <div key={req.id} className="p-5 border-2 border-yellow-200 rounded-lg bg-gradient-to-br from-white to-yellow-50 shadow-md hover:shadow-lg transition-all">
                                                 <div className="flex items-start justify-between mb-3">
                                                     <div className="flex-1">
                                                         <h4 className="font-bold text-gray-900 text-lg mb-1">{nomeEmpresa}</h4>
-                                                        <span className={`inline-block px-2 py-1 text-xs rounded-full font-semibold ${
-                                                            isFornecedor 
-                                                                ? 'bg-blue-100 text-blue-800' 
+                                                        <span className={`inline-block px-2 py-1 text-xs rounded-full font-semibold ${isFornecedor
+                                                                ? 'bg-blue-100 text-blue-800'
                                                                 : 'bg-purple-100 text-purple-800'
-                                                        }`}>
+                                                            }`}>
                                                             {isFornecedor ? 'Fornecedor' : 'Representante'}
-                                                    </span>
+                                                        </span>
                                                     </div>
                                                     <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">
                                                         Pendente
@@ -2187,19 +2185,18 @@ export default function Dashboard() {
                                             // Se não conseguir parsear, usar form_type ou 'N/A'
                                         }
                                     }
-                                    const displayType = partnershipType === 'fornecedor' ? 'Fornecedor' : 
-                                                       partnershipType === 'representante' ? 'Representante' : 
-                                                       partnershipType || 'N/A'
-                                    
+                                    const displayType = partnershipType === 'fornecedor' ? 'Fornecedor' :
+                                        partnershipType === 'representante' ? 'Representante' :
+                                            partnershipType || 'N/A'
+
                                     return (
                                         <div key={partner.id} className="p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
                                             <div className="flex justify-between items-start mb-2">
                                                 <h3 className="font-semibold text-gray-800">{partner.company_name}</h3>
-                                                <span className={`px-2 py-1 text-xs rounded-full font-semibold ${
-                                                    displayType === 'Fornecedor' ? 'bg-blue-100 text-blue-800' : 
-                                                    displayType === 'Representante' ? 'bg-purple-100 text-purple-800' : 
-                                                    'bg-gray-100 text-gray-800'
-                                                }`}>
+                                                <span className={`px-2 py-1 text-xs rounded-full font-semibold ${displayType === 'Fornecedor' ? 'bg-blue-100 text-blue-800' :
+                                                        displayType === 'Representante' ? 'bg-purple-100 text-purple-800' :
+                                                            'bg-gray-100 text-gray-800'
+                                                    }`}>
                                                     {displayType}
                                                 </span>
                                             </div>
@@ -2219,24 +2216,24 @@ export default function Dashboard() {
                                                     <Mail size={14} />
                                                     Email
                                                 </button>
-                                                    <button
-                                                        onClick={() => openModal('partner', partner)}
+                                                <button
+                                                    onClick={() => openModal('partner', partner)}
                                                     className="flex-1 text-cyan-600 hover:text-cyan-800 text-sm font-medium"
-                                                    >
+                                                >
                                                     <Edit size={16} className="inline mr-1" />
                                                     Editar
-                                                    </button>
-                                                    <button
+                                                </button>
+                                                <button
                                                     onClick={() => openDeleteDialog('partnership', partner.id, partner.company_name)}
                                                     className="flex-1 text-red-600 hover:text-red-800 text-sm font-medium"
-                                                    >
+                                                >
                                                     <Trash2 size={16} className="inline mr-1" />
                                                     Deletar
-                                                    </button>
+                                                </button>
                                             </div>
                                         </div>
-                                            )
-                                        })}
+                                    )
+                                })}
                             </div>
                         )}
                     </div>
@@ -2794,10 +2791,10 @@ export default function Dashboard() {
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                                                     {cart.product?.price ? `R$ ${(Number(cart.product.price) * cart.quantity).toFixed(2).replace('.', ',')}` : '-'}
-                                                    </td>
-                                                    <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
                                                     {new Date(cart.updated_at).toLocaleString('pt-BR')}
-                                                    </td>
+                                                </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
                                                     {cart.user?.email && (
                                                         <button
@@ -2813,10 +2810,10 @@ export default function Dashboard() {
                                                     )}
                                                 </td>
                                             </tr>
-                                                            ))}
+                                        ))}
                                     </tbody>
                                 </table>
-                                                        </div>
+                            </div>
                         )}
                     </div>
                 )
@@ -2870,11 +2867,11 @@ export default function Dashboard() {
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
                                                     R$ {Number(item.unit_price).toFixed(2).replace('.', ',')}
-                                                    </td>
-                                                    <td className="py-4 px-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                                                     R$ {Number(item.total_price).toFixed(2).replace('.', ',')}
-                                                    </td>
-                                                    <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
                                                     {new Date(item.created_at).toLocaleDateString('pt-BR')}
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap">
@@ -2898,8 +2895,8 @@ export default function Dashboard() {
                                                             Enviar Email
                                                         </button>
                                                     )}
-                                                    </td>
-                                                </tr>
+                                                </td>
+                                            </tr>
                                         ))}
                                     </tbody>
                                 </table>
@@ -2949,11 +2946,10 @@ export default function Dashboard() {
                             <button
                                 key={item.id}
                                 onClick={() => setActiveTab(item.id)}
-                                className={`w-full flex items-center gap-3 p-3 rounded-lg mb-1 transition-all duration-200 ${
-                                    activeTab === item.id
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg mb-1 transition-all duration-200 ${activeTab === item.id
                                         ? 'bg-cyan-700 text-white shadow-lg'
                                         : 'text-cyan-100 hover:bg-cyan-800'
-                                }`}
+                                    }`}
                                 title={!sidebarOpen ? item.label : ''}
                             >
                                 <Icon size={20} className="flex-shrink-0" />
