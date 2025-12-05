@@ -158,6 +158,7 @@ export async function POST(request: NextRequest) {
 
     // Enviar email usando Resend
     // Funciona tanto em desenvolvimento quanto em produção
+    // Next.js carrega automaticamente: .env.local, .env.production, .env.development, .env
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
     const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
     
@@ -170,15 +171,18 @@ export async function POST(request: NextRequest) {
     
     if (!RESEND_API_KEY) {
       console.error('❌ RESEND_API_KEY não configurada!');
-      console.error('📝 Configure em .env.local ou .env.production:');
-      console.error('   RESEND_API_KEY=re_sua_chave_aqui');
+      console.error('📝 Configure em .env.local (desenvolvimento) ou .env.production (produção):');
+      console.error('   RESEND_API_KEY=re_49KRcS5s_6bLVFKBfXFJxSDrbQX4cV1Jz');
       console.error('   RESEND_FROM_EMAIL=onboarding@resend.dev');
+      console.error('');
+      console.error('💡 Para desenvolvimento: adicione no arquivo .env.local');
+      console.error('💡 Para produção: adicione no arquivo .env.production ou nas variáveis de ambiente do servidor');
       
       return NextResponse.json({ 
         success: false, 
         message: 'Resend não configurado - email não pode ser enviado',
         error: 'RESEND_API_KEY não encontrada nas variáveis de ambiente',
-        help: 'Configure RESEND_API_KEY no arquivo .env.local ou .env.production'
+        help: 'Configure RESEND_API_KEY e RESEND_FROM_EMAIL no arquivo .env.local (dev) ou .env.production (prod)'
       }, { status: 500 });
     }
 
