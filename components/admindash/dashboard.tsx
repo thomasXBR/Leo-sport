@@ -1056,6 +1056,32 @@ export default function Dashboard() {
         }
     }
 
+    const handleSavePurchase = async (formData: any) => {
+        try {
+            if (editingItem) {
+                await updatePurchase(editingItem.id, formData)
+                setPurchases(purchases.map(p => p.id === editingItem.id ? { ...p, ...formData } : p))
+            } else {
+                const purchaseNumber = formData.purchase_number || `COMP${Date.now().toString().slice(-6)}`
+                const newPurchase = await createPurchase({
+                    purchase_number: purchaseNumber,
+                    supplier_name: formData.supplier_name,
+                    total_amount: typeof formData.total_amount === 'string' 
+                        ? parseFloat(formData.total_amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0
+                        : formData.total_amount || 0,
+                    purchase_date: formData.purchase_date || new Date().toISOString().split('T')[0],
+                    pdf_url: formData.pdf_url || undefined,
+                })
+                setPurchases([newPurchase, ...purchases])
+            }
+            closeModal()
+            loadAllData()
+        } catch (error) {
+            console.error('Erro ao salvar compra:', error)
+            alert('Erro ao salvar compra. Tente novamente.')
+        }
+    }
+
     const handleSaveInventory = async (formData: any) => {
         try {
             // Buscar produto para obter dados necessários
