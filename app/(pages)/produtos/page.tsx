@@ -426,14 +426,14 @@ export default function ProductsPage() {
       </section>
 
       {/* Filters Section */}
-      <section className="py-8 bg-white border-b">
+      <section className="py-6 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 border-b-2 border-blue-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
           {/* Botão exibido apenas em mobile/tablet para abrir lateral */}
           <div className="block md:hidden mb-4">
             <button
               onClick={() => setShowFilters((s) => !s)}
-              className="flex items-center gap-2 px-5 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold shadow-lg transition-all duration-200 transform hover:scale-105"
+              className="flex items-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white font-bold shadow-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl"
             >
               <Filter className="w-5 h-5" />
               {showFilters ? 'Ocultar Filtros' : 'Mostrar Filtros'}
@@ -448,110 +448,122 @@ export default function ProductsPage() {
             `}
           >
             {/* Filtros da esquerda (coluna para categoria/esporte/cor) */}
-            <div className="md:col-span-4 xl:col-span-3 bg-gradient-to-br from-blue-50 to-white border-2 border-blue-100 rounded-xl p-5 shadow-lg mb-4 md:mb-0">
+            <div className="md:col-span-4 xl:col-span-3 bg-white/80 backdrop-blur-sm border-2 border-indigo-200 rounded-2xl p-6 shadow-2xl mb-4 md:mb-0 relative overflow-hidden">
+              {/* Decoração de fundo */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-200/30 to-pink-200/30 rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-blue-200/30 to-cyan-200/30 rounded-full blur-2xl"></div>
+              <div className="relative z-10">
 
-              {/* Categoria */}
-              <div className="mb-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Filter className="w-5 h-5 text-blue-700" />
-                  <h2 className="text-lg font-bold text-gray-800">
-                    {getContent('products_filter_title', 'Filtrar por categoria')}
-                  </h2>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCategory('all')}
-                    className={`px-4 py-2 rounded-lg border-2 text-sm font-semibold transition-all duration-200 shadow-sm ${
-                      selectedCategory === 'all'
-                        ? 'bg-blue-700 text-white border-blue-700 shadow-md scale-105'
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50 hover:border-blue-400'
-                    }`}
-                  >
-                    {getContent('products_filter_all', 'Todos')}
-                  </button>
-                  {categories.map((category) => (
+                {/* Categoria */}
+                <div className="mb-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg shadow-md">
+                      <Filter className="w-5 h-5 text-white" />
+                    </div>
+                    <h2 className="text-xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                      {getContent('products_filter_title', 'Filtrar por categoria')}
+                    </h2>
+                  </div>
+                  <div className="flex flex-wrap gap-2.5">
                     <button
                       type="button"
-                      key={String(category)}
-                      onClick={() => setSelectedCategory(category)}
-                      className={`px-4 py-2 rounded-lg border-2 text-sm font-semibold transition-all duration-200 shadow-sm ${
-                        selectedCategory === category
-                          ? 'bg-blue-700 text-white border-blue-700 shadow-md scale-105'
-                          : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50 hover:border-blue-400'
+                      onClick={() => setSelectedCategory('all')}
+                      className={`px-5 py-2.5 rounded-xl border-2 text-sm font-bold transition-all duration-300 shadow-lg ${
+                        selectedCategory === 'all'
+                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-transparent shadow-xl scale-105 transform'
+                          : 'bg-white/90 text-gray-700 border-gray-300 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 hover:border-indigo-400 hover:shadow-xl hover:scale-105'
                       }`}
                     >
-                      {category}
+                      {getContent('products_filter_all', 'Todos')}
                     </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Esporte */}
-              <div className="mb-6">
-                <label className="block text-sm font-bold text-gray-800 mb-2">
-                  Esporte:
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedSport}
-                    onChange={(e) => setSelectedSport(e.target.value)}
-                    className="block w-full rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white px-4 py-2.5 text-gray-700 font-medium shadow-sm transition-all"
-                  >
-                    <option value="all">Todos os esportes</option>
-                    {sports.map((sport) => (
-                      <option key={String(sport)} value={sport}>
-                        {sport}
-                      </option>
+                    {categories.map((category) => (
+                      <button
+                        type="button"
+                        key={String(category)}
+                        onClick={() => setSelectedCategory(category)}
+                        className={`px-5 py-2.5 rounded-xl border-2 text-sm font-bold transition-all duration-300 shadow-lg ${
+                          selectedCategory === category
+                            ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-transparent shadow-xl scale-105 transform'
+                            : 'bg-white/90 text-gray-700 border-gray-300 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 hover:border-indigo-400 hover:shadow-xl hover:scale-105'
+                        }`}
+                      >
+                        {category}
+                      </button>
                     ))}
-                  </select>
+                  </div>
                 </div>
-              </div>
 
-              {/* Cor */}
-              <div className="mb-4">
-                <label className="block text-sm font-bold text-gray-800 mb-2">
-                  Cor:
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedColor('all')}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm font-semibold transition-all duration-200 shadow-sm ${
-                      selectedColor === 'all'
-                        ? 'bg-blue-700 text-white border-blue-700 shadow-md'
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50 hover:border-blue-400'
-                    }`}
-                  >
-                    <span className="inline-block w-5 h-5 rounded-full border-2 border-gray-400 bg-white"></span>
-                    Todas
-                  </button>
-                  {colors.map((color) => (
+                {/* Esporte */}
+                <div className="mb-6">
+                  <label className="flex items-center gap-2 text-sm font-extrabold text-gray-800 mb-3">
+                    <span className="text-xl">⚽</span> Esporte
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={selectedSport}
+                      onChange={(e) => setSelectedSport(e.target.value)}
+                      className="block w-full rounded-xl border-2 border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white/90 backdrop-blur-sm px-4 py-3 text-gray-700 font-semibold shadow-lg transition-all hover:shadow-xl hover:border-indigo-400"
+                    >
+                      <option value="all">Todos os esportes</option>
+                      {sports.map((sport) => (
+                        <option key={String(sport)} value={sport}>
+                          {sport}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Cor */}
+                <div className="mb-4">
+                  <label className="flex items-center gap-2 text-sm font-extrabold text-gray-800 mb-3">
+                    <span className="text-xl">🎨</span> Cor
+                  </label>
+                  <div className="flex flex-wrap gap-2.5">
                     <button
-                      key={String(color)}
                       type="button"
-                      onClick={() => setSelectedColor(color)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm font-semibold transition-all duration-200 shadow-sm ${
-                        selectedColor === color
-                          ? 'bg-blue-700 text-white border-blue-700 shadow-md'
-                          : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50 hover:border-blue-400'
+                      onClick={() => setSelectedColor('all')}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 text-sm font-bold transition-all duration-300 shadow-lg ${
+                        selectedColor === 'all'
+                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-transparent shadow-xl scale-105'
+                          : 'bg-white/90 text-gray-700 border-gray-300 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 hover:border-indigo-400 hover:shadow-xl hover:scale-105'
                       }`}
                     >
-                      <ColorBadge color={String(color)} />
-                      {String(color)}
+                      <span className="inline-block w-6 h-6 rounded-full border-2 border-gray-400 bg-white shadow-inner"></span>
+                      Todas
                     </button>
-                  ))}
+                    {colors.map((color) => (
+                      <button
+                        key={String(color)}
+                        type="button"
+                        onClick={() => setSelectedColor(color)}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 text-sm font-bold transition-all duration-300 shadow-lg ${
+                          selectedColor === color
+                            ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-transparent shadow-xl scale-105'
+                            : 'bg-white/90 text-gray-700 border-gray-300 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 hover:border-indigo-400 hover:shadow-xl hover:scale-105'
+                        }`}
+                      >
+                        <ColorBadge color={String(color)} />
+                        {String(color)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Filtros da direita (largura/altura/preço/ordenação), ocupa resto do espaço */}
             <div className="md:col-span-8 xl:col-span-9">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl p-5 shadow-lg">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 bg-white/80 backdrop-blur-sm border-2 border-indigo-200 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
+                {/* Decoração de fundo */}
+                <div className="absolute top-0 left-0 w-40 h-40 bg-gradient-to-br from-cyan-200/20 to-blue-200/20 rounded-full blur-3xl"></div>
+                <div className="absolute bottom-0 right-0 w-32 h-32 bg-gradient-to-tr from-pink-200/20 to-purple-200/20 rounded-full blur-2xl"></div>
+                <div className="relative z-10">
                 {/* Largura */}
-                <div className="flex flex-col gap-2 bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
-                  <label className="text-sm font-bold text-gray-800 flex items-center gap-1">
-                    <span>📏</span> Largura (cm)
+                <div className="flex flex-col gap-3 bg-gradient-to-br from-white to-indigo-50/50 rounded-xl p-4 border-2 border-indigo-100 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                  <label className="text-sm font-extrabold text-gray-800 flex items-center gap-2">
+                    <span className="text-2xl">📏</span> 
+                    <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Largura (cm)</span>
                   </label>
                   <div className="flex gap-2 items-center">
                     <input
@@ -571,7 +583,7 @@ export default function ProductsPage() {
                         setWidthRangeUserModified(true);
                       }}
                       placeholder={minWidth > 0 ? String(minWidth) : '0'}
-                      className="w-24 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 text-gray-700 font-medium shadow-sm transition-all"
+                      className="w-24 rounded-xl border-2 border-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 px-3 py-2.5 text-gray-700 font-bold shadow-md transition-all hover:shadow-lg hover:border-indigo-400 bg-white/90"
                     />
                     <span className="text-gray-600 font-semibold">à</span>
                     <input
@@ -591,24 +603,25 @@ export default function ProductsPage() {
                         setWidthRangeUserModified(true);
                       }}
                       placeholder={maxWidth > 0 ? String(maxWidth) : '0'}
-                      className="w-24 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 text-gray-700 font-medium shadow-sm transition-all"
+                      className="w-24 rounded-xl border-2 border-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 px-3 py-2.5 text-gray-700 font-bold shadow-md transition-all hover:shadow-lg hover:border-indigo-400 bg-white/90"
                     />
                   </div>
                   {minWidth > 0 || maxWidth > 0 ? (
-                    <div className="text-xs text-gray-600 mt-1 font-medium">
-                      Mín: <span className="font-bold">{minWidth.toFixed(1)}</span> cm &nbsp; Máx: <span className="font-bold">{maxWidth.toFixed(1)}</span> cm
+                    <div className="text-xs text-indigo-700 mt-2 font-bold bg-indigo-50 px-2 py-1 rounded-lg">
+                      Mín: <span className="text-indigo-900">{minWidth.toFixed(1)}</span> cm &nbsp; • &nbsp; Máx: <span className="text-indigo-900">{maxWidth.toFixed(1)}</span> cm
                     </div>
                   ) : (
-                    <div className="text-xs text-gray-400 italic mt-1">
-                      Sem produtos com largura cadastrada
+                    <div className="text-xs text-gray-500 italic mt-2 bg-gray-50 px-2 py-1 rounded-lg">
+                      ⚠️ Sem produtos com largura cadastrada
                     </div>
                   )}
                 </div>
 
                 {/* Altura */}
-                <div className="flex flex-col gap-2 bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
-                  <label className="text-sm font-bold text-gray-800 flex items-center gap-1">
-                    <span>📐</span> Altura (cm)
+                <div className="flex flex-col gap-3 bg-gradient-to-br from-white to-purple-50/50 rounded-xl p-4 border-2 border-purple-100 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                  <label className="text-sm font-extrabold text-gray-800 flex items-center gap-2">
+                    <span className="text-2xl">📐</span>
+                    <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Altura (cm)</span>
                   </label>
                   <div className="flex gap-2 items-center">
                     <input
@@ -628,7 +641,7 @@ export default function ProductsPage() {
                         setHeightRangeUserModified(true);
                       }}
                       placeholder={minHeight > 0 ? String(minHeight) : '0'}
-                      className="w-24 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 text-gray-700 font-medium shadow-sm transition-all"
+                      className="w-24 rounded-xl border-2 border-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 px-3 py-2.5 text-gray-700 font-bold shadow-md transition-all hover:shadow-lg hover:border-indigo-400 bg-white/90"
                     />
                     <span className="text-gray-600 font-semibold">à</span>
                     <input
@@ -648,24 +661,25 @@ export default function ProductsPage() {
                         setHeightRangeUserModified(true);
                       }}
                       placeholder={maxHeight > 0 ? String(maxHeight) : '0'}
-                      className="w-24 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 text-gray-700 font-medium shadow-sm transition-all"
+                      className="w-24 rounded-xl border-2 border-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 px-3 py-2.5 text-gray-700 font-bold shadow-md transition-all hover:shadow-lg hover:border-indigo-400 bg-white/90"
                     />
                   </div>
                   {minHeight > 0 || maxHeight > 0 ? (
-                    <div className="text-xs text-gray-600 mt-1 font-medium">
-                      Mín: <span className="font-bold">{minHeight.toFixed(1)}</span> cm &nbsp; Máx: <span className="font-bold">{maxHeight.toFixed(1)}</span> cm
+                    <div className="text-xs text-purple-700 mt-2 font-bold bg-purple-50 px-2 py-1 rounded-lg">
+                      Mín: <span className="text-purple-900">{minHeight.toFixed(1)}</span> cm &nbsp; • &nbsp; Máx: <span className="text-purple-900">{maxHeight.toFixed(1)}</span> cm
                     </div>
                   ) : (
-                    <div className="text-xs text-gray-400 italic mt-1">
-                      Sem produtos com altura cadastrada
+                    <div className="text-xs text-gray-500 italic mt-2 bg-gray-50 px-2 py-1 rounded-lg">
+                      ⚠️ Sem produtos com altura cadastrada
                     </div>
                   )}
                 </div>
 
                 {/* Preço */}
-                <div className="flex flex-col gap-2 bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
-                  <label className="text-sm font-bold text-gray-800 flex items-center gap-1">
-                    <span>💰</span> Preço (R$)
+                <div className="flex flex-col gap-3 bg-gradient-to-br from-white to-green-50/50 rounded-xl p-4 border-2 border-green-100 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                  <label className="text-sm font-extrabold text-gray-800 flex items-center gap-2">
+                    <span className="text-2xl">💰</span>
+                    <span className="bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Preço (R$)</span>
                   </label>
                   <div className="flex gap-2 items-center">
                     <div className="relative flex-1">
@@ -688,7 +702,7 @@ export default function ProductsPage() {
                           setPriceRangeUserModified(true);
                         }}
                         placeholder={minPrice > 0 ? minPrice.toFixed(2) : '0,00'}
-                        className="w-full pl-10 pr-3 py-2 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 font-medium shadow-sm transition-all"
+                        className="w-full pl-10 pr-3 py-2.5 rounded-xl border-2 border-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-700 font-bold shadow-md transition-all hover:shadow-lg hover:border-indigo-400 bg-white/90"
                       />
                     </div>
                     <span className="text-gray-600 font-semibold">à</span>
@@ -712,35 +726,37 @@ export default function ProductsPage() {
                           setPriceRangeUserModified(true);
                         }}
                         placeholder={maxPrice > 0 ? maxPrice.toFixed(2) : '0,00'}
-                        className="w-full pl-10 pr-3 py-2 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 font-medium shadow-sm transition-all"
+                        className="w-full pl-10 pr-3 py-2.5 rounded-xl border-2 border-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-700 font-bold shadow-md transition-all hover:shadow-lg hover:border-indigo-400 bg-white/90"
                       />
                     </div>
                   </div>
                   {minPrice > 0 || maxPrice > 0 ? (
-                    <div className="text-xs text-gray-600 mt-1 font-medium">
-                      Mín: <span className="font-bold">R$ {minPrice.toFixed(2).replace('.', ',')}</span> &nbsp; Máx: <span className="font-bold">R$ {maxPrice.toFixed(2).replace('.', ',')}</span>
+                    <div className="text-xs text-green-700 mt-2 font-bold bg-green-50 px-2 py-1 rounded-lg">
+                      Mín: <span className="text-green-900">R$ {minPrice.toFixed(2).replace('.', ',')}</span> &nbsp; • &nbsp; Máx: <span className="text-green-900">R$ {maxPrice.toFixed(2).replace('.', ',')}</span>
                     </div>
                   ) : (
-                    <div className="text-xs text-gray-400 italic mt-1">
-                      Sem produtos com preço cadastrado
+                    <div className="text-xs text-gray-500 italic mt-2 bg-gray-50 px-2 py-1 rounded-lg">
+                      ⚠️ Sem produtos com preço cadastrado
                     </div>
                   )}
                 </div>
 
                 {/* Ordenação */}
-                <div className="flex flex-col gap-2 bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
-                  <label className="text-sm font-bold text-gray-800 flex items-center gap-1">
-                    <span>🔀</span> Ordenar por
+                <div className="flex flex-col gap-3 bg-gradient-to-br from-white to-cyan-50/50 rounded-xl p-4 border-2 border-cyan-100 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                  <label className="text-sm font-extrabold text-gray-800 flex items-center gap-2">
+                    <span className="text-2xl">🔀</span>
+                    <span className="bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">Ordenar por</span>
                   </label>
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="w-full rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2.5 bg-white text-gray-700 font-medium shadow-sm transition-all"
+                    className="w-full rounded-xl border-2 border-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 px-4 py-3 bg-white/90 backdrop-blur-sm text-gray-700 font-bold shadow-md transition-all hover:shadow-lg hover:border-indigo-400"
                   >
                     <option value="relevance">⭐ Relevância</option>
                     <option value="price_asc">💰 Menor preço</option>
                     <option value="price_desc">💎 Maior preço</option>
                   </select>
+                </div>
                 </div>
               </div>
               
@@ -769,7 +785,7 @@ export default function ProductsPage() {
                       }
                       setSortBy('relevance');
                     }}
-                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg border-2 border-gray-300 transition-all duration-200 shadow-sm hover:shadow-md"
+                    className="px-6 py-3 bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white font-bold rounded-xl border-2 border-transparent transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
                   >
                     🔄 Limpar Filtros
                   </button>
