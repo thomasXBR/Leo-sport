@@ -22,23 +22,36 @@ function convertProduct(
   let sport = supabaseProduct.categories?.name || '';
 
   // Priorizar campos width/height diretos, depois tentar extrair de dimensions
+  // Width
   if ((supabaseProduct as any).width !== undefined && (supabaseProduct as any).width !== null) {
-    width = String((supabaseProduct as any).width);
+    const w = (supabaseProduct as any).width;
+    width = typeof w === 'number' ? String(w) : (typeof w === 'string' && w.trim() ? w.trim() : '');
   } else if (supabaseProduct.dimensions) {
-    // Suporta string "30x45x15" (LxAxP)
-    const regex = /(\d+(?:[.,]\d+)?)[^\d]+(\d+(?:[.,]\d+)?)/;
+    // Suporta string "30x45x15" (LxAxP) ou "30 x 45 x 15"
+    const regex = /(\d+(?:[.,]\d+)?)\s*[xX×]\s*(\d+(?:[.,]\d+)?)/;
     const match =
       typeof supabaseProduct.dimensions === 'string'
         ? supabaseProduct.dimensions.match(regex)
         : null;
-    if (match) {
-      width = match[1] || '';
-      height = match[2] || '';
+    if (match && match[1]) {
+      width = match[1].replace(',', '.');
     }
   }
 
+  // Height
   if ((supabaseProduct as any).height !== undefined && (supabaseProduct as any).height !== null) {
-    height = String((supabaseProduct as any).height);
+    const h = (supabaseProduct as any).height;
+    height = typeof h === 'number' ? String(h) : (typeof h === 'string' && h.trim() ? h.trim() : '');
+  } else if (supabaseProduct.dimensions && !height) {
+    // Se ainda não tem height, tenta extrair de dimensions
+    const regex = /(\d+(?:[.,]\d+)?)\s*[xX×]\s*(\d+(?:[.,]\d+)?)/;
+    const match =
+      typeof supabaseProduct.dimensions === 'string'
+        ? supabaseProduct.dimensions.match(regex)
+        : null;
+    if (match && match[2]) {
+      height = match[2].replace(',', '.');
+    }
   }
 
   const originalPrice = typeof supabaseProduct.price === 'number' ? supabaseProduct.price : 0;
@@ -129,6 +142,9 @@ export default function ProductsPage() {
   const [widthRangeInitialized, setWidthRangeInitialized] = useState(false);
   const [heightRangeInitialized, setHeightRangeInitialized] = useState(false);
   const [priceRangeInitialized, setPriceRangeInitialized] = useState(false);
+  const [widthRangeUserModified, setWidthRangeUserModified] = useState(false);
+  const [heightRangeUserModified, setHeightRangeUserModified] = useState(false);
+  const [priceRangeUserModified, setPriceRangeUserModified] = useState(false);
   const [sortBy, setSortBy] = useState('relevance');
 
   // Para mostrar/esconder filtros em mobile
@@ -173,9 +189,28 @@ export default function ProductsPage() {
 
         // Atualiza automatico min/max largura/altura/preço
         if (prods.length) {
-          const allWidths = prods.map((p) => parseFloat(p.width)).filter((v) => !isNaN(v) && v > 0);
-          const allHeights = prods.map((p) => parseFloat(p.height)).filter((v) => !isNaN(v) && v > 0);
-          const allPrices = prods.map((p) => p.price ?? 0).filter((v) => v > 0);
+          // Width: converter string para número, tratando vírgula como separador decimal
+          const allWidths = prods
+            .map((p) => {
+              if (!p.width || p.width === '') return null;
+              const num = parseFloat(String(p.width).replace(',', '.'));
+              return !isNaN(num) && num > 0 ? num : null;
+            })
+            .filter((v): v is number => v !== null);
+          
+          // Height: converter string para número, tratando vírgula como separador decimal
+          const allHeights = prods
+            .map((p) => {
+              if (!p.height || p.height === '') return null;
+              const num = parseFloat(String(p.height).replace(',', '.'));
+              return !isNaN(num) && num > 0 ? num : null;
+            })
+            .filter((v): v is number => v !== null);
+          
+          // Price: já é número
+          const allPrices = prods
+            .map((p) => p.price ?? 0)
+            .filter((v) => v > 0);
           
           if (allWidths.length > 0) {
             const minW = Math.min(...allWidths);
@@ -214,21 +249,45 @@ export default function ProductsPage() {
   const sports = Array.from(new Set(products.map((p) => p.sport).filter(Boolean)));
   const colors = Array.from(new Set(products.map((p) => p.color).filter(Boolean)));
 
-  // Range min/max real
+  // Range min/max real - calculado dos produtos filtrados
   const minWidth = (() => {
-    const values = products.map((p) => parseFloat(p.width)).filter((v) => !isNaN(v));
+    const values = products
+      .map((p) => {
+        if (!p.width || p.width === '') return null;
+        const num = parseFloat(String(p.width).replace(',', '.'));
+        return !isNaN(num) && num > 0 ? num : null;
+      })
+      .filter((v): v is number => v !== null);
     return values.length ? Math.min(...values) : 0;
   })();
   const maxWidth = (() => {
-    const values = products.map((p) => parseFloat(p.width)).filter((v) => !isNaN(v));
+    const values = products
+      .map((p) => {
+        if (!p.width || p.width === '') return null;
+        const num = parseFloat(String(p.width).replace(',', '.'));
+        return !isNaN(num) && num > 0 ? num : null;
+      })
+      .filter((v): v is number => v !== null);
     return values.length ? Math.max(...values) : 0;
   })();
   const minHeight = (() => {
-    const values = products.map((p) => parseFloat(p.height)).filter((v) => !isNaN(v));
+    const values = products
+      .map((p) => {
+        if (!p.height || p.height === '') return null;
+        const num = parseFloat(String(p.height).replace(',', '.'));
+        return !isNaN(num) && num > 0 ? num : null;
+      })
+      .filter((v): v is number => v !== null);
     return values.length ? Math.min(...values) : 0;
   })();
   const maxHeight = (() => {
-    const values = products.map((p) => parseFloat(p.height)).filter((v) => !isNaN(v));
+    const values = products
+      .map((p) => {
+        if (!p.height || p.height === '') return null;
+        const num = parseFloat(String(p.height).replace(',', '.'));
+        return !isNaN(num) && num > 0 ? num : null;
+      })
+      .filter((v): v is number => v !== null);
     return values.length ? Math.max(...values) : 0;
   })();
   const minPrice = (() => {
@@ -260,30 +319,28 @@ export default function ProductsPage() {
     let matchesHeight = true;
     let matchesPrice = true;
     
-    // Filtro de largura: só aplica se o range foi inicializado e o produto tem largura
-    if (widthRangeInitialized && !isNaN(widthRange[0]) && !isNaN(widthRange[1])) {
-      if (product.width !== '') {
-        const w = parseFloat(product.width);
+    // Filtro de largura: só aplica se o usuário modificou o range
+    if (widthRangeUserModified && widthRangeInitialized && !isNaN(widthRange[0]) && !isNaN(widthRange[1]) && widthRange[0] > 0 && widthRange[1] > 0) {
+      if (product.width && product.width !== '') {
+        const w = parseFloat(String(product.width).replace(',', '.'));
         matchesWidth = !isNaN(w) && w >= widthRange[0] && w <= widthRange[1];
       } else {
-        // Se o produto não tem largura e o filtro está ativo, não mostrar
         matchesWidth = false;
       }
     }
     
-    // Filtro de altura: só aplica se o range foi inicializado e o produto tem altura
-    if (heightRangeInitialized && !isNaN(heightRange[0]) && !isNaN(heightRange[1])) {
-      if (product.height !== '') {
-        const h = parseFloat(product.height);
+    // Filtro de altura: só aplica se o usuário modificou o range
+    if (heightRangeUserModified && heightRangeInitialized && !isNaN(heightRange[0]) && !isNaN(heightRange[1]) && heightRange[0] > 0 && heightRange[1] > 0) {
+      if (product.height && product.height !== '') {
+        const h = parseFloat(String(product.height).replace(',', '.'));
         matchesHeight = !isNaN(h) && h >= heightRange[0] && h <= heightRange[1];
       } else {
-        // Se o produto não tem altura e o filtro está ativo, não mostrar
         matchesHeight = false;
       }
     }
     
-    // Filtro de preço: só aplica se o range foi inicializado
-    if (priceRangeInitialized && !isNaN(priceRange[0]) && !isNaN(priceRange[1])) {
+    // Filtro de preço: só aplica se o usuário modificou o range
+    if (priceRangeUserModified && priceRangeInitialized && !isNaN(priceRange[0]) && !isNaN(priceRange[1]) && priceRange[0] > 0 && priceRange[1] > 0) {
       const p = product.price ?? 0;
       matchesPrice = p >= priceRange[0] && p <= priceRange[1];
     }
@@ -511,6 +568,7 @@ export default function ProductsPage() {
                         } else {
                           setWidthRange([v, widthRange[1]]);
                         }
+                        setWidthRangeUserModified(true);
                       }}
                       placeholder={minWidth > 0 ? String(minWidth) : '0'}
                       className="w-24 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 text-gray-700 font-medium shadow-sm transition-all"
@@ -530,6 +588,7 @@ export default function ProductsPage() {
                         } else {
                           setWidthRange([widthRange[0], v]);
                         }
+                        setWidthRangeUserModified(true);
                       }}
                       placeholder={maxWidth > 0 ? String(maxWidth) : '0'}
                       className="w-24 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 text-gray-700 font-medium shadow-sm transition-all"
@@ -566,6 +625,7 @@ export default function ProductsPage() {
                         } else {
                           setHeightRange([v, heightRange[1]]);
                         }
+                        setHeightRangeUserModified(true);
                       }}
                       placeholder={minHeight > 0 ? String(minHeight) : '0'}
                       className="w-24 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 text-gray-700 font-medium shadow-sm transition-all"
@@ -585,6 +645,7 @@ export default function ProductsPage() {
                         } else {
                           setHeightRange([heightRange[0], v]);
                         }
+                        setHeightRangeUserModified(true);
                       }}
                       placeholder={maxHeight > 0 ? String(maxHeight) : '0'}
                       className="w-24 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 text-gray-700 font-medium shadow-sm transition-all"
@@ -624,6 +685,7 @@ export default function ProductsPage() {
                           } else {
                             setPriceRange([v, priceRange[1]]);
                           }
+                          setPriceRangeUserModified(true);
                         }}
                         placeholder={minPrice > 0 ? minPrice.toFixed(2) : '0,00'}
                         className="w-full pl-10 pr-3 py-2 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 font-medium shadow-sm transition-all"
@@ -647,6 +709,7 @@ export default function ProductsPage() {
                           } else {
                             setPriceRange([priceRange[0], v]);
                           }
+                          setPriceRangeUserModified(true);
                         }}
                         placeholder={maxPrice > 0 ? maxPrice.toFixed(2) : '0,00'}
                         className="w-full pl-10 pr-3 py-2 rounded-lg border-2 border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 font-medium shadow-sm transition-all"
@@ -683,9 +746,8 @@ export default function ProductsPage() {
               
               {/* Botão para resetar filtros */}
               {(selectedCategory !== 'all' || selectedSport !== 'all' || selectedColor !== 'all' || 
-                (widthRangeInitialized && (widthRange[0] !== minWidth || widthRange[1] !== maxWidth)) ||
-                (heightRangeInitialized && (heightRange[0] !== minHeight || heightRange[1] !== maxHeight)) ||
-                (priceRangeInitialized && (priceRange[0] !== minPrice || priceRange[1] !== maxPrice))) && (
+                widthRangeUserModified || heightRangeUserModified || priceRangeUserModified ||
+                searchTerm !== '') && (
                 <div className="mt-4 flex justify-end">
                   <button
                     type="button"
@@ -693,9 +755,18 @@ export default function ProductsPage() {
                       setSelectedCategory('all');
                       setSelectedSport('all');
                       setSelectedColor('all');
-                      if (widthRangeInitialized) setWidthRange([minWidth, maxWidth]);
-                      if (heightRangeInitialized) setHeightRange([minHeight, maxHeight]);
-                      if (priceRangeInitialized) setPriceRange([minPrice, maxPrice]);
+                      if (widthRangeInitialized) {
+                        setWidthRange([minWidth, maxWidth]);
+                        setWidthRangeUserModified(false);
+                      }
+                      if (heightRangeInitialized) {
+                        setHeightRange([minHeight, maxHeight]);
+                        setHeightRangeUserModified(false);
+                      }
+                      if (priceRangeInitialized) {
+                        setPriceRange([minPrice, maxPrice]);
+                        setPriceRangeUserModified(false);
+                      }
                       setSortBy('relevance');
                     }}
                     className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg border-2 border-gray-300 transition-all duration-200 shadow-sm hover:shadow-md"
@@ -743,9 +814,18 @@ export default function ProductsPage() {
                     setSelectedSport('all');
                     setSelectedColor('all');
                     setSearchTerm('');
-                    if (widthRangeInitialized) setWidthRange([minWidth, maxWidth]);
-                    if (heightRangeInitialized) setHeightRange([minHeight, maxHeight]);
-                    if (priceRangeInitialized) setPriceRange([minPrice, maxPrice]);
+                    if (widthRangeInitialized) {
+                      setWidthRange([minWidth, maxWidth]);
+                      setWidthRangeUserModified(false);
+                    }
+                    if (heightRangeInitialized) {
+                      setHeightRange([minHeight, maxHeight]);
+                      setHeightRangeUserModified(false);
+                    }
+                    if (priceRangeInitialized) {
+                      setPriceRange([minPrice, maxPrice]);
+                      setPriceRangeUserModified(false);
+                    }
                     setSortBy('relevance');
                   }}
                   className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg transition-all duration-200 transform hover:scale-105"
