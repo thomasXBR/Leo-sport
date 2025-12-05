@@ -524,6 +524,224 @@ const EmailForm = ({ recipient, recipientName, onSend, onCancel }: { recipient: 
     )
 }
 
+// Componente de Formulário de Parceria
+const PartnerForm = ({ initialData, onSave, onCancel }: { initialData: any, onSave: (data: any) => void, onCancel: () => void }) => {
+    const [companyName, setCompanyName] = useState(initialData?.company_name || '')
+    const [contactEmail, setContactEmail] = useState(initialData?.contact_email || '')
+    const [contactPhone, setContactPhone] = useState(initialData?.contact_phone || '')
+    const [status, setStatus] = useState<'Ativo' | 'Inativo' | 'Pendente'>(initialData?.status || 'Pendente')
+    const [partnershipDate, setPartnershipDate] = useState(initialData?.partnership_date || new Date().toISOString().split('T')[0])
+    const [notes, setNotes] = useState(initialData?.notes || '')
+    
+    // Parsear form_payload se existir
+    let formPayload = null
+    try {
+        if (initialData?.form_payload) {
+            formPayload = typeof initialData.form_payload === 'string' 
+                ? JSON.parse(initialData.form_payload) 
+                : initialData.form_payload
+        }
+    } catch (e) {
+        console.error('Erro ao parsear form_payload:', e)
+    }
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        onSave({
+            company_name: companyName,
+            contact_email: contactEmail,
+            contact_phone: contactPhone || undefined,
+            status: status,
+            partnership_date: partnershipDate,
+            notes: notes || undefined,
+        })
+    }
+
+    return (
+        <form onSubmit={handleSubmit}>
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                {/* Informações do Formulário Original (Somente Leitura) */}
+                {formPayload && (
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
+                        <h3 className="text-sm font-semibold text-gray-700 mb-3">Informações do Formulário de Solicitação</h3>
+                        <div className="space-y-2 text-sm">
+                            <div className="grid grid-cols-2 gap-2">
+                                {formPayload.nome && (
+                                    <div>
+                                        <span className="font-medium text-gray-600">Nome:</span>
+                                        <p className="text-gray-900">{formPayload.nome}</p>
+                                    </div>
+                                )}
+                                {formPayload.email && (
+                                    <div>
+                                        <span className="font-medium text-gray-600">Email (original):</span>
+                                        <p className="text-gray-900">{formPayload.email}</p>
+                                    </div>
+                                )}
+                                {formPayload.telefone && (
+                                    <div>
+                                        <span className="font-medium text-gray-600">Telefone (original):</span>
+                                        <p className="text-gray-900">{formPayload.telefone}</p>
+                                    </div>
+                                )}
+                                {formPayload.activeForm && (
+                                    <div>
+                                        <span className="font-medium text-gray-600">Tipo de Solicitação:</span>
+                                        <p className="text-gray-900">
+                                            {formPayload.activeForm === 'fornecedor' ? 'Fornecedor' : 'Representante'}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            {formPayload.activeForm === 'fornecedor' && (
+                                <div className="mt-3 pt-3 border-t border-gray-300">
+                                    <h4 className="font-semibold text-gray-700 mb-2">Dados do Fornecedor</h4>
+                                    <div className="space-y-2">
+                                        {formPayload.nomeEmpresa && (
+                                            <div>
+                                                <span className="font-medium text-gray-600">Nome da Empresa:</span>
+                                                <p className="text-gray-900">{formPayload.nomeEmpresa}</p>
+                                            </div>
+                                        )}
+                                        {formPayload.anosMercado && (
+                                            <div>
+                                                <span className="font-medium text-gray-600">Anos no Mercado:</span>
+                                                <p className="text-gray-900">{formPayload.anosMercado}</p>
+                                            </div>
+                                        )}
+                                        {formPayload.oQueFabrica && (
+                                            <div>
+                                                <span className="font-medium text-gray-600">O que fabrica:</span>
+                                                <p className="text-gray-900">{formPayload.oQueFabrica}</p>
+                                            </div>
+                                        )}
+                                        {formPayload.canaisVendaAtuais && (
+                                            <div>
+                                                <span className="font-medium text-gray-600">Canais de Venda Atuais:</span>
+                                                <p className="text-gray-900">{formPayload.canaisVendaAtuais}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {formPayload.activeForm === 'representante' && (
+                                <div className="mt-3 pt-3 border-t border-gray-300">
+                                    <h4 className="font-semibold text-gray-700 mb-2">Dados do Representante</h4>
+                                    <div className="space-y-2">
+                                        {formPayload.localAtuacao && (
+                                            <div>
+                                                <span className="font-medium text-gray-600">Local de Atuação:</span>
+                                                <p className="text-gray-900">{formPayload.localAtuacao}</p>
+                                            </div>
+                                        )}
+                                        {formPayload.produtoRevender && (
+                                            <div>
+                                                <span className="font-medium text-gray-600">Produtos a Revender:</span>
+                                                <p className="text-gray-900">{formPayload.produtoRevender}</p>
+                                            </div>
+                                        )}
+                                        {formPayload.estrategiasVenda && (
+                                            <div>
+                                                <span className="font-medium text-gray-600">Estratégias de Venda:</span>
+                                                <p className="text-gray-900">{formPayload.estrategiasVenda}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {formPayload.submittedAt && (
+                                <div className="mt-3 pt-3 border-t border-gray-300">
+                                    <span className="font-medium text-gray-600">Data de Envio:</span>
+                                    <p className="text-gray-900">
+                                        {new Date(formPayload.submittedAt).toLocaleString('pt-BR')}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+                
+                {/* Campos Editáveis */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Nome da Empresa *</label>
+                    <input
+                        type="text"
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        required
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Email de Contato *</label>
+                    <input
+                        type="email"
+                        value={contactEmail}
+                        onChange={(e) => setContactEmail(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        required
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Telefone de Contato</label>
+                    <input
+                        type="tel"
+                        value={contactPhone}
+                        onChange={(e) => setContactPhone(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        placeholder="(00) 00000-0000"
+                    />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Status *</label>
+                        <select
+                            value={status}
+                            onChange={(e) => setStatus(e.target.value as 'Ativo' | 'Inativo' | 'Pendente')}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                        >
+                            <option value="Pendente">Pendente</option>
+                            <option value="Ativo">Ativo</option>
+                            <option value="Inativo">Inativo</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Data da Parceria *</label>
+                        <input
+                            type="date"
+                            value={partnershipDate}
+                            onChange={(e) => setPartnershipDate(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                        />
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Observações</label>
+                    <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 h-20"
+                        placeholder="Observações adicionais sobre a parceria (opcional)"
+                    />
+                </div>
+            </div>
+            <DialogFooter className="mt-6">
+                <button type="button" onClick={onCancel} className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400">
+                    Cancelar
+                </button>
+                <button type="submit" className="bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700">
+                    <Save size={20} className="inline mr-2" /> Salvar Parceria
+                </button>
+            </DialogFooter>
+        </form>
+    )
+}
+
 // Componente de Formulário de Compras (Placeholder)
 const PurchaseForm = ({ initialData, onSave, onCancel }: { initialData: any, onSave: (data: any) => void, onCancel: () => void }) => {
     const [supplier, setSupplier] = useState(initialData?.supplier_name || '')
@@ -1096,6 +1314,37 @@ export default function Dashboard() {
         }
     }
 
+    const handleSavePartner = async (formData: any) => {
+        try {
+            if (editingItem) {
+                // Atualizar parceria existente
+                await updatePartnership(editingItem.id, formData)
+                // Recarregar dados do Supabase para garantir sincronização
+                const updatedPartners = await getPartnerships()
+                setPartnersList(updatedPartners || [])
+                alert('Parceria atualizada com sucesso!')
+            } else {
+                // Criar nova parceria
+                const newPartner = await createPartnership({
+                    company_name: formData.company_name,
+                    contact_email: formData.contact_email,
+                    contact_phone: formData.contact_phone || undefined,
+                    status: formData.status || 'Pendente',
+                    partnership_date: formData.partnership_date || new Date().toISOString().split('T')[0],
+                    notes: formData.notes || undefined,
+                })
+                setPartnersList([newPartner, ...partnersList])
+                alert('Parceria criada com sucesso!')
+            }
+            closeModal()
+            loadAllData()
+        } catch (error: any) {
+            console.error('Erro ao salvar parceria:', error)
+            const errorMessage = error?.message || error?.details || error?.hint || 'Erro desconhecido ao salvar parceria'
+            alert(`Erro ao salvar parceria: ${errorMessage}`)
+        }
+    }
+
     const handleSaveInventory = async (formData: any) => {
         try {
             await createInventoryMovement({
@@ -1269,8 +1518,13 @@ export default function Dashboard() {
                 break
             case 'partner':
                 modalTitle = isEdit ? 'Editar Parceria' : 'Adicionar Nova Parceria'
-                // Aqui você precisaria de um componente PartnerForm
-                modalContent = <p>Formulário de Parceria Pendente</p>
+                modalContent = (
+                    <PartnerForm
+                        initialData={editingItem}
+                        onSave={handleSavePartner}
+                        onCancel={closeModal}
+                    />
+                )
                 break
             default:
                 break
@@ -1278,7 +1532,7 @@ export default function Dashboard() {
 
         return (
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className={modalType === 'coupon' || modalType === 'invoice' ? 'sm:max-w-[700px] max-h-[90vh]' : 'sm:max-w-[425px]'}>
+                <DialogContent className={modalType === 'coupon' || modalType === 'invoice' || modalType === 'partner' ? 'sm:max-w-[900px] max-h-[90vh] overflow-y-auto' : 'sm:max-w-[425px]'}>
                     <DialogHeader>
                         <DialogTitle>{modalTitle}</DialogTitle>
                     </DialogHeader>
@@ -1634,13 +1888,6 @@ export default function Dashboard() {
                                 <Handshake className="mr-2" size={24} />
                                 Gestão de Parcerias
                             </h2>
-                            <button
-                                onClick={() => openModal('partner')}
-                                className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
-                            >
-                                <PlusCircle size={20} className="mr-2" />
-                                Adicionar Parceria Manualmente
-                            </button>
                         </div>
                         {/* Pending partnership requests submitted from the public form */}
                         {partnershipRequests.length > 0 && (
