@@ -150,57 +150,66 @@ export async function POST(request: NextRequest) {
       </html>
     `;
 
-    // Enviar email usando Resend (se configurado)
+    // Enviar email usando Resend
+    // Funciona tanto em desenvolvimento quanto em produção
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
+    const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
     
-    if (RESEND_API_KEY) {
-      try {
-        const resend = new Resend(RESEND_API_KEY);
-        
-        const { data, error } = await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
-          to: email,
-          subject: emailSubject,
-          html: emailHtml,
-        });
+    if (!RESEND_API_KEY) {
+      console.error('❌ RESEND_API_KEY não configurada. Configure em .env.local ou .env.production');
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Resend não configurado - email não pode ser enviado',
+        error: 'RESEND_API_KEY não encontrada nas variáveis de ambiente'
+      }, { status: 500 });
+    }
 
-        if (error) {
-          console.error('Erro ao enviar email de boas-vindas:', error);
-          // Não falhar o cadastro se o email não for enviado
-          return NextResponse.json({ 
-            success: true, 
-            message: 'Conta criada, mas email não foi enviado',
-            warning: error.message 
-          });
-        }
-
-        return NextResponse.json({ 
-          success: true, 
-          id: data?.id,
-          message: 'Email de boas-vindas enviado com sucesso'
-        });
-      } catch (error: any) {
-        console.error('Erro ao enviar email de boas-vindas:', error);
-        // Não falhar o cadastro se o email não for enviado
-        return NextResponse.json({ 
-          success: true, 
-          message: 'Conta criada, mas email não foi enviado',
-          warning: error.message 
-        });
-      }
-    } else {
-      // Em desenvolvimento, apenas logar o email
-      console.log('Email de boas-vindas que seria enviado:', { 
-        to: email, 
-        subject: emailSubject,
-        coupon: welcomeCoupon?.code || 'Nenhum cupom encontrado'
+    try {
+      const resend = new Resend(RESEND_API_KEY);
+      
+      console.log('📧 Enviando email de boas-vindas via Resend:', {
+        to: email,
+        from: RESEND_FROM_EMAIL,
+        environment: process.env.NODE_ENV || 'development'
       });
       
+      const { data, error } = await resend.emails.send({
+        from: RESEND_FROM_EMAIL,
+        to: email,
+        subject: emailSubject,
+        html: emailHtml,
+      });
+
+      if (error) {
+        console.error('❌ Erro do Resend ao enviar email:', error);
+        return NextResponse.json({ 
+          success: false, 
+          message: 'Erro ao enviar email',
+          error: error,
+          details: 'Verifique a configuração do Resend e os logs do servidor'
+        }, { status: 500 });
+      }
+
+      console.log('✅ Email de boas-vindas enviado com sucesso:', {
+        emailId: data?.id,
+        to: email
+      });
+
       return NextResponse.json({ 
         success: true, 
-        message: 'Email de boas-vindas agendado (Resend não configurado)',
-        preview: { to: email, subject: emailSubject, coupon: welcomeCoupon?.code }
+        id: data?.id,
+        message: 'Email de boas-vindas enviado com sucesso',
+        email: email
       });
+    } catch (error: any) {
+      console.error('❌ Erro ao enviar email de boas-vindas:', error);
+      console.error('Stack:', error.stack);
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Erro ao enviar email',
+        error: error.message || 'Erro desconhecido',
+        details: error.toString()
+      }, { status: 500 });
     }
   } catch (error: any) {
     console.error('Erro ao enviar email de boas-vindas:', error);
