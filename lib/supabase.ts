@@ -77,6 +77,7 @@ export type Review = {
   user_id: string | null;
   stars: number;
   comment: string;
+  name: string;
   created_at: string;
 };
 

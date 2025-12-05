@@ -23,11 +23,13 @@ export async function addReview({
   productId,
   stars,
   comment,
+  name,
   userId,
 }: {
   productId: string;
   stars: number;
   comment: string;
+  name: string;
   userId: string | null;
 }) {
   // Validação básica
@@ -52,17 +54,26 @@ export async function addReview({
     };
   }
 
+  if (!name || !name.trim()) {
+    return { 
+      error: { message: "Nome é obrigatório" },
+      errorMessage: "Por favor, informe seu nome."
+    };
+  }
+
   try {
     // Preparar o objeto de review
     const reviewData: {
       product_id: string;
       stars: number;
       comment: string;
+      name: string;
       user_id: string | null;
     } = {
       product_id: productId,
       stars,
       comment: comment.trim(),
+      name: name.trim(),
       user_id: userId,
     };
 
@@ -98,6 +109,7 @@ export async function addReview({
               productId,
               stars,
               comment: comment.trim(),
+              name: name.trim(),
               userId,
             }),
           });

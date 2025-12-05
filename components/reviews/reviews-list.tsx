@@ -84,25 +84,30 @@ export default function ReviewsList({ productId }: { productId: string }) {
       ) : (
         <div className="space-y-4">
           {reviews.map((r: any) => (
-        <div key={r.id} className="border rounded-xl p-4">
-          <div className="flex gap-1 mb-2">
-            {[1, 2, 3, 4, 5].map((n) => (
-              <Star
-                key={n}
-                className={`w-4 h-4 ${n <= r.stars ? "text-yellow-500 fill-yellow-500" : "text-gray-300"}`}
-              />
-            ))}
-          </div>
-          <p className="text-gray-900">{r.comment}</p>
-          <p className="text-xs text-gray-500 mt-2">
-            {new Date(r.created_at).toLocaleDateString("pt-BR", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            })}
-          </p>
-        </div>
-      ))}
+            <div key={r.id} className="border rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-gray-900">{r.name || "Anônimo"}</p>
+                </div>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <Star
+                      key={n}
+                      className={`w-4 h-4 ${n <= r.stars ? "text-yellow-500 fill-yellow-500" : "text-gray-300"}`}
+                    />
+                  ))}
+                </div>
+              </div>
+              <p className="text-gray-900">{r.comment}</p>
+              <p className="text-xs text-gray-500 mt-2">
+                {new Date(r.created_at).toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                })}
+              </p>
+            </div>
+          ))}
         </div>
       )}
     </div>

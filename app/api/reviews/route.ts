@@ -31,6 +31,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!body.name || !body.name.trim()) {
+      return NextResponse.json(
+        { error: 'Nome é obrigatório' },
+        { status: 400 }
+      );
+    }
+
     // Verificar se o usuário é admin (se userId foi fornecido)
     let userIsAdmin = false;
     if (body.userId) {
@@ -70,10 +77,12 @@ export async function POST(request: NextRequest) {
     // - user_id: uuid (FK para auth.users.id) ou null
     // - stars: int4 (integer)
     // - comment: text
+    // - name: text
     const reviewData = {
       product_id: String(body.productId).trim(),
       stars: parseInt(String(body.stars), 10),
       comment: String(body.comment).trim(),
+      name: String(body.name).trim(),
       user_id: validUserId,
     };
 

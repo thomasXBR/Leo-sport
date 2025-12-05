@@ -11,6 +11,7 @@ export default function ReviewForm({ productId }: { productId: string }) {
   const { user, profile } = useAuth();
   const [stars, setStars] = useState(0);
   const [comment, setComment] = useState("");
+  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +36,16 @@ export default function ReviewForm({ productId }: { productId: string }) {
       return;
     }
 
+    if (!name.trim()) {
+      setError("Por favor, informe seu nome.");
+      return;
+    }
+
+    if (name.trim().length < 2) {
+      setError("O nome deve ter pelo menos 2 caracteres.");
+      return;
+    }
+
     setError(null);
     setLoading(true);
 
@@ -46,12 +57,14 @@ export default function ReviewForm({ productId }: { productId: string }) {
         productId,
         stars,
         comment: comment.trim(),
+        name: name.trim(),
         userId,
       });
 
       if (!reviewError) {
         setDone(true);
         setComment("");
+        setName("");
         setStars(0);
         // Dispara evento para recarregar a lista de reviews
         window.dispatchEvent(new Event("reviewAdded"));
@@ -103,6 +116,21 @@ export default function ReviewForm({ productId }: { productId: string }) {
         </div>
       )}
 
+      {/* Campo de nome */}
+      <div className="mb-3">
+        <input
+          type="text"
+          className="w-full border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Seu nome..."
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+            setError(null);
+          }}
+          disabled={loading}
+        />
+      </div>
+
       {/* Estrelas */}
       <div className="flex gap-2 mb-3">
         {[1, 2, 3, 4, 5].map((n) => (
@@ -133,7 +161,7 @@ export default function ReviewForm({ productId }: { productId: string }) {
 
       <button
         onClick={submit}
-        disabled={stars === 0 || loading || !comment.trim()}
+        disabled={stars === 0 || loading || !comment.trim() || !name.trim()}
         className="mt-3 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
       >
         {loading ? "Enviando..." : "Enviar avaliação"}
