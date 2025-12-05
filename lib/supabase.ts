@@ -1158,8 +1158,8 @@ export async function uploadProductImage(
     ? `products/${productSku}_${Date.now()}.${fileExtension}`
     : `products/${productId || Date.now()}_${Date.now()}.${fileExtension}`;
 
-  // Upload para o bucket 'products' (ou 'product-images')
-  const bucketName = 'products';
+  // Upload para o bucket 'site_images'
+  const bucketName = 'site_images';
   
   const { error: uploadError } = await supabase.storage
     .from(bucketName)
@@ -1279,7 +1279,7 @@ export async function deleteProductImage(imageUrl: string): Promise<void> {
     }
 
     // O bucket geralmente vem após 'storage/v1/object/public/'
-    const bucketName = pathParts[bucketIndex + 3] || 'products';
+    const bucketName = pathParts[bucketIndex + 3] || 'site_images';
     const filePath = pathParts.slice(bucketIndex + 4).join('/');
 
     const { error } = await supabase.storage
