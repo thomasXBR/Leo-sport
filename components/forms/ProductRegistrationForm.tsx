@@ -277,7 +277,7 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
   const discount = calculateDiscount();
 
   return (
-    <div className="w-full max-w-[95vw] mx-auto p-6 bg-white rounded-lg shadow-lg ring-1 ring-gray-100 overflow-hidden">
+    <div className="w-full max-w-[1400px] mx-auto p-6 bg-white rounded-lg shadow-lg ring-1 ring-gray-100 overflow-hidden">
       <h1 className="text-3xl font-bold text-gray-900 mb-1">{productId ? 'Editar Produto' : 'Registrar Produto'}</h1>
       <p className="text-sm text-gray-600 mb-6">{productId ? 'Atualize os campos do produto e salve as alterações' : 'Preencha os campos obrigatórios para adicionar um produto'}</p>
       <form onSubmit={handleSubmit} className="space-y-6 max-h-[80vh] overflow-y-auto pr-4">
@@ -302,7 +302,7 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="p-4 bg-gray-50 rounded-md">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-3">
                   <div>
                     <Label htmlFor="name" className="text-sm font-medium text-gray-700 mb-1">Nome do Produto *</Label>
                     <Input id="name" name="name" value={formData.name} onChange={handleInputChange} required />
@@ -377,7 +377,7 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="p-4 bg-gray-50 rounded-md">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
                     <Label htmlFor="price" className="text-sm font-medium text-gray-700 mb-1">Preço Real (R$) *</Label>
                     <Input id="price" name="price" type="number" step="0.01" value={formData.price} onChange={handleInputChange} required />
@@ -414,7 +414,7 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="p-4 bg-gray-50 rounded-md">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="weight" className="text-sm font-medium text-gray-700 mb-1">Peso (kg)</Label>
                     <Input id="weight" name="weight" value={formData.weight} onChange={handleInputChange} />
@@ -519,7 +519,7 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
                     <input id="no_shipping" name="no_shipping" type="checkbox" checked={Boolean((formData as any).no_shipping)} onChange={handleCheckboxChange} className="w-5 h-5 text-blue-600 rounded" />
                     <Label htmlFor="no_shipping" className="text-sm font-medium text-gray-700 cursor-pointer">Frete Grátis</Label>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="devolution_months" className="text-sm font-medium text-gray-700 mb-1">Meses para Devolução *</Label>
                       <Input id="devolution_months" name="devolution_months" type="number" min={0} max={240} value={formData.devolution_months} onChange={handleInputChange} />
