@@ -42,6 +42,7 @@ import {
     getSiteContent, updateSiteContent, getFAQs, createFAQ, updateFAQ, deleteFAQ, getPurchases, createPurchase, updatePurchase, deletePurchase,
     getSiteImages, createSiteImage, updateSiteImage, deleteSiteImage,
     getAllUsers, getAllUserCarts, getAllSaleItems,
+    uploadInvoicePdf,
     type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent, type FAQ, type Purchase, type SiteImage,
 } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
@@ -290,9 +291,31 @@ const InvoiceForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
     const [issueDate, setIssueDate] = useState(initialData?.issue_date || new Date().toISOString().split('T')[0])
     const [dueDate, setDueDate] = useState(initialData?.due_date || '')
     const [notes, setNotes] = useState(initialData?.notes || '')
+    const [pdfFile, setPdfFile] = useState<File | null>(null)
+    const [uploadingPdf, setUploadingPdf] = useState(false)
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            // Validar tipo de arquivo (PDF)
+            if (file.type !== 'application/pdf') {
+                alert('Por favor, selecione um arquivo PDF.')
+                return
+            }
+            // Validar tamanho (máximo 5MB)
+            const maxSize = 5 * 1024 * 1024 // 5MB
+            if (file.size > maxSize) {
+                alert('O arquivo PDF deve ter no máximo 5MB.')
+                return
+            }
+            setPdfFile(file)
+        }
+    }
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        
+        // Preparar dados para salvar (sem PDF ainda, será feito depois se necessário)
         onSave({
             invoice_number: invoiceNumber,
             order_id: orderId || undefined,
@@ -304,6 +327,8 @@ const InvoiceForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
             issue_date: issueDate,
             due_date: dueDate || undefined,
             notes: notes || undefined,
+            pdf_file: pdfFile, // Passar o arquivo para fazer upload depois
+            pdf_url: initialData?.pdf_url || undefined, // Manter URL existente se não houver novo arquivo
         })
     }
 
@@ -420,13 +445,45 @@ const InvoiceForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
                         placeholder="Observações adicionais (opcional)"
                     />
                 </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">PDF da Nota Fiscal</label>
+                    <div className="mt-1">
+                        <input
+                            type="file"
+                            accept="application/pdf"
+                            onChange={handleFileChange}
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                            {pdfFile ? `Arquivo selecionado: ${pdfFile.name}` : initialData?.pdf_url ? 'PDF já anexado. Selecione um novo arquivo para substituir.' : 'Tamanho máximo: 5MB'}
+                        </p>
+                        {initialData?.pdf_url && !pdfFile && (
+                            <a 
+                                href={initialData.pdf_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="mt-2 inline-block text-sm text-cyan-600 hover:underline"
+                            >
+                                Visualizar PDF atual
+                            </a>
+                        )}
+                    </div>
+                </div>
             </div>
             <DialogFooter className="mt-6">
-                <button type="button" onClick={onCancel} className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400">
+                <button type="button" onClick={onCancel} className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400" disabled={uploadingPdf}>
                     Cancelar
                 </button>
-                <button type="submit" className="bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700">
-                    <Save size={20} className="inline mr-2" /> Salvar
+                <button type="submit" className="bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled={uploadingPdf}>
+                    {uploadingPdf ? (
+                        <>
+                            <Loader2 size={20} className="inline mr-2 animate-spin" /> Enviando PDF...
+                        </>
+                    ) : (
+                        <>
+                            <Save size={20} className="inline mr-2" /> Salvar
+                        </>
+                    )}
                 </button>
             </DialogFooter>
         </form>
@@ -935,7 +992,7 @@ export default function Dashboard() {
             if (!id) return
 
             // Upload to Supabase Storage
-            const bucketName = fileType === 'purchase' ? 'purchases-pdfs' : 'invoices-pdfs'
+            const bucketName = fileType === 'purchase' ? 'purchases-pdfs' : 'invoices'
             const folderName = fileType === 'purchase' ? 'purchases' : 'invoices'
             const path = `${folderName}/${id}/${Date.now()}_${file.name}`
             const { error: uploadError } = await supabase.storage.from(bucketName).upload(path, file, { upsert: true })
@@ -1200,12 +1257,51 @@ export default function Dashboard() {
 
     const handleSaveInvoice = async (formData: any) => {
         try {
+            let invoiceId: string
+            let pdfUrl = formData.pdf_url || undefined
+            
             if (editingItem) {
-                await updateInvoice(editingItem.id, formData)
-                setInvoices(invoices.map(i => i.id === editingItem.id ? { ...i, ...formData } : i))
+                // Editar invoice existente
+                invoiceId = editingItem.id
+                
+                // Se houver um novo arquivo PDF, fazer upload
+                if (formData.pdf_file) {
+                    setUploading(true)
+                    try {
+                        pdfUrl = await uploadInvoicePdf(formData.pdf_file, invoiceId)
+                    } catch (error: any) {
+                        console.error('Erro ao fazer upload do PDF:', error)
+                        alert(`Erro ao fazer upload do PDF: ${error.message || 'Tente novamente.'}`)
+                        setUploading(false)
+                        return
+                    } finally {
+                        setUploading(false)
+                    }
+                }
+                
+                // Atualizar invoice
+                const updateData: any = {
+                    invoice_number: formData.invoice_number,
+                    order_id: formData.order_id || undefined,
+                    customer_name: formData.customer_name,
+                    customer_email: formData.customer_email || undefined,
+                    customer_cpf_cnpj: formData.customer_cpf_cnpj || undefined,
+                    total_amount: typeof formData.total_amount === 'string' 
+                        ? parseFloat(formData.total_amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0
+                        : formData.total_amount || 0,
+                    status: formData.status || 'Pendente',
+                    issue_date: formData.issue_date || new Date().toISOString().split('T')[0],
+                    due_date: formData.due_date || undefined,
+                    notes: formData.notes || undefined,
+                }
+                if (pdfUrl) updateData.pdf_url = pdfUrl
+                
+                await updateInvoice(editingItem.id, updateData)
+                setInvoices(invoices.map(i => i.id === editingItem.id ? { ...i, ...updateData } : i))
             } else {
+                // Criar nova invoice
                 const invoiceNumber = formData.invoice_number || `NF${Date.now().toString().slice(-6)}`
-                const newInvoice = await createInvoice({
+                const invoiceData: any = {
                     invoice_number: invoiceNumber,
                     order_id: formData.order_id || '',
                     customer_name: formData.customer_name,
@@ -1218,9 +1314,34 @@ export default function Dashboard() {
                     issue_date: formData.issue_date || new Date().toISOString().split('T')[0],
                     due_date: formData.due_date || undefined,
                     notes: formData.notes || undefined,
-                })
-                setInvoices([newInvoice, ...invoices])
+                }
+                
+                // Criar invoice primeiro para obter o ID
+                const newInvoice = await createInvoice(invoiceData)
+                invoiceId = newInvoice.id
+                
+                // Se houver um novo arquivo PDF, fazer upload
+                if (formData.pdf_file) {
+                    setUploading(true)
+                    try {
+                        pdfUrl = await uploadInvoicePdf(formData.pdf_file, invoiceId)
+                        
+                        // Atualizar invoice com a URL do PDF
+                        await updateInvoice(invoiceId, { pdf_url: pdfUrl })
+                        invoiceData.pdf_url = pdfUrl
+                    } catch (error: any) {
+                        console.error('Erro ao fazer upload do PDF:', error)
+                        alert(`Erro ao fazer upload do PDF: ${error.message || 'Tente novamente.'}`)
+                        setUploading(false)
+                        return
+                    } finally {
+                        setUploading(false)
+                    }
+                }
+                
+                setInvoices([{ ...newInvoice, ...invoiceData }, ...invoices])
             }
+            
             closeModal()
             loadAllData()
         } catch (error) {

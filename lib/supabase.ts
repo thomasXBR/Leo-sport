@@ -1183,6 +1183,87 @@ export async function uploadProductImage(
 }
 
 /**
+ * Upload de PDF de invoice para o Supabase Storage
+ * @param file - Arquivo PDF
+ * @param invoiceId - ID da invoice
+ * @returns URL pública do PDF
+ */
+export async function uploadInvoicePdf(
+  file: File,
+  invoiceId: string
+): Promise<string> {
+  // Validar tipo de arquivo (apenas PDF)
+  if (file.type !== 'application/pdf') {
+    throw new Error('Tipo de arquivo inválido. Apenas arquivos PDF são permitidos.');
+  }
+
+  // Validar tamanho (máximo 5MB)
+  const maxSize = 5 * 1024 * 1024; // 5MB
+  if (file.size > maxSize) {
+    throw new Error('O arquivo PDF deve ter no máximo 5MB');
+  }
+
+  // Nome do arquivo: usar invoiceId e timestamp
+  const fileName = `${invoiceId}_${Date.now()}_${file.name}`;
+  const path = `${invoiceId}/${fileName}`;
+
+  // Upload para o bucket 'invoices'
+  const bucketName = 'invoices';
+  
+  const { error: uploadError } = await supabase.storage
+    .from(bucketName)
+    .upload(path, file, {
+      upsert: true,
+      cacheControl: '3600',
+      contentType: 'application/pdf',
+    });
+
+  if (uploadError) {
+    console.error('Erro no upload do PDF:', uploadError);
+    throw new Error(`Erro ao fazer upload do PDF: ${uploadError.message}`);
+  }
+
+  // Obter URL pública
+  const { data: urlData } = supabase.storage
+    .from(bucketName)
+    .getPublicUrl(path);
+
+  return urlData.publicUrl;
+}
+
+/**
+ * Deletar PDF do storage
+ * @param pdfUrl - URL do PDF a ser deletado
+ */
+export async function deleteInvoicePdf(pdfUrl: string): Promise<void> {
+  try {
+    // Extrair o caminho do arquivo da URL
+    const url = new URL(pdfUrl);
+    const pathParts = url.pathname.split('/');
+    const bucketIndex = pathParts.findIndex(part => part === 'storage' || part === 'v1');
+    
+    if (bucketIndex === -1) {
+      throw new Error('URL de PDF inválida');
+    }
+
+    // O bucket geralmente vem após 'storage/v1/object/public/'
+    const bucketName = pathParts[bucketIndex + 3] || 'invoices';
+    const filePath = pathParts.slice(bucketIndex + 4).join('/');
+
+    const { error } = await supabase.storage
+      .from(bucketName)
+      .remove([filePath]);
+    
+    if (error) {
+      throw error;
+    }
+  } catch (error: any) {
+    console.error('Erro ao deletar PDF:', error);
+    throw new Error(`Erro ao deletar PDF: ${error.message || 'Erro desconhecido'}`);
+  }
+}
+
+/**
  * Deletar imagem do storage
  * @param imageUrl - URL da imagem a ser deletada
  */
