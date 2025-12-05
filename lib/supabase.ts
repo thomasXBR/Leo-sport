@@ -40,6 +40,7 @@ export type Partnership = {
   notes?: string;
   form_type?: 'fornecedor' | 'representante';
   form_payload?: string | object;
+  is_active?: boolean;
   created_at: string;
   updated_at: string;
 };

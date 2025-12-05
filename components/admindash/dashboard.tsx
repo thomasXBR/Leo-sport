@@ -532,6 +532,7 @@ const PartnerForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
     const [status, setStatus] = useState<'Ativo' | 'Inativo' | 'Pendente'>(initialData?.status || 'Pendente')
     const [partnershipDate, setPartnershipDate] = useState(initialData?.partnership_date || new Date().toISOString().split('T')[0])
     const [notes, setNotes] = useState(initialData?.notes || '')
+    const [isActive, setIsActive] = useState(initialData?.is_active !== undefined ? initialData.is_active : (initialData?.status === 'Ativo'))
     
     // Parsear form_payload se existir
     let formPayload = null
@@ -554,6 +555,7 @@ const PartnerForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
             status: status,
             partnership_date: partnershipDate,
             notes: notes || undefined,
+            is_active: isActive,
         })
     }
 
@@ -719,6 +721,18 @@ const PartnerForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
                             required
                         />
                     </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <input
+                        type="checkbox"
+                        id="is_active"
+                        checked={isActive}
+                        onChange={(e) => setIsActive(e.target.checked)}
+                        className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
+                    />
+                    <label htmlFor="is_active" className="text-sm font-medium text-gray-700 cursor-pointer">
+                        Parceria Ativa
+                    </label>
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Observações</label>
@@ -1332,6 +1346,7 @@ export default function Dashboard() {
                     status: formData.status || 'Pendente',
                     partnership_date: formData.partnership_date || new Date().toISOString().split('T')[0],
                     notes: formData.notes || undefined,
+                    is_active: formData.is_active !== undefined ? formData.is_active : true,
                 })
                 setPartnersList([newPartner, ...partnersList])
                 alert('Parceria criada com sucesso!')
