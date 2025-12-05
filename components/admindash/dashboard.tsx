@@ -12,7 +12,7 @@ import {
     Tooltip,
     Legend,
 } from 'chart.js'
-import { PlusCircle, Edit, Trash2, User, Building, FileText, Handshake, Ticket, Type, X, Save, Upload, Loader2, ChevronLeft, ChevronRight, ShoppingCart, Package, DollarSign, Image as ImageIcon, Mail, Menu, X as XIcon, ChevronRight as ChevronRightIcon } from 'lucide-react'
+import { PlusCircle, Edit, Trash2, User, FileText, Handshake, Ticket, Type, X, Save, Upload, Loader2, ChevronLeft, ChevronRight, ShoppingCart, Package, DollarSign, Image as ImageIcon, Mail, Menu, X as XIcon } from 'lucide-react'
 import Image from 'next/image'
 import ProductRegistrationForm from '@/components/forms/ProductRegistrationForm'
 import {
@@ -35,7 +35,7 @@ import {
 import {
     getProducts, createProduct, updateProduct, deleteProduct,
     getInventoryItems, createInventoryMovement, deleteInventoryMovement,
-    getSales, getSalesDataForChart, getSalesWithItems, getSaleById,
+    getSales, getSalesDataForChart, getSalesWithItems,
     getInvoices, createInvoice, updateInvoice, deleteInvoice,
     getPartnerships, createPartnership, updatePartnership, deletePartnership,
     getCoupons, createCoupon, updateCoupon, deleteCoupon,
@@ -524,21 +524,38 @@ const EmailForm = ({ recipient, recipientName, onSend, onCancel }: { recipient: 
     )
 }
 
-// Componente de Formulário de Compras (Placeholder)
+// Componente de Formulário de Compras
 const PurchaseForm = ({ initialData, onSave, onCancel }: { initialData: any, onSave: (data: any) => void, onCancel: () => void }) => {
+    const [purchaseNumber, setPurchaseNumber] = useState(initialData?.purchase_number || '')
     const [supplier, setSupplier] = useState(initialData?.supplier_name || '')
     const [total, setTotal] = useState<string>(initialData?.total_amount ? String(initialData.total_amount) : '')
+    const [purchaseDate, setPurchaseDate] = useState(initialData?.purchase_date || new Date().toISOString().split('T')[0])
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        onSave({ supplier_name: supplier, total_amount: parseFloat(total || '0') })
+        onSave({
+            purchase_number: purchaseNumber || undefined,
+            supplier_name: supplier,
+            total_amount: parseFloat(total || '0'),
+            purchase_date: purchaseDate || new Date().toISOString().split('T')[0],
+        })
     }
 
     return (
         <form onSubmit={handleSubmit}>
             <div className="space-y-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Fornecedor</label>
+                    <label className="block text-sm font-medium text-gray-700">Número da Compra</label>
+                    <input
+                        type="text"
+                        value={purchaseNumber}
+                        onChange={(e) => setPurchaseNumber(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        placeholder="Ex: COMP001 (opcional)"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Fornecedor *</label>
                     <input
                         type="text"
                         value={supplier}
@@ -547,16 +564,28 @@ const PurchaseForm = ({ initialData, onSave, onCancel }: { initialData: any, onS
                         required
                     />
                 </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Valor Total (R$)</label>
-                    <input
-                        type="number"
-                        step="0.01"
-                        value={total}
-                        onChange={(e) => setTotal(e.target.value)}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                        required
-                    />
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Valor Total (R$) *</label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            value={total}
+                            onChange={(e) => setTotal(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Data da Compra *</label>
+                        <input
+                            type="date"
+                            value={purchaseDate}
+                            onChange={(e) => setPurchaseDate(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                            required
+                        />
+                    </div>
                 </div>
             </div>
             <DialogFooter className="mt-6">
@@ -943,6 +972,10 @@ export default function Dashboard() {
                     await deleteSiteImage(itemToDelete.id)
                     loadAllData() // Recarregar para atualizar a lista
                     break
+                case 'purchase':
+                    await deletePurchase(itemToDelete.id)
+                    loadAllData() // Recarregar para atualizar a lista
+                    break
             }
             setDeleteDialogOpen(false)
             setItemToDelete(null)
@@ -1136,6 +1169,33 @@ export default function Dashboard() {
         }
     }
 
+    const handleSavePurchase = async (formData: any) => {
+        try {
+            const purchaseData: any = {
+                supplier_name: formData.supplier_name,
+                total_amount: typeof formData.total_amount === 'string' 
+                    ? parseFloat(formData.total_amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0
+                    : formData.total_amount || 0,
+                purchase_date: formData.purchase_date || new Date().toISOString().split('T')[0],
+            }
+            
+            if (formData.purchase_number) {
+                purchaseData.purchase_number = formData.purchase_number
+            }
+
+            if (editingItem) {
+                await updatePurchase(editingItem.id, purchaseData)
+            } else {
+                await createPurchase(purchaseData)
+            }
+            closeModal()
+            loadAllData()
+        } catch (error) {
+            console.error('Erro ao salvar compra:', error)
+            alert('Erro ao salvar compra. Tente novamente.')
+        }
+    }
+
     const handleSendEmail = async (to: string, subject: string, message: string) => {
         try {
             const { data: { session } } = await supabase.auth.getSession()
@@ -1243,6 +1303,16 @@ export default function Dashboard() {
                 modalTitle = isEdit ? 'Editar Parceria' : 'Adicionar Nova Parceria'
                 // Aqui você precisaria de um componente PartnerForm
                 modalContent = <p>Formulário de Parceria Pendente</p>
+                break
+            case 'purchase':
+                modalTitle = isEdit ? 'Editar Compra' : 'Nova Compra'
+                modalContent = (
+                    <PurchaseForm
+                        initialData={editingItem}
+                        onSave={handleSavePurchase}
+                        onCancel={closeModal}
+                    />
+                )
                 break
             default:
                 break
