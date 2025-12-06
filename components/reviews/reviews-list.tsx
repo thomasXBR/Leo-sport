@@ -27,8 +27,8 @@ export default function ReviewsList({ productId }: { productId: string }) {
   useEffect(() => {
     loadReviews();
 
-    // Recarregar reviews a cada 5 segundos para pegar mudanças (deletadas no Supabase, etc)
-    const interval = setInterval(loadReviews, 5000);
+    // Recarregar reviews a cada 30 segundos (otimizado de 5s para evitar sobrecarga)
+    const interval = setInterval(loadReviews, 30000);
 
     return () => clearInterval(interval);
   }, [loadReviews]);
@@ -53,7 +53,7 @@ export default function ReviewsList({ productId }: { productId: string }) {
       window.removeEventListener("reviewAdded", handleReviewAdded);
       window.removeEventListener("reviewDeleted", handleReviewDeleted);
     };
-  }, []);
+  }, [loadReviews]);
 
   if (loading) {
     return (

@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { Product } from '@/lib/products-data';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
@@ -37,41 +37,49 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
     const [hasSynced, setHasSynced] = useState(false);
     const { user } = useAuth();
+    const isLoadingRef = useRef(false);
+    const isSyncingRef = useRef(false);
 
-    // Load cart from database or localStorage
+    // Função para normalizar item do banco de dados
+    const normalizeCartItem = useCallback((item: any): CartItem => {
+        const product = item.product || {};
+        const price = typeof product.price === 'number' 
+            ? `R$ ${product.price.toFixed(2).replace('.', ',')}`
+            : (product.price || '0,00');
+        
+        return {
+            product: {
+                id: parseInt(product.id || item.product_id || '0'),
+                name: product.name || 'Produto não encontrado',
+                price: price,
+                imageUrl: product.image_url || product.imageUrl || '',
+                category: product.categories?.name || product.category || '',
+                description: product.description || '',
+                stock: product.stock_quantity || 0,
+                sku: product.sku || '',
+                brand: product.brand || '',
+                weight: product.weight || '',
+                dimensions: product.dimensions || '',
+                status: product.status || 'Ativo',
+            },
+            quantity: item.quantity,
+            cartId: item.id,
+        };
+    }, []);
+
+    // Load cart from database or localStorage (apenas uma vez por usuário)
     useEffect(() => {
+        // Evitar múltiplas chamadas simultâneas
+        if (isLoadingRef.current) return;
+        isLoadingRef.current = true;
+
         const loadCart = async () => {
             setLoading(true);
             try {
                 if (user) {
                     // Carregar do banco de dados
                     const dbCart = await getUserCart(user.id);
-                    const items: CartItem[] = dbCart.map((item: any) => {
-                        // Normalize product data from database
-                        const product = item.product || {};
-                        const price = typeof product.price === 'number' 
-                            ? `R$ ${product.price.toFixed(2).replace('.', ',')}`
-                            : (product.price || '0,00');
-                        
-                        return {
-                            product: {
-                                id: parseInt(product.id || item.product_id || '0'),
-                                name: product.name || 'Produto não encontrado',
-                                price: price,
-                                imageUrl: product.image_url || product.imageUrl || '',
-                                category: product.categories?.name || product.category || '',
-                                description: product.description || '',
-                                stock: product.stock_quantity || 0,
-                                sku: product.sku || '',
-                                brand: product.brand || '',
-                                weight: product.weight || '',
-                                dimensions: product.dimensions || '',
-                                status: product.status || 'Ativo',
-                            },
-                            quantity: item.quantity,
-                            cartId: item.id,
-                        };
-                    });
+                    const items: CartItem[] = dbCart.map(normalizeCartItem);
                     setCartItems(items);
                 } else {
                     // Carregar do localStorage
@@ -81,7 +89,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
                             setCartItems(JSON.parse(savedCart));
                         } catch (error) {
                             console.error('Error loading cart from localStorage', error);
+                            setCartItems([]);
                         }
+                    } else {
+                        setCartItems([]);
                     }
                 }
             } catch (error) {
@@ -93,19 +104,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
                         setCartItems(JSON.parse(savedCart));
                     } catch (e) {
                         console.error('Error loading cart from localStorage', e);
+                        setCartItems([]);
                     }
+                } else {
+                    setCartItems([]);
                 }
             } finally {
                 setLoading(false);
+                isLoadingRef.current = false;
             }
         };
 
         loadCart();
-    }, [user]);
+    }, [user, normalizeCartItem]);
 
     // Sincronizar com banco de dados quando usuário fizer login (apenas uma vez)
     useEffect(() => {
-        if (user && !hasSynced) {
+        if (user && !hasSynced && !isSyncingRef.current) {
+            isSyncingRef.current = true;
+            
             const syncCartToDB = async () => {
                 try {
                     const savedCart = localStorage.getItem('leosport-cart');
@@ -113,8 +130,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
                     if (savedCart) {
                         const items: CartItem[] = JSON.parse(savedCart);
                         if (items.length > 0) {
-                            // Limpar carrinho do banco e sincronizar
-                            await clearUserCartDB(user.id);
+                            // Sincronizar cada item
                             for (const item of items) {
                                 try {
                                     await addToUserCartDB(user.id, item.product.id.toString(), item.quantity);
@@ -124,11 +140,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
                             }
                             // Limpar localStorage após sincronizar
                             localStorage.removeItem('leosport-cart');
+                            
+                            // Recarregar carrinho do banco
+                            const dbCart = await getUserCart(user.id);
+                            const syncedItems: CartItem[] = dbCart.map(normalizeCartItem);
+                            setCartItems(syncedItems);
                         }
                     }
                     setHasSynced(true);
                 } catch (error) {
                     console.error('Error syncing cart to database:', error);
+                } finally {
+                    isSyncingRef.current = false;
                 }
             };
 
@@ -138,49 +161,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
         // Reset quando o usuário fizer logout
         if (!user) {
             setHasSynced(false);
+            isSyncingRef.current = false;
         }
-    }, [user, hasSynced]);
+    }, [user, hasSynced, normalizeCartItem]);
 
-    // Save cart to localStorage or database whenever it changes (apenas se não estiver carregando)
+    // Save cart to localStorage (apenas se não estiver autenticado e não carregando)
     useEffect(() => {
-        if (!loading && !user && cartItems.length >= 0) {
-            // Salvar apenas no localStorage se não estiver autenticado
+        if (!loading && !user) {
             localStorage.setItem('leosport-cart', JSON.stringify(cartItems));
         }
     }, [cartItems, user, loading]);
 
-    const addToCart = async (product: Product, quantity: number = 1) => {
+    const addToCart = useCallback(async (product: Product, quantity: number = 1) => {
         if (user) {
             try {
+                setLoading(true);
                 await addToUserCartDB(user.id, product.id.toString(), quantity);
-                // Recarregar carrinho do banco
+                // Recarregar carrinho do banco UMA VEZ
                 const dbCart = await getUserCart(user.id);
-                const items: CartItem[] = dbCart.map((item: any) => {
-                    // Normalize product data from database
-                    const product = item.product || {};
-                    const price = typeof product.price === 'number' 
-                        ? `R$ ${product.price.toFixed(2).replace('.', ',')}`
-                        : (product.price || '0,00');
-                    
-                    return {
-                        product: {
-                            id: parseInt(product.id || item.product_id || '0'),
-                            name: product.name || 'Produto não encontrado',
-                            price: price,
-                            imageUrl: product.image_url || product.imageUrl || '',
-                            category: product.categories?.name || product.category || '',
-                            description: product.description || '',
-                            stock: product.stock_quantity || 0,
-                            sku: product.sku || '',
-                            brand: product.brand || '',
-                            weight: product.weight || '',
-                            dimensions: product.dimensions || '',
-                            status: product.status || 'Ativo',
-                        },
-                        quantity: item.quantity,
-                        cartId: item.id,
-                    };
-                });
+                const items: CartItem[] = dbCart.map(normalizeCartItem);
                 setCartItems(items);
             } catch (error) {
                 console.error('Error adding to cart:', error);
@@ -197,6 +196,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
                         return [...prevItems, { product, quantity }];
                     }
                 });
+            } finally {
+                setLoading(false);
             }
         } else {
             // Usar localStorage
@@ -213,9 +214,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 }
             });
         }
-    };
+    }, [user, normalizeCartItem]);
 
-    const removeFromCart = async (productId: number) => {
+    const removeFromCart = useCallback(async (productId: number) => {
         // Atualizar estado imediatamente para melhor UX
         setCartItems(prevItems => prevItems.filter(item => item.product.id !== productId));
         
@@ -224,81 +225,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 const item = cartItems.find(item => item.product.id === productId);
                 if (item?.cartId) {
                     await deleteUserCartItemDB(item.cartId);
-                    // Recarregar carrinho do banco para garantir sincronização
-                    const dbCart = await getUserCart(user.id);
-                    const items: CartItem[] = dbCart.map((item: any) => {
-                        // Normalize product data from database
-                        const product = item.product || {};
-                        const price = typeof product.price === 'number' 
-                            ? `R$ ${product.price.toFixed(2).replace('.', ',')}`
-                            : (product.price || '0,00');
-                        
-                        return {
-                            product: {
-                                id: parseInt(product.id || item.product_id || '0'),
-                                name: product.name || 'Produto não encontrado',
-                                price: price,
-                                imageUrl: product.image_url || product.imageUrl || '',
-                                category: product.categories?.name || product.category || '',
-                                description: product.description || '',
-                                stock: product.stock_quantity || 0,
-                                sku: product.sku || '',
-                                brand: product.brand || '',
-                                weight: product.weight || '',
-                                dimensions: product.dimensions || '',
-                                status: product.status || 'Ativo',
-                            },
-                            quantity: item.quantity,
-                            cartId: item.id,
-                        };
-                    });
-                    setCartItems(items);
-                } else {
-                    // Se não tem cartId, tentar encontrar pelo product_id no banco
-                    const dbCart = await getUserCart(user.id);
-                    const dbItem = dbCart.find((item: any) => 
-                        parseInt(item.product?.id || item.product_id || '0') === productId
-                    );
-                    if (dbItem) {
-                        await deleteUserCartItemDB(dbItem.id);
-                        // Recarregar carrinho
-                        const updatedCart = await getUserCart(user.id);
-                        const items: CartItem[] = updatedCart.map((item: any) => {
-                            const product = item.product || {};
-                            const price = typeof product.price === 'number' 
-                                ? `R$ ${product.price.toFixed(2).replace('.', ',')}`
-                                : (product.price || '0,00');
-                            
-                            return {
-                                product: {
-                                    id: parseInt(product.id || item.product_id || '0'),
-                                    name: product.name || 'Produto não encontrado',
-                                    price: price,
-                                    imageUrl: product.image_url || product.imageUrl || '',
-                                    category: product.categories?.name || product.category || '',
-                                    description: product.description || '',
-                                    stock: product.stock_quantity || 0,
-                                    sku: product.sku || '',
-                                    brand: product.brand || '',
-                                    weight: product.weight || '',
-                                    dimensions: product.dimensions || '',
-                                    status: product.status || 'Ativo',
-                                },
-                                quantity: item.quantity,
-                                cartId: item.id,
-                            };
-                        });
-                        setCartItems(items);
-                    }
                 }
             } catch (error) {
                 console.error('Error removing from cart:', error);
-                // Estado já foi atualizado acima, então não precisa fazer nada
+                // Recarregar carrinho em caso de erro
+                try {
+                    const dbCart = await getUserCart(user.id);
+                    const items: CartItem[] = dbCart.map(normalizeCartItem);
+                    setCartItems(items);
+                } catch (e) {
+                    console.error('Error reloading cart:', e);
+                }
             }
         }
-    };
+    }, [user, cartItems, normalizeCartItem]);
 
-    const updateQuantity = async (productId: number, quantity: number) => {
+    const updateQuantity = useCallback(async (productId: number, quantity: number) => {
         if (quantity <= 0) {
             await removeFromCart(productId);
             return;
@@ -316,81 +258,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 const item = cartItems.find(item => item.product.id === productId);
                 if (item?.cartId) {
                     await updateUserCartItemDB(item.cartId, quantity);
-                    // Recarregar carrinho do banco para garantir sincronização
-                    const dbCart = await getUserCart(user.id);
-                    const items: CartItem[] = dbCart.map((item: any) => {
-                        // Normalize product data from database
-                        const product = item.product || {};
-                        const price = typeof product.price === 'number' 
-                            ? `R$ ${product.price.toFixed(2).replace('.', ',')}`
-                            : (product.price || '0,00');
-                        
-                        return {
-                            product: {
-                                id: parseInt(product.id || item.product_id || '0'),
-                                name: product.name || 'Produto não encontrado',
-                                price: price,
-                                imageUrl: product.image_url || product.imageUrl || '',
-                                category: product.categories?.name || product.category || '',
-                                description: product.description || '',
-                                stock: product.stock_quantity || 0,
-                                sku: product.sku || '',
-                                brand: product.brand || '',
-                                weight: product.weight || '',
-                                dimensions: product.dimensions || '',
-                                status: product.status || 'Ativo',
-                            },
-                            quantity: item.quantity,
-                            cartId: item.id,
-                        };
-                    });
-                    setCartItems(items);
-                } else {
-                    // Se não tem cartId, tentar encontrar pelo product_id no banco
-                    const dbCart = await getUserCart(user.id);
-                    const dbItem = dbCart.find((item: any) => 
-                        parseInt(item.product?.id || item.product_id || '0') === productId
-                    );
-                    if (dbItem) {
-                        await updateUserCartItemDB(dbItem.id, quantity);
-                        // Recarregar carrinho
-                        const updatedCart = await getUserCart(user.id);
-                        const items: CartItem[] = updatedCart.map((item: any) => {
-                            const product = item.product || {};
-                            const price = typeof product.price === 'number' 
-                                ? `R$ ${product.price.toFixed(2).replace('.', ',')}`
-                                : (product.price || '0,00');
-                            
-                            return {
-                                product: {
-                                    id: parseInt(product.id || item.product_id || '0'),
-                                    name: product.name || 'Produto não encontrado',
-                                    price: price,
-                                    imageUrl: product.image_url || product.imageUrl || '',
-                                    category: product.categories?.name || product.category || '',
-                                    description: product.description || '',
-                                    stock: product.stock_quantity || 0,
-                                    sku: product.sku || '',
-                                    brand: product.brand || '',
-                                    weight: product.weight || '',
-                                    dimensions: product.dimensions || '',
-                                    status: product.status || 'Ativo',
-                                },
-                                quantity: item.quantity,
-                                cartId: item.id,
-                            };
-                        });
-                        setCartItems(items);
-                    }
                 }
             } catch (error) {
                 console.error('Error updating cart quantity:', error);
-                // Estado já foi atualizado acima, então não precisa fazer nada
+                // Recarregar carrinho em caso de erro
+                try {
+                    const dbCart = await getUserCart(user.id);
+                    const items: CartItem[] = dbCart.map(normalizeCartItem);
+                    setCartItems(items);
+                } catch (e) {
+                    console.error('Error reloading cart:', e);
+                }
             }
         }
-    };
+    }, [user, cartItems, removeFromCart, normalizeCartItem]);
 
-    const clearCart = async () => {
+    const clearCart = useCallback(async () => {
         if (user) {
             try {
                 await clearUserCartDB(user.id);
@@ -402,7 +285,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         } else {
             setCartItems([]);
         }
-    };
+    }, [user]);
 
     // Calculate total price
     const cartTotal = cartItems.reduce((total, item) => {
@@ -446,4 +329,3 @@ export function useCart() {
     }
     return context;
 }
-
