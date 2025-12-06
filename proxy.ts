@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Middleware otimizado para Next.js 16+
-export function middleware(request: NextRequest) {
+// Proxy otimizado para Next.js 16+
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Rotas públicas que NUNCA devem ser bloqueadas (webhooks externos)
@@ -28,7 +28,6 @@ export function middleware(request: NextRequest) {
   if (isProtectedRoute) {
     // TODO: Implementar autenticação com Supabase
     // Por enquanto, permitir acesso
-    // Removido console.log para melhor performance
   }
 
   return NextResponse.next();
@@ -38,7 +37,7 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes) - todas as rotas de API são liberadas
+     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
@@ -46,3 +45,4 @@ export const config = {
     '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 };
+

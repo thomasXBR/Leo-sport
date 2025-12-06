@@ -16,9 +16,8 @@ const nextConfig = {
   // Otimizações de performance
   compress: true,
   poweredByHeader: false,
-  // Configurações de build otimizadas
   reactStrictMode: true,
-  swcMinify: true,
+  // swcMinify é padrão no Next.js 16+ (removido para evitar warning)
 };
 
 module.exports = nextConfig;
