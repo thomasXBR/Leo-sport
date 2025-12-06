@@ -953,6 +953,9 @@ export default function Dashboard() {
     const [uploading, setUploading] = useState(false)
     const [uploadingImageId, setUploadingImageId] = useState<string | null>(null)
     const imageInputRef = useRef<HTMLInputElement | null>(null)
+    const [cartModalOpen, setCartModalOpen] = useState(false)
+    const [selectedUserCart, setSelectedUserCart] = useState<any>(null)
+    const [realtimeUserCart, setRealtimeUserCart] = useState<any[]>([])
 
     const chartOptions = {
         responsive: true,
@@ -1149,6 +1152,66 @@ export default function Dashboard() {
 
         return monthlyTotals
     }
+
+    // Função para abrir modal do carrinho do usuário
+    const handleViewUserCart = async (user: any) => {
+        setSelectedUserCart(user)
+        setCartModalOpen(true)
+        
+        // Buscar carrinho do usuário
+        try {
+            const { data, error } = await supabase
+                .from('user_carts')
+                .select('*, product:products(*, categories:categories(*))')
+                .eq('user_id', user.id)
+                .order('updated_at', { ascending: false })
+            
+            if (error) throw error
+            setRealtimeUserCart(data || [])
+        } catch (error) {
+            console.error('Erro ao buscar carrinho do usuário:', error)
+            setRealtimeUserCart([])
+        }
+    }
+
+    // Configurar realtime para o carrinho do usuário selecionado
+    useEffect(() => {
+        if (!selectedUserCart?.id) return
+
+        const channel = supabase
+            .channel(`user_cart_${selectedUserCart.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'user_carts',
+                    filter: `user_id=eq.${selectedUserCart.id}`
+                },
+                async (payload) => {
+                    console.log('Atualização em tempo real do carrinho:', payload)
+                    
+                    // Recarregar carrinho do usuário
+                    try {
+                        const { data, error } = await supabase
+                            .from('user_carts')
+                            .select('*, product:products(*, categories:categories(*))')
+                            .eq('user_id', selectedUserCart.id)
+                            .order('updated_at', { ascending: false })
+                        
+                        if (error) throw error
+                        setRealtimeUserCart(data || [])
+                    } catch (error) {
+                        console.error('Erro ao atualizar carrinho:', error)
+                    }
+                }
+            )
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
+    }, [selectedUserCart?.id])
 
     const getStatusClass = (status: string) => {
         switch (status) {
@@ -1792,20 +1855,31 @@ export default function Dashboard() {
                                                     {user.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : '-'}
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
-                                                    {user.accept_terms && user.email ? (
+                                                    <div className="flex gap-2 items-center">
+                                                        {user.accept_terms && user.email ? (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedUserForEmail(user)
+                                                                    setEmailModalOpen(true)
+                                                                }}
+                                                                className="text-cyan-600 hover:text-cyan-900 flex items-center gap-1"
+                                                                title="Enviar email para o usuário"
+                                                            >
+                                                                <Mail size={16} />
+                                                                Email
+                                                            </button>
+                                                        ) : (
+                                                            <span className="text-gray-400 text-xs">N/A</span>
+                                                        )}
                                                         <button
-                                                            onClick={() => {
-                                                                setSelectedUserForEmail(user)
-                                                                setEmailModalOpen(true)
-                                                            }}
-                                                            className="text-cyan-600 hover:text-cyan-900 flex items-center gap-1"
+                                                            onClick={() => handleViewUserCart(user)}
+                                                            className="text-green-600 hover:text-green-900 flex items-center gap-1"
+                                                            title="Ver carrinho do usuário em tempo real"
                                                         >
-                                                            <Mail size={16} />
-                                                            Enviar Email
+                                                            <ShoppingCart size={16} />
+                                                            Carrinho
                                                         </button>
-                                                    ) : (
-                                                        <span className="text-gray-400 text-xs">N/A</span>
-                                                    )}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -2971,6 +3045,126 @@ export default function Dashboard() {
                                 }}
                             />
                         )}
+                    </DialogContent>
+                </Dialog>
+
+                {/* Modal de Carrinho do Usuário */}
+                <Dialog open={cartModalOpen} onOpenChange={(open) => {
+                    setCartModalOpen(open)
+                    if (!open) {
+                        setSelectedUserCart(null)
+                        setRealtimeUserCart([])
+                    }
+                }}>
+                    <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                                <ShoppingCart size={24} className="text-cyan-600" />
+                                Carrinho de {selectedUserCart?.name || 'Usuário'}
+                                <span className="text-sm font-normal text-gray-500 ml-2">
+                                    (Atualização em tempo real)
+                                </span>
+                            </DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                            {selectedUserCart && (
+                                <div className="bg-gray-50 p-3 rounded-lg">
+                                    <p className="text-sm text-gray-600">
+                                        <strong>Email:</strong> {selectedUserCart.email}
+                                    </p>
+                                    <p className="text-sm text-gray-600">
+                                        <strong>ID do Usuário:</strong> {selectedUserCart.id}
+                                    </p>
+                                </div>
+                            )}
+                            
+                            {realtimeUserCart.length === 0 ? (
+                                <div className="text-center py-8">
+                                    <ShoppingCart size={48} className="mx-auto text-gray-300 mb-3" />
+                                    <p className="text-gray-500">O carrinho está vazio</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {realtimeUserCart.map((item: any) => {
+                                        const product = item.product
+                                        const productPrice = typeof product?.price === 'number' 
+                                            ? product.price 
+                                            : parseFloat(String(product?.price || '0').replace(/[^\d,.-]/g, '').replace(',', '.'))
+                                        const totalPrice = productPrice * item.quantity
+
+                                        return (
+                                            <div key={item.id} className="bg-white border border-gray-200 rounded-lg p-4 flex gap-4">
+                                                {product?.image_url && (
+                                                    <Image
+                                                        src={product.image_url}
+                                                        alt={product.name || 'Produto'}
+                                                        width={80}
+                                                        height={80}
+                                                        className="w-20 h-20 object-cover rounded"
+                                                    />
+                                                )}
+                                                <div className="flex-1">
+                                                    <h4 className="font-semibold text-gray-800">
+                                                        {product?.name || 'Produto não encontrado'}
+                                                    </h4>
+                                                    <p className="text-sm text-gray-500">
+                                                        SKU: {product?.sku || 'N/A'}
+                                                    </p>
+                                                    <p className="text-sm text-gray-500">
+                                                        Categoria: {product?.categories?.name || product?.category || 'N/A'}
+                                                    </p>
+                                                    <div className="mt-2 flex items-center gap-4">
+                                                        <p className="text-sm font-medium text-gray-700">
+                                                            Quantidade: <span className="font-bold">{item.quantity}</span>
+                                                        </p>
+                                                        <p className="text-sm font-medium text-gray-700">
+                                                            Preço unitário: <span className="font-bold">R$ {productPrice.toFixed(2).replace('.', ',')}</span>
+                                                        </p>
+                                                    </div>
+                                                    <p className="text-lg font-bold text-cyan-600 mt-2">
+                                                        Total: R$ {totalPrice.toFixed(2).replace('.', ',')}
+                                                    </p>
+                                                    <p className="text-xs text-gray-400 mt-1">
+                                                        Atualizado em: {new Date(item.updated_at).toLocaleString('pt-BR')}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                    
+                                    {/* Total do Carrinho */}
+                                    <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-4 mt-4">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-lg font-semibold text-gray-700">Total do Carrinho:</span>
+                                            <span className="text-2xl font-bold text-cyan-600">
+                                                R$ {realtimeUserCart.reduce((total, item) => {
+                                                    const product = item.product
+                                                    const productPrice = typeof product?.price === 'number' 
+                                                        ? product.price 
+                                                        : parseFloat(String(product?.price || '0').replace(/[^\d,.-]/g, '').replace(',', '.'))
+                                                    return total + (productPrice * item.quantity)
+                                                }, 0).toFixed(2).replace('.', ',')}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-gray-500 mt-2">
+                                            Total de itens: {realtimeUserCart.reduce((sum, item) => sum + item.quantity, 0)}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <DialogFooter>
+                            <button
+                                onClick={() => {
+                                    setCartModalOpen(false)
+                                    setSelectedUserCart(null)
+                                    setRealtimeUserCart([])
+                                }}
+                                className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400"
+                            >
+                                Fechar
+                            </button>
+                        </DialogFooter>
                     </DialogContent>
                 </Dialog>
 

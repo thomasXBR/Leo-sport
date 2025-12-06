@@ -35,6 +35,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: ReactNode }) {
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [hasSynced, setHasSynced] = useState(false);
     const { user } = useAuth();
 
     // Load cart from database or localStorage
@@ -102,28 +103,30 @@ export function CartProvider({ children }: { children: ReactNode }) {
         loadCart();
     }, [user]);
 
-    // Sincronizar com banco de dados quando usuário fizer login
+    // Sincronizar com banco de dados quando usuário fizer login (apenas uma vez)
     useEffect(() => {
-        if (user) {
+        if (user && !hasSynced) {
             const syncCartToDB = async () => {
                 try {
-                    // Primeiro, limpar carrinho do banco
-                    await clearUserCartDB(user.id);
-                    
-                    // Depois, adicionar todos os itens do localStorage ao banco
                     const savedCart = localStorage.getItem('leosport-cart');
+                    // Só sincronizar se houver itens no localStorage
                     if (savedCart) {
                         const items: CartItem[] = JSON.parse(savedCart);
-                        for (const item of items) {
-                            try {
-                                await addToUserCartDB(user.id, item.product.id.toString(), item.quantity);
-                            } catch (error) {
-                                console.error('Error syncing cart item:', error);
+                        if (items.length > 0) {
+                            // Limpar carrinho do banco e sincronizar
+                            await clearUserCartDB(user.id);
+                            for (const item of items) {
+                                try {
+                                    await addToUserCartDB(user.id, item.product.id.toString(), item.quantity);
+                                } catch (error) {
+                                    console.error('Error syncing cart item:', error);
+                                }
                             }
+                            // Limpar localStorage após sincronizar
+                            localStorage.removeItem('leosport-cart');
                         }
-                        // Limpar localStorage após sincronizar
-                        localStorage.removeItem('leosport-cart');
                     }
+                    setHasSynced(true);
                 } catch (error) {
                     console.error('Error syncing cart to database:', error);
                 }
@@ -131,15 +134,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
             syncCartToDB();
         }
-    }, [user]);
-
-    // Save cart to localStorage or database whenever it changes
-    useEffect(() => {
+        
+        // Reset quando o usuário fizer logout
         if (!user) {
+            setHasSynced(false);
+        }
+    }, [user, hasSynced]);
+
+    // Save cart to localStorage or database whenever it changes (apenas se não estiver carregando)
+    useEffect(() => {
+        if (!loading && !user && cartItems.length >= 0) {
             // Salvar apenas no localStorage se não estiver autenticado
             localStorage.setItem('leosport-cart', JSON.stringify(cartItems));
         }
-    }, [cartItems, user]);
+    }, [cartItems, user, loading]);
 
     const addToCart = async (product: Product, quantity: number = 1) => {
         if (user) {
