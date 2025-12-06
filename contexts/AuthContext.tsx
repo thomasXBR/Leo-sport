@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase, UserProfile } from '@/lib/supabase';
 import { validateEmail } from '@/lib/email-validation';
 import type { User, Session } from '@supabase/supabase-js';
@@ -24,15 +24,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const loadingProfileRef = React.useRef<string | null>(null);
 
   // Carregar sessão e perfil ao inicializar
   useEffect(() => {
-    let mounted = true;
-
     // Verificar sessão atual
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return;
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -46,7 +42,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!mounted) return;
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -54,23 +49,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setProfile(null);
         setLoading(false);
-        loadingProfileRef.current = null;
       }
     });
 
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   // Carregar perfil do usuário
   async function loadProfile(userId: string) {
-    // Evitar carregar o mesmo perfil múltiplas vezes
-    if (loadingProfileRef.current === userId) {
-      return;
-    }
-    loadingProfileRef.current = userId;
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -116,10 +102,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Erro ao carregar perfil:', error);
     } finally {
       setLoading(false);
-      // Reset loading flag apenas se ainda estamos carregando o mesmo usuário
-      if (loadingProfileRef.current === userId) {
-        loadingProfileRef.current = null;
-      }
     }
   }
 

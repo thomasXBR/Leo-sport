@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Product } from '@/lib/products-data';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
@@ -68,7 +68,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
                                 status: product.status || 'Ativo',
                             },
                             quantity: item.quantity,
-                            cartId: item.id, // ID do registro na tabela user_carts
+                            cartId: item.id,
                         };
                     });
                     setCartItems(items);
@@ -77,13 +77,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
                     const savedCart = localStorage.getItem('leosport-cart');
                     if (savedCart) {
                         try {
-                            const parsedCart = JSON.parse(savedCart);
-                            // Garantir que os itens do localStorage não tenham cartId
-                            const cleanedCart = parsedCart.map((item: CartItem) => ({
-                                ...item,
-                                cartId: undefined
-                            }));
-                            setCartItems(cleanedCart);
+                            setCartItems(JSON.parse(savedCart));
                         } catch (error) {
                             console.error('Error loading cart from localStorage', error);
                         }
@@ -95,12 +89,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 const savedCart = localStorage.getItem('leosport-cart');
                 if (savedCart) {
                     try {
-                        const parsedCart = JSON.parse(savedCart);
-                        const cleanedCart = parsedCart.map((item: CartItem) => ({
-                            ...item,
-                            cartId: undefined
-                        }));
-                        setCartItems(cleanedCart);
+                        setCartItems(JSON.parse(savedCart));
                     } catch (e) {
                         console.error('Error loading cart from localStorage', e);
                     }
@@ -113,42 +102,34 @@ export function CartProvider({ children }: { children: ReactNode }) {
         loadCart();
     }, [user]);
 
-    // Sincronizar com banco de dados quando usuário fizer login (apenas uma vez)
-    const hasSyncedRef = React.useRef<string | null>(null);
+    // Sincronizar com banco de dados quando usuário fizer login
     useEffect(() => {
-        if (user && hasSyncedRef.current !== user.id) {
+        if (user) {
             const syncCartToDB = async () => {
                 try {
-                    // Verificar se há itens no localStorage para sincronizar
+                    // Primeiro, limpar carrinho do banco
+                    await clearUserCartDB(user.id);
+                    
+                    // Depois, adicionar todos os itens do localStorage ao banco
                     const savedCart = localStorage.getItem('leosport-cart');
                     if (savedCart) {
                         const items: CartItem[] = JSON.parse(savedCart);
-                        if (items.length > 0) {
-                            // Primeiro, limpar carrinho do banco
-                            await clearUserCartDB(user.id);
-                            
-                            // Depois, adicionar todos os itens do localStorage ao banco
-                            for (const item of items) {
-                                try {
-                                    await addToUserCartDB(user.id, item.product.id.toString(), item.quantity);
-                                } catch (error) {
-                                    console.error('Error syncing cart item:', error);
-                                }
+                        for (const item of items) {
+                            try {
+                                await addToUserCartDB(user.id, item.product.id.toString(), item.quantity);
+                            } catch (error) {
+                                console.error('Error syncing cart item:', error);
                             }
-                            // Limpar localStorage após sincronizar
-                            localStorage.removeItem('leosport-cart');
                         }
+                        // Limpar localStorage após sincronizar
+                        localStorage.removeItem('leosport-cart');
                     }
-                    hasSyncedRef.current = user.id;
                 } catch (error) {
                     console.error('Error syncing cart to database:', error);
                 }
             };
 
             syncCartToDB();
-        } else if (!user) {
-            // Reset sync flag quando usuário faz logout
-            hasSyncedRef.current = null;
         }
     }, [user]);
 
