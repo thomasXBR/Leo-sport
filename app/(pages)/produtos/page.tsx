@@ -228,24 +228,42 @@ export default function ProductsPage() {
 
         // Filtrar produtos ativos (ou todos se não houver status)
         const activeProducts = productsData.filter((p: any) => {
-          // Se não tiver campo status, incluir o produto
-          if (!p.status) return true;
+          // Se não tiver campo status, incluir o produto (produtos novos podem não ter status ainda)
+          if (!p.status || p.status === null || p.status === undefined) {
+            console.log('Produto sem status incluído:', p.id, p.name);
+            return true;
+          }
           // Incluir se for 'Ativo'
-          return p.status === 'Ativo';
+          const isActive = p.status === 'Ativo';
+          if (!isActive) {
+            console.log('Produto excluído por status:', p.id, p.name, 'Status:', p.status);
+          }
+          return isActive;
         });
         
         console.log('Produtos ativos após filtro:', activeProducts.length);
+        console.log('Exemplo de produto ativo:', activeProducts[0]);
         
         const prods = activeProducts.map((product: any) => {
           try {
-            return convertProduct(product, activeCoupon);
-          } catch (convertError) {
-            console.error('Erro ao converter produto:', product.id, convertError);
+            const converted = convertProduct(product, activeCoupon);
+            // Validar que o produto convertido tem os campos mínimos necessários
+            if (!converted.id || !converted.name) {
+              console.warn('Produto convertido sem campos obrigatórios:', converted);
+              return null;
+            }
+            return converted;
+          } catch (convertError: any) {
+            console.error('Erro ao converter produto:', product?.id, product?.name, convertError?.message);
+            console.error('Dados do produto que falhou:', product);
             return null;
           }
-        }).filter((p: any) => p !== null);
+        }).filter((p: any) => p !== null && p !== undefined);
         
-        console.log('Produtos convertidos com sucesso:', prods.length);
+        console.log('✅ Produtos convertidos com sucesso:', prods.length);
+        if (prods.length > 0) {
+          console.log('📦 Exemplo de produto convertido:', prods[0]);
+        }
         setProducts(prods);
 
         // Atualiza automatico min/max largura/altura/preço
@@ -375,37 +393,56 @@ export default function ProductsPage() {
       (product.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         '');
 
+    // Filtro de categoria: incluir produtos sem categoria quando "all" está selecionado
     const matchesCategory =
-      selectedCategory === 'all' || product.category === selectedCategory;
+      selectedCategory === 'all' || 
+      product.category === selectedCategory ||
+      (!product.category && selectedCategory === 'all');
+    
+    // Filtro de esporte: incluir produtos sem esporte quando "all" está selecionado
     const matchesSport =
       selectedSport === 'all' ||
-      (product.sport && product.sport === selectedSport);
+      (product.sport && product.sport === selectedSport) ||
+      (!product.sport && selectedSport === 'all');
+    
+    // Filtro de cor: incluir produtos sem cor quando "all" está selecionado
     const matchesColor =
       selectedColor === 'all' ||
-      (product.color && product.color === selectedColor);
+      (product.color && product.color === selectedColor) ||
+      (!product.color && selectedColor === 'all');
 
     let matchesWidth = true;
     let matchesHeight = true;
     let matchesPrice = true;
     
     // Filtro de largura: só aplica se o usuário modificou o range
+    // IMPORTANTE: Se o produto não tem width, não deve ser excluído a menos que o filtro esteja ativo
     if (widthRangeUserModified && widthRangeInitialized && !isNaN(widthRange[0]) && !isNaN(widthRange[1]) && widthRange[0] > 0 && widthRange[1] > 0) {
       if (product.width && product.width !== '') {
         const w = parseFloat(String(product.width).replace(',', '.'));
         matchesWidth = !isNaN(w) && w >= widthRange[0] && w <= widthRange[1];
       } else {
+        // Se o filtro está ativo mas o produto não tem width, excluir
         matchesWidth = false;
       }
+    } else {
+      // Se o filtro não está ativo, incluir produtos com ou sem width
+      matchesWidth = true;
     }
     
     // Filtro de altura: só aplica se o usuário modificou o range
+    // IMPORTANTE: Se o produto não tem height, não deve ser excluído a menos que o filtro esteja ativo
     if (heightRangeUserModified && heightRangeInitialized && !isNaN(heightRange[0]) && !isNaN(heightRange[1]) && heightRange[0] > 0 && heightRange[1] > 0) {
       if (product.height && product.height !== '') {
         const h = parseFloat(String(product.height).replace(',', '.'));
         matchesHeight = !isNaN(h) && h >= heightRange[0] && h <= heightRange[1];
       } else {
+        // Se o filtro está ativo mas o produto não tem height, excluir
         matchesHeight = false;
       }
+    } else {
+      // Se o filtro não está ativo, incluir produtos com ou sem height
+      matchesHeight = true;
     }
     
     // Filtro de preço: só aplica se o usuário modificou o range
@@ -444,17 +481,41 @@ export default function ProductsPage() {
   // IMPORTANTE: Este hook deve estar ANTES de qualquer return condicional
   useEffect(() => {
     if (!loading && !contentLoading) {
-      console.log('Estado dos produtos:', {
+      console.log('🔍 DEBUG - Estado dos produtos:', {
         total: products.length,
         filtrados: filteredProducts.length,
         loading,
         searchTerm,
         selectedCategory,
         selectedSport,
-        selectedColor
+        selectedColor,
+        widthRangeUserModified,
+        heightRangeUserModified,
+        priceRangeUserModified,
+        widthRange,
+        heightRange,
+        priceRange
       });
+      
+      // Log dos primeiros produtos para debug
+      if (products.length > 0) {
+        console.log('📦 Primeiros 3 produtos carregados:', products.slice(0, 3));
+      }
+      
+      if (filteredProducts.length === 0 && products.length > 0) {
+        console.warn('⚠️ ATENÇÃO: Produtos carregados mas nenhum passou nos filtros!');
+        console.log('🔍 Verificando filtros...', {
+          searchTerm: searchTerm || '(vazio)',
+          selectedCategory,
+          selectedSport,
+          selectedColor,
+          widthFilter: widthRangeUserModified ? `Ativo: ${widthRange[0]}-${widthRange[1]}` : 'Inativo',
+          heightFilter: heightRangeUserModified ? `Ativo: ${heightRange[0]}-${heightRange[1]}` : 'Inativo',
+          priceFilter: priceRangeUserModified ? `Ativo: ${priceRange[0]}-${priceRange[1]}` : 'Inativo'
+        });
+      }
     }
-  }, [products.length, filteredProducts.length, loading, contentLoading, searchTerm, selectedCategory, selectedSport, selectedColor]);
+  }, [products.length, filteredProducts.length, loading, contentLoading, searchTerm, selectedCategory, selectedSport, selectedColor, widthRangeUserModified, heightRangeUserModified, priceRangeUserModified, widthRange, heightRange, priceRange, products, filteredProducts]);
 
   if (contentLoading || loading) {
     return (
