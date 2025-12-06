@@ -293,13 +293,24 @@ export async function deleteFAQ(id: string | number) {
 }
 
 export async function getProducts() {
-  const { data, error } = await supabase
-    .from('products')
-    .select('*, categories(name, slug)')
-    .order('created_at', { ascending: false });
-  
-  if (error) throw error;
-  return data;
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*, categories(name, slug)')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Erro ao buscar produtos:', error);
+      throw error;
+    }
+    
+    // Garantir que sempre retorna um array
+    return Array.isArray(data) ? data : [];
+  } catch (error: any) {
+    console.error('Erro na função getProducts:', error);
+    // Retornar array vazio em caso de erro para não quebrar a aplicação
+    return [];
+  }
 }
 
 export async function getProductById(id: string) {

@@ -16,10 +16,23 @@ function convertProduct(
   supabaseProduct: SupabaseProduct & { categories?: { name: string; slug: string } | null },
   discountInfo?: { discount_type?: string; discount_value?: string } | null
 ) {
+  // Verificar se o produto é válido
+  if (!supabaseProduct || !supabaseProduct.id) {
+    throw new Error('Produto inválido: sem ID');
+  }
+
   let width = '';
   let height = '';
-  let color = (supabaseProduct as any).color || '';
-  let sport = supabaseProduct.categories?.name || '';
+  let color = (supabaseProduct as any)?.color || '';
+  // Tentar obter categoria de diferentes formas
+  let sport = '';
+  if (supabaseProduct.categories) {
+    if (typeof supabaseProduct.categories === 'object' && supabaseProduct.categories !== null) {
+      sport = (supabaseProduct.categories as any)?.name || '';
+    } else if (typeof supabaseProduct.categories === 'string') {
+      sport = supabaseProduct.categories;
+    }
+  }
 
   // Priorizar campos width/height diretos, depois tentar extrair de dimensions
   // Width
@@ -64,10 +77,20 @@ function convertProduct(
     discountInfo?.discount_value
   );
 
+  // Obter categoria de forma segura
+  let category = 'Sem categoria';
+  if (supabaseProduct.categories) {
+    if (typeof supabaseProduct.categories === 'object' && supabaseProduct.categories !== null) {
+      category = (supabaseProduct.categories as any)?.name || 'Sem categoria';
+    } else if (typeof supabaseProduct.categories === 'string') {
+      category = supabaseProduct.categories;
+    }
+  }
+
   return {
     id: supabaseProduct.id,
-    name: supabaseProduct.name,
-    category: supabaseProduct.categories?.name ?? 'Sem categoria',
+    name: supabaseProduct.name || 'Produto sem nome',
+    category: category,
     // IMPORTANTE: Retornar price como NÚMERO, não string
     price: originalPrice > 0 ? originalPrice : 0,
     // Retornar fake_price como NÚMERO
@@ -157,16 +180,39 @@ export default function ProductsPage() {
         setLoading(true);
         
         // Buscar produtos e cupons ativos
-        const [productsData, couponsData] = await Promise.all([
-          getProducts(),
-          getCoupons().catch(() => [])
-        ]);
+        let productsData: any = null;
+        let couponsData: any = [];
+        
+        try {
+          productsData = await getProducts();
+          console.log('Produtos carregados do Supabase:', productsData?.length || 0);
+        } catch (productsError: any) {
+          console.error('Erro ao buscar produtos:', productsError);
+          console.error('Detalhes do erro:', {
+            message: productsError?.message,
+            details: productsError?.details,
+            hint: productsError?.hint,
+            code: productsError?.code
+          });
+          productsData = [];
+        }
+        
+        try {
+          couponsData = await getCoupons();
+        } catch (couponsError) {
+          console.warn('Erro ao buscar cupons (continuando sem cupons):', couponsError);
+          couponsData = [];
+        }
 
+        // Garantir que productsData é um array
         if (!Array.isArray(productsData)) {
           console.error('getProducts não retornou um array:', productsData);
+          console.error('Tipo recebido:', typeof productsData);
           setProducts([]);
           return;
         }
+
+        console.log('Total de produtos recebidos:', productsData.length);
 
         // Encontrar cupom ativo (primeiro válido)
         const activeCoupon = Array.isArray(couponsData)
@@ -180,11 +226,26 @@ export default function ProductsPage() {
             })
           : null;
 
-        // Só produtos ativos
-        const activeProducts = productsData.filter((p) => p.status === 'Ativo');
-        const prods = activeProducts.map((product: any) =>
-          convertProduct(product, activeCoupon)
-        );
+        // Filtrar produtos ativos (ou todos se não houver status)
+        const activeProducts = productsData.filter((p: any) => {
+          // Se não tiver campo status, incluir o produto
+          if (!p.status) return true;
+          // Incluir se for 'Ativo'
+          return p.status === 'Ativo';
+        });
+        
+        console.log('Produtos ativos após filtro:', activeProducts.length);
+        
+        const prods = activeProducts.map((product: any) => {
+          try {
+            return convertProduct(product, activeCoupon);
+          } catch (convertError) {
+            console.error('Erro ao converter produto:', product.id, convertError);
+            return null;
+          }
+        }).filter((p: any) => p !== null);
+        
+        console.log('Produtos convertidos com sucesso:', prods.length);
         setProducts(prods);
 
         // Atualiza automatico min/max largura/altura/preço
@@ -192,7 +253,7 @@ export default function ProductsPage() {
           // Width: converter string para número, tratando vírgula como separador decimal
           const allWidths = prods
             .map((p) => {
-              if (!p.width || p.width === '') return null;
+              if (!p || !p.width || p.width === '') return null;
               const num = parseFloat(String(p.width).replace(',', '.'));
               return !isNaN(num) && num > 0 ? num : null;
             })
@@ -201,7 +262,7 @@ export default function ProductsPage() {
           // Height: converter string para número, tratando vírgula como separador decimal
           const allHeights = prods
             .map((p) => {
-              if (!p.height || p.height === '') return null;
+              if (!p || !p.height || p.height === '') return null;
               const num = parseFloat(String(p.height).replace(',', '.'));
               return !isNaN(num) && num > 0 ? num : null;
             })
@@ -209,7 +270,7 @@ export default function ProductsPage() {
           
           // Price: já é número
           const allPrices = prods
-            .map((p) => p.price ?? 0)
+            .map((p) => (p?.price ?? 0))
             .filter((v) => v > 0);
           
           if (allWidths.length > 0) {
@@ -233,8 +294,16 @@ export default function ProductsPage() {
             setPriceRangeInitialized(true);
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Erro ao carregar produtos (conexão/base?):', error);
+        console.error('Stack trace:', error?.stack);
+        console.error('Detalhes completos:', {
+          message: error?.message,
+          details: error?.details,
+          hint: error?.hint,
+          code: error?.code,
+          name: error?.name
+        });
         setProducts([]);
       } finally {
         setLoading(false);
@@ -370,6 +439,22 @@ export default function ProductsPage() {
       return (b.price ?? 0) - (a.price ?? 0);
     });
   }
+
+  // Debug: mostrar informações no console (remover em produção)
+  // IMPORTANTE: Este hook deve estar ANTES de qualquer return condicional
+  useEffect(() => {
+    if (!loading && !contentLoading) {
+      console.log('Estado dos produtos:', {
+        total: products.length,
+        filtrados: filteredProducts.length,
+        loading,
+        searchTerm,
+        selectedCategory,
+        selectedSport,
+        selectedColor
+      });
+    }
+  }, [products.length, filteredProducts.length, loading, contentLoading, searchTerm, selectedCategory, selectedSport, selectedColor]);
 
   if (contentLoading || loading) {
     return (
