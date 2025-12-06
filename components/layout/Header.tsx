@@ -12,12 +12,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { validateEmail } from '@/lib/email-validation';
 import { useCart } from '@/contexts/CartContext';
 import CartSidebar from '@/components/products/CartSidebar';
+import { useSiteImages } from '@/hooks/use-site-images';
 
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const { user, profile, signIn, signOut, signUp } = useAuth();
   const { cartCount, clearCart } = useCart();
+  const { getImage } = useSiteImages();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -249,14 +251,18 @@ export default function Header() {
     { href: '/contato', label: 'Contato' },
   ];
 
+  // Verificar se há CouponCarousel acima (verificando se está na rota do admin)
+  const hasCouponCarousel = !pathname?.startsWith('/admindash');
+  const headerTop = hasCouponCarousel ? '40px' : '0';
+
   return (
-    <header className="bg-white shadow-sm border-b fixed left-0 right-0 z-50" style={{ top: '40px' }}>
+    <header className="bg-white shadow-sm border-b fixed left-0 right-0 z-50" style={{ top: headerTop }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link href="/inicio" className="flex items-center space-x-2">
             <Image
-              src="/favicon.ico"
+              src={getImage('header_logo', '/favicon.ico')}
               alt="LeoSport Logo"
               width={40}
               height={40}
