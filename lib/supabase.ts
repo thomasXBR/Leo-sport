@@ -909,7 +909,7 @@ export type UserCart = {
 export async function getUserCart(userId: string) {
   const { data, error } = await supabase
     .from('user_carts')
-    .select('*, product:products(*)')
+    .select('*, product:products(*, categories:categories(*))')
     .eq('user_id', userId)
     .order('updated_at', { ascending: false });
   
