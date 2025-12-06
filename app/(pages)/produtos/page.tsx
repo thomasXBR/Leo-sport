@@ -440,6 +440,22 @@ export default function ProductsPage() {
     });
   }
 
+  // Debug: mostrar informações no console (remover em produção)
+  // IMPORTANTE: Este hook deve estar ANTES de qualquer return condicional
+  useEffect(() => {
+    if (!loading && !contentLoading) {
+      console.log('Estado dos produtos:', {
+        total: products.length,
+        filtrados: filteredProducts.length,
+        loading,
+        searchTerm,
+        selectedCategory,
+        selectedSport,
+        selectedColor
+      });
+    }
+  }, [products.length, filteredProducts.length, loading, contentLoading, searchTerm, selectedCategory, selectedSport, selectedColor]);
+
   if (contentLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -447,19 +463,6 @@ export default function ProductsPage() {
       </div>
     );
   }
-
-  // Debug: mostrar informações no console (remover em produção)
-  useEffect(() => {
-    console.log('Estado dos produtos:', {
-      total: products.length,
-      filtrados: filteredProducts.length,
-      loading,
-      searchTerm,
-      selectedCategory,
-      selectedSport,
-      selectedColor
-    });
-  }, [products.length, filteredProducts.length, loading, searchTerm, selectedCategory, selectedSport, selectedColor]);
 
   return (
     <div className="min-h-screen bg-gray-50">
