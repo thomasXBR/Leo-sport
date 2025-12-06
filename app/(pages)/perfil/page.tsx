@@ -193,7 +193,7 @@ export default function PerfilPage() {
   return (
     <div className="flex min-h-screen bg-gray-100">
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-cyan-900 text-white transition-all duration-300 flex flex-col fixed`} style={{ top: '104px', height: 'calc(100vh - 104px)' }}>
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-cyan-900 text-white transition-all duration-300 flex flex-col fixed`} style={{ top: '104px', height: 'calc(100vh - 104px)', zIndex: 30 }}>
         <div className="p-4 flex items-center justify-between border-b border-cyan-800">
           {sidebarOpen && <h1 className="text-xl font-bold">Meu Perfil</h1>}
           <button

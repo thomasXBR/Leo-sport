@@ -60,7 +60,7 @@ export default function CouponCarousel() {
     };
 
     return (
-        <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white py-2 overflow-hidden relative fixed top-0 left-0 right-0 z-40">
+        <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white py-2 overflow-hidden relative fixed top-16 left-0 right-0 z-40">
             <div className="flex items-center justify-center gap-2">
                 <div className="overflow-hidden h-6 relative w-full max-w-4xl mx-auto">
                     <div

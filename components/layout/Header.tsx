@@ -251,9 +251,9 @@ export default function Header() {
     { href: '/contato', label: 'Contato' },
   ];
 
-  // Verificar se há CouponCarousel acima (verificando se está na rota do admin)
-  const hasCouponCarousel = !pathname?.startsWith('/admindash');
-  const headerTop = hasCouponCarousel ? '40px' : '0';
+  // Verificar se está na rota do admin
+  const isAdminPage = pathname?.startsWith('/admindash');
+  const headerTop = isAdminPage ? '0' : '0';
 
   return (
     <header className="bg-white shadow-sm border-b fixed left-0 right-0 z-50" style={{ top: headerTop }}>

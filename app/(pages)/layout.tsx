@@ -21,8 +21,8 @@ export default function PublicLayout({
         <div className="min-h-screen flex flex-col overflow-x-hidden">
           {!isAdminPage && (
             <>
-              <CouponCarousel />
               <Header />
+              <CouponCarousel />
             </>
           )}
           <main className="flex-1 overflow-x-hidden" style={{ paddingTop: isAdminPage ? '0' : '104px' }}>
