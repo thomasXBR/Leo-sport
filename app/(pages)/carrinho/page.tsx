@@ -169,11 +169,13 @@ export default function CarrinhoPage() {
                                             Continuar Comprando
                                         </Button>
                                     </Link>
-                                    <Button
-                                        className="w-full bg-blue-900 hover:bg-blue-950 text-white font-semibold"
-                                    >
-                                        Finalizar Compra
-                                    </Button>
+                                    <Link href="/checkout" className="block">
+                                        <Button
+                                            className="w-full bg-blue-900 hover:bg-blue-950 text-white font-semibold"
+                                        >
+                                            Finalizar Compra
+                                        </Button>
+                                    </Link>
                                 </div>
 
                                 <div className="mt-6 pt-6 border-t">
