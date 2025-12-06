@@ -1116,6 +1116,24 @@ export async function updateSiteImage(id: string, updates: Partial<SiteImage>) {
 }
 
 export async function deleteSiteImage(id: string) {
+  // Primeiro, buscar a imagem para deletar do storage também
+  const { data: image } = await supabase
+    .from('site_images')
+    .select('image_url')
+    .eq('id', id)
+    .single();
+  
+  // Deletar do storage se existir URL
+  if (image?.image_url) {
+    try {
+      await deleteSiteImageFromStorage(image.image_url);
+    } catch (error) {
+      console.error('Erro ao deletar imagem do storage:', error);
+      // Continuar mesmo se falhar a deleção do storage
+    }
+  }
+  
+  // Deletar do banco de dados
   const { error } = await supabase
     .from('site_images')
     .delete()
@@ -1260,6 +1278,90 @@ export async function deleteInvoicePdf(pdfUrl: string): Promise<void> {
   } catch (error: any) {
     console.error('Erro ao deletar PDF:', error);
     throw new Error(`Erro ao deletar PDF: ${error.message || 'Erro desconhecido'}`);
+  }
+}
+
+/**
+ * Upload de imagem do site para o Supabase Storage (bucket 'imgs')
+ * @param file - Arquivo de imagem
+ * @param imageKey - Chave única da imagem (ex: 'hero_background', 'contato_banner')
+ * @returns URL pública da imagem
+ */
+export async function uploadSiteImage(
+  file: File,
+  imageKey: string
+): Promise<string> {
+  // Validar tipo de arquivo
+  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  if (!validTypes.includes(file.type)) {
+    throw new Error('Tipo de arquivo inválido. Use JPG, PNG ou WEBP.');
+  }
+
+  // Validar tamanho (máximo 5MB)
+  const maxSize = 5 * 1024 * 1024; // 5MB
+  if (file.size > maxSize) {
+    throw new Error('A imagem deve ter no máximo 5MB');
+  }
+
+  // Nome do arquivo: usar imageKey e timestamp
+  const fileExtension = file.name.split('.').pop() || 'jpg';
+  const fileName = `${imageKey}_${Date.now()}.${fileExtension}`;
+  const path = `site-images/${fileName}`;
+
+  // Upload para o bucket 'imgs'
+  const bucketName = 'imgs';
+  
+  const { error: uploadError } = await supabase.storage
+    .from(bucketName)
+    .upload(path, file, {
+      upsert: true,
+      cacheControl: '3600',
+      contentType: file.type,
+    });
+
+  if (uploadError) {
+    console.error('Erro no upload:', uploadError);
+    throw new Error(`Erro ao fazer upload da imagem: ${uploadError.message}`);
+  }
+
+  // Obter URL pública
+  const { data: urlData } = supabase.storage
+    .from(bucketName)
+    .getPublicUrl(path);
+
+  return urlData.publicUrl;
+}
+
+/**
+ * Deletar imagem do site do storage
+ * @param imageUrl - URL da imagem a ser deletada
+ */
+export async function deleteSiteImageFromStorage(imageUrl: string): Promise<void> {
+  try {
+    // Extrair o caminho do arquivo da URL
+    const url = new URL(imageUrl);
+    const pathParts = url.pathname.split('/');
+    const bucketIndex = pathParts.findIndex(part => part === 'storage' || part === 'v1');
+    
+    if (bucketIndex === -1) {
+      throw new Error('URL de imagem inválida');
+    }
+
+    // O bucket geralmente vem após 'storage/v1/object/public/'
+    const bucketName = pathParts[bucketIndex + 3] || 'imgs';
+    const filePath = pathParts.slice(bucketIndex + 4).join('/');
+
+    const { error } = await supabase.storage
+      .from(bucketName)
+      .remove([filePath]);
+
+    if (error) {
+      console.error('Erro ao deletar imagem:', error);
+      // Não lançar erro, apenas logar (a imagem pode não existir)
+    }
+  } catch (error: any) {
+    console.error('Erro ao processar exclusão de imagem:', error);
+    // Não lançar erro, apenas logar
   }
 }
 

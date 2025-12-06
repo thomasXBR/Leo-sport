@@ -42,7 +42,7 @@ import {
     getSiteContent, updateSiteContent, getFAQs, createFAQ, updateFAQ, deleteFAQ, getPurchases, createPurchase, updatePurchase, deletePurchase,
     getSiteImages, createSiteImage, updateSiteImage, deleteSiteImage,
     getAllUsers, getAllUserCarts, getAllSaleItems,
-    uploadInvoicePdf,
+    uploadInvoicePdf, uploadSiteImage,
     type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent, type FAQ, type Purchase, type SiteImage,
 } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
@@ -1029,50 +1029,30 @@ export default function Dashboard() {
         const imageId = uploadingImageId
         if (!file || !imageId || uploadingFileType !== 'site-image') return
 
-        // Validar tipo de arquivo
-        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
-        if (!validTypes.includes(file.type)) {
-            alert('Por favor, selecione uma imagem válida (JPG, PNG ou WEBP)')
-            return
-        }
-
-        // Validar tamanho (máximo 5MB)
-        const maxSize = 5 * 1024 * 1024 // 5MB
-        if (file.size > maxSize) {
-            alert('A imagem deve ter no máximo 5MB')
-            return
-        }
-
         setUploading(true)
         try {
-            // Upload to Supabase Storage
-            const bucketName = 'site_images'
+            // Buscar o registro da imagem para obter a image_key
             const imageRecord = siteImages.find(img => img.id === imageId)
-            const fileName = imageRecord ? `${imageRecord.image_key}_${Date.now()}.${file.name.split('.').pop()}` : `${Date.now()}_${file.name}`
-            const path = `images/${fileName}`
+            if (!imageRecord) {
+                alert('Erro: Imagem não encontrada.')
+                return
+            }
 
-            const { error: uploadError } = await supabase.storage.from(bucketName).upload(path, file, {
-                upsert: true,
-                cacheControl: '3600'
-            })
-            if (uploadError) throw uploadError
+            // Fazer upload usando a função do supabase.ts que usa o bucket 'imgs'
+            const publicUrl = await uploadSiteImage(file, imageRecord.image_key)
 
-            // Get public URL
-            const { data: urlData } = supabase.storage.from(bucketName).getPublicUrl(path)
-            const publicUrl = urlData.publicUrl
-
-            // Update image record
+            // Atualizar o registro da imagem com a nova URL
             await updateSiteImage(imageId, { image_url: publicUrl })
 
-            // Reload data
+            // Recarregar dados
             await loadAllData()
             alert('Imagem enviada com sucesso!')
         } catch (err: any) {
             console.error('Erro ao enviar imagem:', err)
-            if (err.message?.includes('Bucket not found')) {
-                alert('Erro: O bucket "site_images" não existe. Por favor, crie-o no Supabase Dashboard > Storage.')
+            if (err.message?.includes('Bucket not found') || err.message?.includes('does not exist')) {
+                alert('Erro: O bucket "imgs" não existe. Por favor, verifique se ele foi criado no Supabase Dashboard > Storage.')
             } else {
-                alert('Erro ao enviar imagem. Verifique o console.')
+                alert(`Erro ao enviar imagem: ${err.message || 'Erro desconhecido'}`)
             }
         } finally {
             setUploading(false)
