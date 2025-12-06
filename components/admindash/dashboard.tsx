@@ -866,7 +866,6 @@ export default function Dashboard() {
     const [siteImages, setSiteImages] = useState<SiteImage[]>([])
     const [users, setUsers] = useState<any[]>([])
     const [salesWithItems, setSalesWithItems] = useState<any[]>([])
-    const [userCarts, setUserCarts] = useState<any[]>([])
     const [purchasedItems, setPurchasedItems] = useState<any[]>([])
     const [sidebarOpen, setSidebarOpen] = useState(true)
     const [emailModalOpen, setEmailModalOpen] = useState(false)
@@ -1073,7 +1072,8 @@ export default function Dashboard() {
     async function loadAllData() {
         try {
             setLoading(true)
-            const [productsData, inventoryData, salesData, invoicesData, partnersData, couponsData, contentData, faqsData, purchasesData, imagesData, usersData, salesWithItemsData, userCartsData, purchasedItemsData] = await Promise.all([
+            // Carregar apenas os dados essenciais inicialmente
+            const [productsData, inventoryData, salesData, invoicesData, partnersData, couponsData, contentData, faqsData, purchasesData, imagesData, usersData, salesWithItemsData, purchasedItemsData] = await Promise.all([
                 getProducts().catch(() => []),
                 getInventoryItems().catch(() => []),
                 getSales().catch(() => []),
@@ -1086,7 +1086,6 @@ export default function Dashboard() {
                 getSiteImages().catch(() => []),
                 getAllUsers().catch(() => []),
                 getSalesWithItems().catch(() => []),
-                getAllUserCarts().catch(() => []),
                 getAllSaleItems().catch(() => []),
             ])
 
@@ -1114,7 +1113,6 @@ export default function Dashboard() {
             setSiteImages(imagesData || [])
             setUsers(usersData || [])
             setSalesWithItems(salesWithItemsData || [])
-            setUserCarts(userCartsData || [])
             setPurchasedItems(purchasedItemsData || [])
 
             // Carregar dados do gráfico
@@ -2681,196 +2679,6 @@ export default function Dashboard() {
                         )}
                     </div>
                 )
-            case 'carts':
-                return (
-                    <div>
-                        <h2 className="text-2xl font-semibold mb-6 text-gray-700 flex items-center">
-                            <ShoppingCart className="mr-2" size={24} />
-                            Carrinhos de Usuários
-                        </h2>
-                        <p className="text-gray-600 mb-4">
-                            Visualize os produtos nos carrinhos dos usuários. Os carrinhos são armazenados localmente no navegador de cada usuário.
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {users.length === 0 ? (
-                                <div className="col-span-full text-center py-8 text-gray-500">
-                                    Nenhum usuário encontrado
-                                </div>
-                            ) : (
-                                users.map((user: any) => (
-                                    <div key={user.id} className="p-4 border rounded-lg bg-white shadow-sm">
-                                        <h3 className="font-semibold text-gray-800 mb-2">{user.name || user.email}</h3>
-                                        <p className="text-sm text-gray-600 mb-1">Email: {user.email}</p>
-                                        <p className="text-sm text-gray-600 mb-3">Tipo: {user.user_type || 'N/A'}</p>
-                                        <button
-                                            onClick={() => {
-                                                setSelectedUserForEmail(user)
-                                                setEmailModalOpen(true)
-                                            }}
-                                            className="w-full bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 transition-colors flex items-center justify-center gap-2"
-                                        >
-                                            <Mail size={16} />
-                                            Enviar Email
-                                        </button>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                )
-            case 'purchased':
-                return (
-                    <div>
-                        <h2 className="text-2xl font-semibold mb-6 text-gray-700 flex items-center">
-                            <Package className="mr-2" size={24} />
-                            Produtos Comprados
-                        </h2>
-                        {salesWithItems.length === 0 ? (
-                            <p className="text-center py-8 text-gray-500">Nenhum pedido encontrado.</p>
-                        ) : (
-                            <div className="space-y-6">
-                                {salesWithItems.map((sale: any) => (
-                                    <div key={sale.id} className="p-6 border rounded-lg bg-white shadow-sm">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div>
-                                                <h3 className="font-semibold text-gray-800 text-lg">
-                                                    Pedido #{sale.order_number || sale.id}
-                                                </h3>
-                                                <p className="text-sm text-gray-600">Cliente: {sale.customer_name}</p>
-                                                <p className="text-sm text-gray-600">Email: {sale.customer_email}</p>
-                                                <p className="text-sm text-gray-500">
-                                                    Data: {new Date(sale.created_at).toLocaleDateString('pt-BR')}
-                                                </p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-lg font-bold text-gray-900">
-                                                    R$ {Number(sale.total_amount).toFixed(2).replace('.', ',')}
-                                                </p>
-                                                <span className={`px-2 py-1 text-xs rounded-full font-semibold ${getStatusClass(sale.status)}`}>
-                                                    {sale.status}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        {sale.items && sale.items.length > 0 ? (
-                                            <div className="mt-4">
-                                                <h4 className="font-semibold text-gray-700 mb-2">Produtos:</h4>
-                                                <div className="space-y-2">
-                                                    {sale.items.map((item: any, index: number) => (
-                                                        <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                                                            <div className="flex-1">
-                                                                <p className="font-medium text-gray-800">
-                                                                    {item.products?.name || `Produto ${item.product_id}`}
-                                                                </p>
-                                                                <p className="text-sm text-gray-600">
-                                                                    Quantidade: {item.quantity} x R$ {Number(item.unit_price || 0).toFixed(2).replace('.', ',')}
-                                                                </p>
-                                                            </div>
-                                                            <p className="font-semibold text-gray-900">
-                                                                R$ {Number(item.total_price || 0).toFixed(2).replace('.', ',')}
-                                                            </p>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <p className="text-sm text-gray-500 mt-4">Detalhes dos produtos não disponíveis</p>
-                                        )}
-                                        <div className="mt-4 flex gap-2">
-                                            <button
-                                                onClick={() => {
-                                                    setSelectedUserForEmail({ email: sale.customer_email, name: sale.customer_name })
-                                                    setEmailModalOpen(true)
-                                                }}
-                                                className="flex items-center gap-2 bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 transition-colors"
-                                            >
-                                                <Mail size={16} />
-                                                Enviar Email ao Cliente
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )
-            case 'carts':
-                return (
-                    <div>
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-semibold text-gray-700 flex items-center">
-                                <ShoppingCart className="mr-2" size={24} />
-                                Carrinhos de Usuários em Tempo Real
-                            </h2>
-                            <button
-                                onClick={loadAllData}
-                                className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
-                            >
-                                Atualizar
-                            </button>
-                        </div>
-                        {userCarts.length === 0 ? (
-                            <p className="text-center py-8 text-gray-500">Nenhum carrinho ativo no momento.</p>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full bg-white">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuário</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantidade</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preço Unit.</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Última Atualização</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200">
-                                        {userCarts.map((cart: any) => (
-                                            <tr key={cart.id} className="hover:bg-gray-50">
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                    {cart.user?.name || 'Usuário não identificado'}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
-                                                    {cart.user?.email || '-'}
-                                                </td>
-                                                <td className="py-4 px-4 text-sm text-gray-900">
-                                                    {cart.product?.name || 'Produto não encontrado'}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
-                                                    {cart.quantity}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
-                                                    {cart.product?.price ? `R$ ${Number(cart.product.price).toFixed(2).replace('.', ',')}` : '-'}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                                                    {cart.product?.price ? `R$ ${(Number(cart.product.price) * cart.quantity).toFixed(2).replace('.', ',')}` : '-'}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {new Date(cart.updated_at).toLocaleString('pt-BR')}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
-                                                    {cart.user?.email && (
-                                                        <button
-                                                            onClick={() => {
-                                                                setSelectedUserForEmail(cart.user)
-                                                                setEmailModalOpen(true)
-                                                            }}
-                                                            className="text-cyan-600 hover:text-cyan-900 flex items-center gap-1"
-                                                        >
-                                                            <Mail size={16} />
-                                                            Enviar Email
-                                                        </button>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
-                )
             case 'purchased':
                 return (
                     <div>
@@ -2976,7 +2784,6 @@ export default function Dashboard() {
         { id: 'images', label: 'Imagens', icon: ImageIcon },
         { id: 'faq', label: 'FAQ', icon: FileText },
         { id: 'purchases', label: 'Compras', icon: Package },
-        { id: 'carts', label: 'Carrinhos', icon: ShoppingCart },
         { id: 'purchased', label: 'Produtos Comprados', icon: Package },
     ]
 

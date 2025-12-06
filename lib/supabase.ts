@@ -296,8 +296,9 @@ export async function getProducts() {
   try {
     const { data, error } = await supabase
       .from('products')
-      .select('*, categories(name, slug)')
-      .order('created_at', { ascending: false });
+      .select('id, name, sku, price, fake_price, stock_quantity, image_url, status, brand, created_at, updated_at, categories(name, slug)')
+      .order('created_at', { ascending: false })
+      .limit(1000); // Limitar para evitar queries muito grandes
     
     if (error) {
       console.error('Erro ao buscar produtos:', error);
@@ -529,8 +530,9 @@ export async function deleteInventoryMovement(id: string) {
 export async function getSales() {
   const { data, error } = await supabase
     .from('sales')
-    .select('*')
-    .order('created_at', { ascending: false });
+    .select('id, order_number, customer_name, customer_email, total_amount, status, payment_method, created_at, updated_at')
+    .order('created_at', { ascending: false })
+    .limit(500); // Limitar para melhor performance
   
   if (error) throw error;
   return data;
@@ -554,8 +556,9 @@ export async function createSale(sale: Omit<Sale, 'id' | 'created_at' | 'updated
 export async function getInvoices() {
   const { data, error } = await supabase
     .from('invoices')
-    .select('*')
-    .order('created_at', { ascending: false });
+    .select('id, invoice_number, customer_name, customer_email, total_amount, status, issue_date, pdf_url, created_at, updated_at')
+    .order('created_at', { ascending: false })
+    .limit(500); // Limitar para melhor performance
   
   if (error) throw error;
   return data;
@@ -1024,11 +1027,23 @@ export async function getSaleItems(saleId: string) {
 export async function getAllSaleItems() {
   const { data, error } = await supabase
     .from('sale_items')
-    .select('*, product:products(*), sale:sales(*)')
-    .order('created_at', { ascending: false });
+    .select(`
+      id,
+      sale_id,
+      product_id,
+      product_name,
+      quantity,
+      unit_price,
+      total_price,
+      created_at,
+      product:products(id, name, sku, image_url),
+      sale:sales(id, order_number, customer_name, customer_email, status)
+    `)
+    .order('created_at', { ascending: false })
+    .limit(500); // Limitar para melhor performance
   
   if (error) throw error;
-  return data as SaleItem[];
+  return data as any[];
 }
 
 export async function createSaleItem(item: Omit<SaleItem, 'id' | 'created_at'>) {
@@ -1045,8 +1060,25 @@ export async function createSaleItem(item: Omit<SaleItem, 'id' | 'created_at'>) 
 export async function getSalesWithItems() {
   const { data, error } = await supabase
     .from('sales')
-    .select('*, sale_items:sale_items(*, product:products(*))')
-    .order('created_at', { ascending: false });
+    .select(`
+      id, 
+      order_number, 
+      customer_name, 
+      customer_email, 
+      total_amount, 
+      status, 
+      created_at,
+      sale_items(
+        id, 
+        product_name, 
+        quantity, 
+        unit_price, 
+        total_price,
+        product:products(id, name, sku, price, image_url)
+      )
+    `)
+    .order('created_at', { ascending: false })
+    .limit(200); // Limitar para melhor performance
   
   if (error) throw error;
   return data;
@@ -1070,8 +1102,9 @@ export async function getSaleById(id: string) {
 export async function getAllUsers() {
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
-    .order('created_at', { ascending: false });
+    .select('id, name, email, user_type, accept_terms, created_at')
+    .order('created_at', { ascending: false })
+    .limit(1000); // Limitar para melhor performance
   
   if (error) throw error;
   return data;
