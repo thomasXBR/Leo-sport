@@ -1,5 +1,6 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import CouponCarousel from '@/components/layout/CouponCarousel';
@@ -11,16 +12,23 @@ export default function PublicLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const isAdminPage = pathname?.startsWith('/admindash');
+
   return (
     <AuthProvider>
       <CartProvider>
         <div className="min-h-screen flex flex-col overflow-x-hidden">
-          <CouponCarousel />
-          <Header />
-          <main className="flex-1 overflow-x-hidden" style={{ paddingTop: '104px' }}>
+          {!isAdminPage && (
+            <>
+              <CouponCarousel />
+              <Header />
+            </>
+          )}
+          <main className="flex-1 overflow-x-hidden" style={{ paddingTop: isAdminPage ? '0' : '104px' }}>
             {children}
           </main>
-          <Footer />
+          {!isAdminPage && <Footer />}
         </div>
       </CartProvider>
     </AuthProvider>
