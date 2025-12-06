@@ -45,17 +45,32 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 if (user) {
                     // Carregar do banco de dados
                     const dbCart = await getUserCart(user.id);
-                    const items: CartItem[] = dbCart.map((item: any) => ({
-                        product: item.product || {
-                            id: item.product_id,
-                            name: 'Produto não encontrado',
-                            price: '0,00',
-                            imageUrl: '',
-                            category: '',
-                        },
-                        quantity: item.quantity,
-                        cartId: item.id,
-                    }));
+                    const items: CartItem[] = dbCart.map((item: any) => {
+                        // Normalize product data from database
+                        const product = item.product || {};
+                        const price = typeof product.price === 'number' 
+                            ? `R$ ${product.price.toFixed(2).replace('.', ',')}`
+                            : (product.price || '0,00');
+                        
+                        return {
+                            product: {
+                                id: parseInt(product.id || item.product_id || '0'),
+                                name: product.name || 'Produto não encontrado',
+                                price: price,
+                                imageUrl: product.image_url || product.imageUrl || '',
+                                category: product.categories?.name || product.category || '',
+                                description: product.description || '',
+                                stock: product.stock_quantity || 0,
+                                sku: product.sku || '',
+                                brand: product.brand || '',
+                                weight: product.weight || '',
+                                dimensions: product.dimensions || '',
+                                status: product.status || 'Ativo',
+                            },
+                            quantity: item.quantity,
+                            cartId: item.id,
+                        };
+                    });
                     setCartItems(items);
                 } else {
                     // Carregar do localStorage
@@ -132,17 +147,32 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 await addToUserCartDB(user.id, product.id.toString(), quantity);
                 // Recarregar carrinho do banco
                 const dbCart = await getUserCart(user.id);
-                const items: CartItem[] = dbCart.map((item: any) => ({
-                    product: item.product || {
-                        id: item.product_id,
-                        name: 'Produto não encontrado',
-                        price: '0,00',
-                        imageUrl: '',
-                        category: '',
-                    },
-                    quantity: item.quantity,
-                    cartId: item.id,
-                }));
+                const items: CartItem[] = dbCart.map((item: any) => {
+                    // Normalize product data from database
+                    const product = item.product || {};
+                    const price = typeof product.price === 'number' 
+                        ? `R$ ${product.price.toFixed(2).replace('.', ',')}`
+                        : (product.price || '0,00');
+                    
+                    return {
+                        product: {
+                            id: parseInt(product.id || item.product_id || '0'),
+                            name: product.name || 'Produto não encontrado',
+                            price: price,
+                            imageUrl: product.image_url || product.imageUrl || '',
+                            category: product.categories?.name || product.category || '',
+                            description: product.description || '',
+                            stock: product.stock_quantity || 0,
+                            sku: product.sku || '',
+                            brand: product.brand || '',
+                            weight: product.weight || '',
+                            dimensions: product.dimensions || '',
+                            status: product.status || 'Ativo',
+                        },
+                        quantity: item.quantity,
+                        cartId: item.id,
+                    };
+                });
                 setCartItems(items);
             } catch (error) {
                 console.error('Error adding to cart:', error);
@@ -185,17 +215,32 @@ export function CartProvider({ children }: { children: ReactNode }) {
                     await deleteUserCartItemDB(item.cartId);
                     // Recarregar carrinho do banco
                     const dbCart = await getUserCart(user.id);
-                    const items: CartItem[] = dbCart.map((item: any) => ({
-                        product: item.product || {
-                            id: item.product_id,
-                            name: 'Produto não encontrado',
-                            price: '0,00',
-                            imageUrl: '',
-                            category: '',
-                        },
-                        quantity: item.quantity,
-                        cartId: item.id,
-                    }));
+                    const items: CartItem[] = dbCart.map((item: any) => {
+                        // Normalize product data from database
+                        const product = item.product || {};
+                        const price = typeof product.price === 'number' 
+                            ? `R$ ${product.price.toFixed(2).replace('.', ',')}`
+                            : (product.price || '0,00');
+                        
+                        return {
+                            product: {
+                                id: parseInt(product.id || item.product_id || '0'),
+                                name: product.name || 'Produto não encontrado',
+                                price: price,
+                                imageUrl: product.image_url || product.imageUrl || '',
+                                category: product.categories?.name || product.category || '',
+                                description: product.description || '',
+                                stock: product.stock_quantity || 0,
+                                sku: product.sku || '',
+                                brand: product.brand || '',
+                                weight: product.weight || '',
+                                dimensions: product.dimensions || '',
+                                status: product.status || 'Ativo',
+                            },
+                            quantity: item.quantity,
+                            cartId: item.id,
+                        };
+                    });
                     setCartItems(items);
                 }
             } catch (error) {
@@ -221,17 +266,32 @@ export function CartProvider({ children }: { children: ReactNode }) {
                     await updateUserCartItemDB(item.cartId, quantity);
                     // Recarregar carrinho do banco
                     const dbCart = await getUserCart(user.id);
-                    const items: CartItem[] = dbCart.map((item: any) => ({
-                        product: item.product || {
-                            id: item.product_id,
-                            name: 'Produto não encontrado',
-                            price: '0,00',
-                            imageUrl: '',
-                            category: '',
-                        },
-                        quantity: item.quantity,
-                        cartId: item.id,
-                    }));
+                    const items: CartItem[] = dbCart.map((item: any) => {
+                        // Normalize product data from database
+                        const product = item.product || {};
+                        const price = typeof product.price === 'number' 
+                            ? `R$ ${product.price.toFixed(2).replace('.', ',')}`
+                            : (product.price || '0,00');
+                        
+                        return {
+                            product: {
+                                id: parseInt(product.id || item.product_id || '0'),
+                                name: product.name || 'Produto não encontrado',
+                                price: price,
+                                imageUrl: product.image_url || product.imageUrl || '',
+                                category: product.categories?.name || product.category || '',
+                                description: product.description || '',
+                                stock: product.stock_quantity || 0,
+                                sku: product.sku || '',
+                                brand: product.brand || '',
+                                weight: product.weight || '',
+                                dimensions: product.dimensions || '',
+                                status: product.status || 'Ativo',
+                            },
+                            quantity: item.quantity,
+                            cartId: item.id,
+                        };
+                    });
                     setCartItems(items);
                 }
             } catch (error) {
@@ -268,8 +328,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     // Calculate total price
     const cartTotal = cartItems.reduce((total, item) => {
-        const price = parseFloat(item.product.price.replace(/[^\d,]/g, '').replace(',', '.'));
-        return total + (price * item.quantity);
+        // Handle both string and number prices
+        let priceValue: number;
+        if (typeof item.product.price === 'string') {
+            priceValue = parseFloat(item.product.price.replace(/[^\d,]/g, '').replace(',', '.'));
+        } else if (typeof item.product.price === 'number') {
+            priceValue = item.product.price;
+        } else {
+            priceValue = 0;
+        }
+        return total + (priceValue * item.quantity);
     }, 0);
 
     // Calculate total items count

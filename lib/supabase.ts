@@ -931,10 +931,10 @@ export async function addToUserCart(userId: string, productId: string, quantity:
   // Verificar se já existe
   const { data: existing } = await supabase
     .from('user_carts')
-    .select('id, quantity')
+    .select('id,quantity')
     .eq('user_id', userId)
     .eq('product_id', productId)
-    .single();
+    .maybeSingle();
 
   if (existing) {
     // Atualizar quantidade

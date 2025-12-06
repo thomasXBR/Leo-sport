@@ -2,7 +2,7 @@ export interface Product {
   id: number;
   name: string;
   category: string;
-  price: string;
+  price: string | number; // Aceita tanto string quanto number
   discountedPrice?: string | null;
   discountPercentage?: string | null;
   imageUrl: string;

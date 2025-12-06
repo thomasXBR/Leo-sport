@@ -44,8 +44,13 @@ export default function CartSidebar() {
         }
     };
 
-    const calculateItemTotal = (price: string, quantity: number) => {
-        const numPrice = parseFloat(price.replace(/[^\d,]/g, '').replace(',', '.'));
+    const calculateItemTotal = (price: string | number, quantity: number) => {
+        let numPrice: number;
+        if (typeof price === 'string') {
+            numPrice = parseFloat(price.replace(/[^\d,]/g, '').replace(',', '.'));
+        } else {
+            numPrice = price;
+        }
         const total = numPrice * quantity;
         return `R$ ${total.toFixed(2).replace('.', ',')}`;
     };

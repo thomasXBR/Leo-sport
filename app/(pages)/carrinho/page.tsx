@@ -17,12 +17,20 @@ export default function CarrinhoPage() {
         }
     };
 
-    const formatPrice = (price: string) => {
-        return price;
+    const formatPrice = (price: string | number) => {
+        if (typeof price === 'string') {
+            return price;
+        }
+        return `R$ ${price.toFixed(2).replace('.', ',')}`;
     };
 
-    const calculateItemTotal = (price: string, quantity: number) => {
-        const numPrice = parseFloat(price.replace(/[^\d,]/g, '').replace(',', '.'));
+    const calculateItemTotal = (price: string | number, quantity: number) => {
+        let numPrice: number;
+        if (typeof price === 'string') {
+            numPrice = parseFloat(price.replace(/[^\d,]/g, '').replace(',', '.'));
+        } else {
+            numPrice = price;
+        }
         const total = numPrice * quantity;
         return `R$ ${total.toFixed(2).replace('.', ',')}`;
     };
@@ -89,7 +97,7 @@ export default function CarrinhoPage() {
                                                         {calculateItemTotal(item.product.price, item.quantity)}
                                                     </p>
                                                     <p className="text-sm text-gray-500">
-                                                        R$ {item.product.price.replace(/[^\d,]/g, '')} cada
+                                                        {formatPrice(item.product.price)} cada
                                                     </p>
                                                 </div>
                                                 <div className="flex flex-col items-end justify-between">
