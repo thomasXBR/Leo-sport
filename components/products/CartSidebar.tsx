@@ -6,15 +6,29 @@ import { Trash2, Plus, Minus, ShoppingBag, X } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 export default function CartSidebar() {
     const { cartItems, removeFromCart, updateQuantity, cartTotal, cartCount, loading } = useCart();
     const [isVisible, setIsVisible] = useState(false);
     const [wasEmpty, setWasEmpty] = useState(true);
     const [previousCount, setPreviousCount] = useState(0);
+    const pathname = usePathname();
+
+    // Fechar automaticamente quando estiver na página do carrinho
+    useEffect(() => {
+        if (pathname === '/carrinho' || pathname === '/checkout') {
+            setIsVisible(false);
+        }
+    }, [pathname]);
 
     // Mostrar carrinho automaticamente quando há produtos ou quando um produto é adicionado
     useEffect(() => {
+        // Não mostrar se estiver na página do carrinho ou checkout
+        if (pathname === '/carrinho' || pathname === '/checkout') {
+            return;
+        }
+
         const currentCount = cartItems.length;
         const currentTotalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
         const previousTotalItems = cartItems.length > 0 ? previousCount : 0;
@@ -34,7 +48,7 @@ export default function CartSidebar() {
         }
         
         setPreviousCount(currentTotalItems);
-    }, [cartItems, wasEmpty, previousCount]);
+    }, [cartItems, wasEmpty, previousCount, pathname]);
 
     const handleQuantityChange = (productId: number, change: number) => {
         const item = cartItems.find(item => item.product.id === productId);
@@ -116,8 +130,13 @@ export default function CartSidebar() {
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => removeFromCart(item.product.id)}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            removeFromCart(item.product.id);
+                                        }}
                                         className="text-red-600 hover:text-red-700 hover:bg-red-50 h-6 w-6 p-0"
+                                        disabled={loading}
                                     >
                                         <Trash2 className="w-3 h-3" />
                                     </Button>
@@ -125,8 +144,13 @@ export default function CartSidebar() {
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => handleQuantityChange(item.product.id, -1)}
-                                            className="h-6 w-6 p-0"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                handleQuantityChange(item.product.id, -1);
+                                            }}
+                                            disabled={loading || item.quantity <= 1}
+                                            className="h-6 w-6 p-0 disabled:opacity-50"
                                         >
                                             <Minus className="w-3 h-3" />
                                         </Button>
@@ -134,8 +158,13 @@ export default function CartSidebar() {
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => handleQuantityChange(item.product.id, 1)}
-                                            className="h-6 w-6 p-0"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                handleQuantityChange(item.product.id, 1);
+                                            }}
+                                            disabled={loading}
+                                            className="h-6 w-6 p-0 disabled:opacity-50"
                                         >
                                             <Plus className="w-3 h-3" />
                                         </Button>
@@ -169,7 +198,7 @@ export default function CartSidebar() {
                 </div>
 
                 <div className="space-y-2">
-                    <Link href="/carrinho" className="block">
+                    <Link href="/carrinho" className="block" onClick={() => setIsVisible(false)}>
                         <Button
                             variant="outline"
                             className="w-full border-gray-300 text-xs"
@@ -178,7 +207,7 @@ export default function CartSidebar() {
                             Ver Carrinho Completo
                         </Button>
                     </Link>
-                    <Link href="/checkout">
+                    <Link href="/checkout" onClick={() => setIsVisible(false)}>
                         <Button
                             className="w-full bg-blue-900 hover:bg-blue-950 text-white font-semibold text-xs"
                             size="sm"
