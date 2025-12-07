@@ -10,6 +10,14 @@ import {
 } from '@/lib/mercadoPagoClient';
 import { supabase } from '@/lib/supabase';
 
+type PaymentItem = {
+  id?: string;
+  title?: string;
+  description?: string;
+  quantity?: number;
+  unit_price?: number;
+};
+
 /**
  * API Route para receber webhooks do Mercado Pago
  * POST /api/payments/webhook
@@ -188,6 +196,15 @@ export async function POST(request: NextRequest) {
               payment_status: paymentStatusDB,
             });
           }
+
+          // Se pagamento aprovado, garantir criação/atualização completa e baixa de estoque
+          if (isPaymentApproved(payment)) {
+            await ensureOrderAndStock({
+              requestId,
+              externalReference,
+              payment,
+            });
+          }
         }
       } catch (dbError: any) {
         console.error('[Webhook] Erro ao processar atualização do pedido:', {
@@ -226,6 +243,148 @@ export async function POST(request: NextRequest) {
       },
       { status: 200 }
     );
+  }
+}
+
+/**
+ * Garante que o pedido esteja registrado com items e faz baixa de estoque
+ */
+async function ensureOrderAndStock({
+  requestId,
+  externalReference,
+  payment,
+}: {
+  requestId: string;
+  externalReference: string;
+  payment: any;
+}) {
+  try {
+    // Buscar pedido existente
+    const { data: existingSale } = await supabase
+      .from('sales')
+      .select('id, order_number, status, customer_email, customer_name')
+      .eq('order_number', externalReference)
+      .maybeSingle();
+
+    // Extrair itens do pagamento (Mercado Pago envia em additional_info.items ou transaction_details)
+    const items: PaymentItem[] =
+      payment?.additional_info?.items ||
+      payment?.order?.items ||
+      payment?.items ||
+      [];
+
+    const totalAmount = payment?.transaction_amount || 0;
+    const paymentMethod = payment?.payment_method_id || '';
+    const payerEmail = payment?.payer?.email || '';
+    const payerName = payment?.payer?.first_name
+      ? `${payment?.payer?.first_name} ${payment?.payer?.last_name || ''}`.trim()
+      : payment?.payer?.name || payment?.payer?.nickname || '';
+
+    // Se não há itens, não consegue baixar estoque
+    if (!items || items.length === 0) {
+      if (WEBHOOK_LOG_ENABLED) {
+        console.warn('[Webhook] Pagamento aprovado sem itens para registrar', {
+          requestId,
+          externalReference,
+        });
+      }
+      return;
+    }
+
+    let saleId = existingSale?.id;
+
+    // Criar pedido se não existir
+    if (!existingSale) {
+      const { data: createdSale, error: createSaleError } = await supabase
+        .from('sales')
+        .insert({
+          order_number: externalReference,
+          customer_email: payerEmail || null,
+          customer_name: payerName || null,
+          total_amount: totalAmount,
+          status: 'Pago',
+          payment_method: paymentMethod,
+          payment_status: 'approved',
+          payment_id: payment?.id?.toString(),
+        })
+        .select('id')
+        .single();
+
+      if (createSaleError) {
+        console.error('[Webhook] Erro ao criar venda', {
+          requestId,
+          externalReference,
+          error: createSaleError,
+        });
+        return;
+      }
+
+      saleId = createdSale.id;
+    } else {
+      // Atualizar status se ainda não estava pago
+      if (existingSale.status !== 'Pago') {
+        await supabase
+          .from('sales')
+          .update({
+            status: 'Pago',
+            payment_status: 'approved',
+            payment_id: payment?.id?.toString(),
+            total_amount: totalAmount,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingSale.id);
+      }
+    }
+
+    if (!saleId) return;
+
+    // Registrar itens e baixar estoque
+    for (const item of items) {
+      const quantity = item.quantity || 1;
+      const unitPrice = item.unit_price || 0;
+      const productId = item.id;
+
+      // Inserir item da venda
+      await supabase.from('sale_items').insert({
+        sale_id: saleId,
+        product_id: productId || null,
+        product_name: item.title || item.description || 'Item',
+        quantity,
+        unit_price: unitPrice,
+        total_price: unitPrice * quantity,
+      });
+
+      // Baixar estoque se produtoId estiver presente
+      if (productId) {
+        const { data: product } = await supabase
+          .from('products')
+          .select('stock_quantity')
+          .eq('id', productId)
+          .maybeSingle();
+
+        if (product && product.stock_quantity !== undefined) {
+          const newStock = Math.max(0, (product.stock_quantity || 0) - quantity);
+          await supabase
+            .from('products')
+            .update({ stock_quantity: newStock, updated_at: new Date().toISOString() })
+            .eq('id', productId);
+        }
+      }
+    }
+
+    if (WEBHOOK_LOG_ENABLED) {
+      console.log('[Webhook] Pedido consolidado e estoque atualizado', {
+        requestId,
+        external_reference: externalReference,
+        sale_id: saleId,
+      });
+    }
+  } catch (error: any) {
+    console.error('[Webhook] Erro em ensureOrderAndStock', {
+      requestId,
+      external_reference: externalReference,
+      error: error.message,
+    });
   }
 }
 
