@@ -14,6 +14,7 @@ export default function PublicLayout({
 }) {
   const pathname = usePathname();
   const isAdminPage = pathname?.startsWith('/admindash');
+  const [hasCoupons, setHasCoupons] = useState(false);
 
   return (
     <AuthProvider>
@@ -22,10 +23,19 @@ export default function PublicLayout({
           {!isAdminPage && (
             <>
               <Header />
-              <CouponCarousel />
+              <CouponCarousel onHasCouponsChange={setHasCoupons} />
             </>
           )}
-          <main className="flex-1 overflow-x-hidden" style={{ paddingTop: isAdminPage ? '0' : '104px' }}>
+          <main
+            className="flex-1 overflow-x-hidden"
+            style={{
+              paddingTop: isAdminPage
+                ? '0'
+                : hasCoupons
+                  ? '136px' // header + carrossel
+                  : '104px', // apenas header
+            }}
+          >
             {children}
           </main>
           {!isAdminPage && <Footer />}

@@ -715,7 +715,7 @@ export async function deleteCoupon(id: string) {
  * @param purchaseAmount - Valor total da compra
  * @returns Cupom válido ou null se inválido
  */
-export async function validateCoupon(code: string, purchaseAmount: number) {
+export async function validateCoupon(code: string, purchaseAmount: number, userId?: string) {
   try {
     const { data, error } = await supabase
       .from('coupons')
@@ -755,6 +755,24 @@ export async function validateCoupon(code: string, purchaseAmount: number) {
       };
     }
     
+    // Se fornecido userId, verificar se já usou (tabela coupon_usages)
+    if (userId) {
+      try {
+        const { data: usage } = await supabase
+          .from('coupon_usages')
+          .select('id')
+          .eq('coupon_id', data.id)
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (usage) {
+          return { valid: false, message: 'Você já utilizou este cupom' };
+        }
+      } catch (err) {
+        console.warn('[Cupons] Não foi possível verificar uso por usuário (tabela ausente?)', err);
+      }
+    }
+
     // Calcular desconto
     let discountAmount = 0;
     if (data.discount_type === 'Percentual') {
@@ -773,6 +791,28 @@ export async function validateCoupon(code: string, purchaseAmount: number) {
   } catch (error: any) {
     console.error('Erro ao validar cupom:', error);
     return { valid: false, message: 'Erro ao validar cupom' };
+  }
+}
+
+/**
+ * Registrar uso de cupom por usuário (idempotente)
+ * Requer tabela coupon_usages (ver SQL recomendado)
+ */
+export async function registerCouponUsage(couponId: string, userId: string) {
+  try {
+    const { error } = await supabase
+      .from('coupon_usages')
+      .insert({ coupon_id: couponId, user_id: userId })
+      .select()
+      .maybeSingle();
+
+    if (error && !String(error.message).includes('duplicate key')) {
+      throw error;
+    }
+    return true;
+  } catch (error) {
+    console.error('Erro ao registrar uso do cupom:', error);
+    return false;
   }
 }
 

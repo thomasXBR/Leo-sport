@@ -4,7 +4,11 @@ import { useState, useEffect } from 'react';
 import { Ticket } from 'lucide-react';
 import { getNavbarCoupons, type Coupon } from '@/lib/supabase';
 
-export default function CouponCarousel() {
+type Props = {
+    onHasCouponsChange?: (hasCoupons: boolean) => void;
+};
+
+export default function CouponCarousel({ onHasCouponsChange }: Props) {
     const [coupons, setCoupons] = useState<Coupon[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -15,7 +19,9 @@ export default function CouponCarousel() {
     const loadCoupons = async () => {
         try {
             const data = await getNavbarCoupons();
-            setCoupons(data || []);
+            const list = data || [];
+            setCoupons(list);
+            onHasCouponsChange?.(list.length > 0);
             setLoading(false);
         } catch (error: any) {
             // Log detalhado do erro
@@ -26,6 +32,7 @@ export default function CouponCarousel() {
             });
             // Não mostrar erro ao usuário, apenas não exibir o carrossel
             setCoupons([]);
+            onHasCouponsChange?.(false);
             setLoading(false);
         }
     };

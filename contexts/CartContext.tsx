@@ -10,6 +10,7 @@ import {
     deleteUserCartItem as deleteUserCartItemDB,
     clearUserCart as clearUserCartDB,
     validateCoupon,
+    registerCouponUsage,
     type UserCart,
     type Coupon
 } from '@/lib/supabase';
@@ -315,16 +316,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     // Aplicar cupom
     const applyCoupon = useCallback(async (code: string): Promise<{ success: boolean; message: string }> => {
+        if (!user?.id) {
+            return { success: false, message: 'Faça login para usar cupons' }
+        }
+
         if (!code || code.trim() === '') {
             return { success: false, message: 'Por favor, digite um código de cupom' };
         }
 
         try {
-            const result = await validateCoupon(code, cartTotal);
+            const result = await validateCoupon(code, cartTotal, user.id);
             
             if (result.valid && result.coupon && result.discountAmount !== undefined) {
                 setAppliedCoupon(result.coupon);
                 setDiscountAmount(result.discountAmount);
+                // Registrar uso (idempotente)
+                await registerCouponUsage(result.coupon.id, user.id);
                 return { success: true, message: result.message || 'Cupom aplicado com sucesso!' };
             } else {
                 return { success: false, message: result.message || 'Cupom inválido' };

@@ -896,14 +896,15 @@ export default function Dashboard() {
     }, [faqs, calculatedTotalPages])
 
     const [salesData, setSalesData] = useState({
-        labels: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho'],
+        labels: [''],
         datasets: [{
-            label: 'Vendas Mensais (R$)',
-            data: [0, 0, 0, 0, 0, 0],
+            label: 'Vendas (R$)',
+            data: [0],
             backgroundColor: '#0891b2',
             borderRadius: 5,
         }],
     })
+    const [chartGranularity, setChartGranularity] = useState<'day' | 'month' | 'year'>('month')
 
     // Accept a pending partnership request: update status to 'Ativo' in Supabase
     const handleAcceptPartnership = async (requestId: string) => {
@@ -1078,7 +1079,7 @@ export default function Dashboard() {
         try {
             setLoading(true)
             // Carregar apenas os dados essenciais inicialmente
-            const [productsData, inventoryData, salesData, invoicesData, partnersData, couponsData, contentData, faqsData, purchasesData, imagesData, usersData, salesWithItemsData, purchasedItemsData] = await Promise.all([
+            const [productsData, inventoryData, salesDataResp, invoicesData, partnersData, couponsData, contentData, faqsData, purchasesData, imagesData, usersData, salesWithItemsData, purchasedItemsData] = await Promise.all([
                 getProducts().catch(() => []),
                 getInventoryItems().catch(() => []),
                 getSales().catch(() => []),
@@ -1096,7 +1097,7 @@ export default function Dashboard() {
 
             setProducts(productsData || [])
             setInventoryItems(inventoryData || [])
-            setSales(salesData || [])
+            setSales(salesDataResp || [])
             setInvoices(invoicesData || [])
             // Separar solicitações pendentes das parcerias ativas/inativas
             const allPartners = partnersData || []
@@ -1120,19 +1121,8 @@ export default function Dashboard() {
             setSalesWithItems(salesWithItemsData || [])
             setPurchasedItems(purchasedItemsData || [])
 
-            // Carregar dados do gráfico
-            const chartSalesData = await getSalesDataForChart().catch(() => [])
-            if (chartSalesData && chartSalesData.length > 0) {
-                // Processar dados para o gráfico (agrupar por mês)
-                const monthlyData = processSalesDataForChart(chartSalesData)
-                setSalesData(prev => ({
-                    ...prev,
-                    datasets: [{
-                        ...prev.datasets[0],
-                        data: monthlyData
-                    }]
-                }))
-            }
+            // Recalcular gráfico com as vendas carregadas
+            updateSalesChart(salesDataResp || [], chartGranularity)
         } catch (error) {
             console.error('Erro ao carregar dados:', error)
         } finally {
@@ -1704,12 +1694,91 @@ export default function Dashboard() {
         )
     }
 
+    const updateSalesChart = (salesList: any[], granularity: 'day' | 'month' | 'year') => {
+        if (!salesList || salesList.length === 0) {
+            setSalesData(prev => ({
+                ...prev,
+                labels: ['Sem dados'],
+                datasets: [{ ...prev.datasets[0], data: [0] }]
+            }))
+            return
+        }
+
+        const buckets: Record<string, number> = {}
+
+        salesList
+            .filter((s: any) => s.status === 'Pago')
+            .forEach((sale: any) => {
+                const date = new Date(sale.created_at)
+                let key = ''
+                if (granularity === 'day') {
+                    key = date.toLocaleDateString('pt-BR') // dd/mm/aaaa
+                } else if (granularity === 'month') {
+                    const month = date.toLocaleDateString('pt-BR', { month: 'short' })
+                    key = `${month.toUpperCase()}/${date.getFullYear()}`
+                } else {
+                    key = `${date.getFullYear()}`
+                }
+                const total = Number(sale.total_amount || 0)
+                buckets[key] = (buckets[key] || 0) + total
+            })
+
+        // Ordenar por data
+        const labels = Object.keys(buckets).sort((a, b) => {
+            const parse = (label: string) => {
+                if (granularity === 'day') {
+                    const [d, m, y] = label.split('/').map(Number)
+                    return new Date(y, m - 1, d).getTime()
+                }
+                if (granularity === 'month') {
+                    const [mon, yStr] = label.split('/')
+                    const y = Number(yStr)
+                    const months = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
+                    const m = months.indexOf(mon.toUpperCase())
+                    return new Date(y, m >= 0 ? m : 0, 1).getTime()
+                }
+                return new Date(Number(label), 0, 1).getTime()
+            }
+            return parse(a) - parse(b)
+        })
+
+        const data = labels.map(l => Number(buckets[l]?.toFixed(2) || 0))
+
+        setSalesData(prev => ({
+            ...prev,
+            labels,
+            datasets: [{
+                ...prev.datasets[0],
+                label: granularity === 'day' ? 'Vendas diárias (R$)' : granularity === 'month' ? 'Vendas mensais (R$)' : 'Vendas anuais (R$)',
+                data,
+            }]
+        }))
+    }
+
+    useEffect(() => {
+        updateSalesChart(sales, chartGranularity)
+    }, [sales, chartGranularity])
+
     function renderTabContent() {
         switch (activeTab) {
             case 'sales':
                 return (
                     <div>
-                        <h2 className="text-2xl font-semibold mb-4 text-gray-700">Análise de Vendas</h2>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-2xl font-semibold text-gray-700">Análise de Vendas</h2>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm text-gray-600">Agrupar por:</span>
+                                <select
+                                    value={chartGranularity}
+                                    onChange={(e) => setChartGranularity(e.target.value as 'day' | 'month' | 'year')}
+                                    className="border border-gray-300 rounded-md px-3 py-1 text-sm"
+                                >
+                                    <option value="day">Dia</option>
+                                    <option value="month">Mês</option>
+                                    <option value="year">Ano</option>
+                                </select>
+                            </div>
+                        </div>
                         <div className="relative h-[400px]">
                             <Bar options={chartOptions} data={salesData} />
                         </div>
