@@ -1723,6 +1723,14 @@ export default function Dashboard() {
                 buckets[key] = (buckets[key] || 0) + total
             })
 
+        // Garantir que o dia atual apareça mesmo sem vendas
+        if (granularity === 'day') {
+            const todayKey = new Date().toLocaleDateString('pt-BR')
+            if (!(todayKey in buckets)) {
+                buckets[todayKey] = 0
+            }
+        }
+
         // Ordenar por data
         const labels = Object.keys(buckets).sort((a, b) => {
             const parse = (label: string) => {
