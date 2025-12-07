@@ -877,7 +877,7 @@ export default function Dashboard() {
     const [selectedUserForEmail, setSelectedUserForEmail] = useState<any>(null)
     const [filterAcceptedTerms, setFilterAcceptedTerms] = useState(false)
 
-    const FAQS_PER_PAGE = 2
+    const FAQS_PER_PAGE = 6
     const [currentPage, setCurrentPage] = useState(1)
     const totalFAQs = faqs.length
     const calculatedTotalPages = Math.ceil(totalFAQs / FAQS_PER_PAGE)
