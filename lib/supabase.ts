@@ -87,19 +87,6 @@ export type ReviewWithUser = Review & {
   user: { id: string; name: string; avatar_url?: string } | null
 };
 
-export type InventoryMovement = {
-  id: string;
-  product_id: string;
-  product_name: string;
-  movement_type: 'Entrada' | 'Saída' | 'Ajuste';
-  quantity: number;
-  previous_quantity: number;
-  new_quantity: number;
-  reason?: string;
-  created_by?: string;
-  created_at: string;
-};
-
 export type Sale = {
   id: string;
   order_number: string;
@@ -447,81 +434,6 @@ export async function deleteReview(id: string) {
   if (error) throw error;
 }
 
-// ============================================
-// FUNÇÕES CRUD - ESTOQUE
-// ============================================
-
-export async function getInventoryMovements() {
-  const { data, error } = await supabase
-    .from('inventory_movements')
-    .select('*, products(name, sku)')
-    .order('created_at', { ascending: false });
-  
-  if (error) throw error;
-  return data;
-}
-
-export async function getInventoryItems() {
-  const { data, error } = await supabase
-    .from('products')
-    .select('id, name, stock_quantity, status')
-    .order('name');
-  
-  if (error) throw error;
-  return data.map(item => ({
-    id: item.id,
-    name: item.name,
-    quantity: item.stock_quantity,
-    status: item.stock_quantity === 0 ? 'Esgotado' : 
-            item.stock_quantity < 20 ? 'Estoque Baixo' : 'Em Estoque'
-  }));
-}
-
-export async function createInventoryMovement(movement: Omit<InventoryMovement, 'id' | 'created_at'>) {
-  // Primeiro, buscar a quantidade atual do produto
-  const { data: product } = await supabase
-    .from('products')
-    .select('stock_quantity, name')
-    .eq('id', movement.product_id)
-    .single();
-  
-  if (!product) throw new Error('Produto não encontrado');
-  
-  const previousQuantity = product.stock_quantity;
-  let newQuantity = previousQuantity;
-  
-  if (movement.movement_type === 'Entrada') {
-    newQuantity = previousQuantity + movement.quantity;
-  } else if (movement.movement_type === 'Saída') {
-    newQuantity = Math.max(0, previousQuantity - movement.quantity);
-  } else if (movement.movement_type === 'Ajuste') {
-    newQuantity = movement.new_quantity;
-  }
-  
-  const { data, error } = await supabase
-    .from('inventory_movements')
-    .insert([{
-      ...movement,
-      product_name: product.name,
-      previous_quantity: previousQuantity,
-      new_quantity: newQuantity,
-      created_by: (await supabase.auth.getUser()).data.user?.id
-    }])
-    .select()
-    .single();
-  
-  if (error) throw error;
-  return data;
-}
-
-export async function deleteInventoryMovement(id: string) {
-  const { error } = await supabase
-    .from('inventory_movements')
-    .delete()
-    .eq('id', id);
-  
-  if (error) throw error;
-}
 
 // ============================================
 // FUNÇÕES CRUD - VENDAS
