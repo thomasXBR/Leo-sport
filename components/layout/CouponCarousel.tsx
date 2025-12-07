@@ -5,7 +5,6 @@ import { Ticket } from 'lucide-react';
 import { getNavbarCoupons, type Coupon } from '@/lib/supabase';
 
 export default function CouponCarousel() {
-    const [currentIndex, setCurrentIndex] = useState(0);
     const [coupons, setCoupons] = useState<Coupon[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -31,16 +30,6 @@ export default function CouponCarousel() {
         }
     };
 
-    useEffect(() => {
-        if (coupons.length > 1) {
-            const interval = setInterval(() => {
-                setCurrentIndex((prev) => (prev + 1) % coupons.length);
-            }, 4000); // Muda o cupom a cada 4 segundos
-
-            return () => clearInterval(interval);
-        }
-    }, [coupons.length]);
-
     if (loading) {
         return null;
     }
@@ -59,40 +48,45 @@ export default function CouponCarousel() {
         return `🎉 Ganhe descontos especiais usando o cupom: ${code}`;
     };
 
+    // Duplicar cupons para criar efeito de loop infinito
+    const duplicatedCoupons = [...coupons, ...coupons];
+
     return (
         <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white py-2 overflow-hidden relative fixed top-16 left-0 right-0 z-40">
-            <div className="flex items-center justify-center gap-2">
-                <div className="overflow-hidden h-6 relative w-full max-w-4xl mx-auto">
-                    <div
-                        className="flex transition-transform duration-500 ease-in-out"
-                        style={{
-                            transform: `translateX(-${currentIndex * 100}%)`,
-                        }}
-                    >
-                        {coupons.map((coupon, index) => (
+            <style jsx>{`
+                @keyframes scroll-left {
+                    0% {
+                        transform: translateX(0);
+                    }
+                    100% {
+                        transform: translateX(-50%);
+                    }
+                }
+                
+                .animate-scroll {
+                    animation: scroll-left 20s linear infinite;
+                }
+                
+                .animate-scroll:hover {
+                    animation-play-state: paused;
+                }
+            `}</style>
+            
+            <div className="flex items-center justify-center">
+                <div className="overflow-hidden h-8 relative w-full">
+                    <div className="flex animate-scroll whitespace-nowrap">
+                        {duplicatedCoupons.map((coupon, index) => (
                             <div
-                                key={coupon.id}
-                                className="min-w-full text-center text-sm sm:text-base font-medium px-4 flex items-center justify-center gap-2"
+                                key={`${coupon.id}-${index}`}
+                                className="inline-flex items-center gap-2 px-8 text-sm sm:text-base font-medium"
                             >
                                 <Ticket className="w-4 h-4 flex-shrink-0" />
                                 <span>{formatCouponMessage(coupon)}</span>
+                                <span className="mx-4 text-white/50">•</span>
                             </div>
                         ))}
                     </div>
                 </div>
-                {coupons.length > 1 && (
-                    <div className="flex gap-1 px-4">
-                        {coupons.map((_, index) => (
-                            <button
-                                key={index}
-                                onClick={() => setCurrentIndex(index)}
-                                className={`w-2 h-2 rounded-full transition-all ${index === currentIndex ? 'bg-white' : 'bg-white/50'
-                                    }`}
-                                aria-label={`Ir para cupom ${index + 1}`}
-                            />
-                        ))}
-                    </div>
-                )}
             </div>
         </div>
     );
