@@ -967,7 +967,17 @@ export default function Dashboard() {
         maintainAspectRatio: false,
         plugins: {
             legend: { position: 'top' as const },
-            title: { display: true, text: 'Performance de Vendas nos Últimos 6 Meses' },
+            title: { display: true, text: 'Performance de Vendas' },
+        },
+        scales: {
+            y: {
+                ticks: {
+                    // Exibe labels em passos de 1000
+                    stepSize: 1000,
+                    callback: (value: any) => `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}`,
+                },
+                beginAtZero: true,
+            },
         },
     }
 
