@@ -1219,7 +1219,7 @@ export async function getSaleById(id: string) {
 export async function getAllUsers() {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, name, email, user_type, accept_terms, created_at')
+    .select('id, name, email, user_type, accept_terms, consent_emails, created_at')
     .order('created_at', { ascending: false })
     .limit(1000); // Limitar para melhor performance
   

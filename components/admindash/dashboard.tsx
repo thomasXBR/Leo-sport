@@ -875,7 +875,7 @@ export default function Dashboard() {
     const [sidebarOpen, setSidebarOpen] = useState(true)
     const [emailModalOpen, setEmailModalOpen] = useState(false)
     const [selectedUserForEmail, setSelectedUserForEmail] = useState<any>(null)
-    const [filterAcceptedTerms, setFilterAcceptedTerms] = useState(false)
+    const [filterAcceptedEmails, setFilterAcceptedEmails] = useState(false)
 
     const FAQS_PER_PAGE = 6
     const [currentPage, setCurrentPage] = useState(1)
@@ -1866,8 +1866,11 @@ export default function Dashboard() {
                     </div>
                 );
             case 'users':
-                const usersToShow = filterAcceptedTerms
-                    ? users.filter((u: any) => u.accept_terms === true)
+                const usersToShow = filterAcceptedEmails
+                    ? users.filter((u: any) => {
+                        // Verificar se consent_emails é true (boolean ou string 'true')
+                        return u.consent_emails === true || u.consent_emails === 'true' || u.consent_emails === 1
+                    })
                     : users
                 return (
                     <div>
@@ -1880,20 +1883,20 @@ export default function Dashboard() {
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input
                                         type="checkbox"
-                                        checked={filterAcceptedTerms}
-                                        onChange={(e) => setFilterAcceptedTerms(e.target.checked)}
+                                        checked={filterAcceptedEmails}
+                                        onChange={(e) => setFilterAcceptedEmails(e.target.checked)}
                                         className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
                                     />
                                     <span className="text-sm font-medium text-gray-700">
-                                        Apenas usuários que aceitaram termos
+                                        Apenas usuários que aceitaram receber emails
                                     </span>
                                 </label>
                             </div>
                         </div>
                         {usersToShow.length === 0 ? (
                             <p className="text-center py-8 text-gray-500">
-                                {filterAcceptedTerms
-                                    ? 'Nenhum usuário que aceitou os termos encontrado.'
+                                {filterAcceptedEmails
+                                    ? 'Nenhum usuário que aceitou receber emails encontrado.'
                                     : 'Nenhum usuário encontrado.'}
                             </p>
                         ) : (
@@ -1904,14 +1907,14 @@ export default function Dashboard() {
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aceitou Termos</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aceita Receber Emails</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data de Criação</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-200">
                                         {usersToShow.map((user: any) => (
-                                            <tr key={user.id} className={user.accept_terms ? 'bg-green-50' : ''}>
+                                            <tr key={user.id} className={(user.consent_emails === true || user.consent_emails === 'true' || user.consent_emails === 1) ? 'bg-green-50' : ''}>
                                                 <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">
                                                     {user.name || '-'}
                                                 </td>
@@ -1927,7 +1930,7 @@ export default function Dashboard() {
                                                     </span>
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap">
-                                                    {user.accept_terms ? (
+                                                    {(user.consent_emails === true || user.consent_emails === 'true' || user.consent_emails === 1) ? (
                                                         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                                                             ✓ Sim
                                                         </span>
@@ -1942,7 +1945,7 @@ export default function Dashboard() {
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
                                                     <div className="flex gap-2 items-center">
-                                                        {user.accept_terms && user.email ? (
+                                                        {(user.consent_emails === true || user.consent_emails === 'true' || user.consent_emails === 1) && user.email ? (
                                                             <button
                                                                 onClick={() => {
                                                                     setSelectedUserForEmail(user)
