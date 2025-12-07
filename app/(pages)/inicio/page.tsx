@@ -88,7 +88,7 @@ export default function InicioPage() {
   return (
     <div className="space-y-10">
       {/* Hero Section */}
-      <section className="relative text-white overflow-hidden min-h-[520px]">
+      <section className="relative text-white overflow-hidden min-h-[520px] flex items-center">
         {/* Background Image */}
         <div className="absolute inset-0">
           <Image
@@ -101,7 +101,7 @@ export default function InicioPage() {
           <div className="absolute inset-0 bg-black/50" />
         </div>
         {/* Content */}
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-24 lg:py-28">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 lg:py-20">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               {getContent('hero_title', 'Bem-vindo à')}{' '}
