@@ -804,52 +804,6 @@ const PartnerForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
     )
 }
 
-// Componente de Formulário de Compras (Placeholder)
-const PurchaseForm = ({ initialData, onSave, onCancel }: { initialData: any, onSave: (data: any) => void, onCancel: () => void }) => {
-    const [supplier, setSupplier] = useState(initialData?.supplier_name || '')
-    const [total, setTotal] = useState<string>(initialData?.total_amount ? String(initialData.total_amount) : '')
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
-        onSave({ supplier_name: supplier, total_amount: parseFloat(total || '0') })
-    }
-
-    return (
-        <form onSubmit={handleSubmit}>
-            <div className="space-y-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Fornecedor</label>
-                    <input
-                        type="text"
-                        value={supplier}
-                        onChange={(e) => setSupplier(e.target.value)}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                        required
-                    />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Valor Total (R$)</label>
-                    <input
-                        type="number"
-                        step="0.01"
-                        value={total}
-                        onChange={(e) => setTotal(e.target.value)}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                        required
-                    />
-                </div>
-            </div>
-            <DialogFooter className="mt-6">
-                <button type="button" onClick={onCancel} className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400">
-                    Cancelar
-                </button>
-                <button type="submit" className="bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700">
-                    <Save size={20} className="inline mr-2" /> Salvar Compra
-                </button>
-            </DialogFooter>
-        </form>
-    )
-}
 
 export default function Dashboard() {
     const [activeTab, setActiveTab] = useState('purchases')
@@ -947,7 +901,7 @@ export default function Dashboard() {
 
     // Estados dos modais
     const [isModalOpen, setIsModalOpen] = useState(false)
-    const [modalType, setModalType] = useState<'invoice' | 'partner' | 'coupon' | 'product' | 'inventory' | 'faq' | 'purchase' | null>(null)
+    const [modalType, setModalType] = useState<'invoice' | 'partner' | 'coupon' | 'product' | 'inventory' | 'faq' | null>(null)
     const [editingItem, setEditingItem] = useState<any>(null)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [itemToDelete, setItemToDelete] = useState<{ type: string; id: string; name: string } | null>(null)
@@ -2715,23 +2669,39 @@ export default function Dashboard() {
                     </div>
                 );
             case 'purchases':
+                // Mostrar vendas pagas como compras
+                const paidSales = sales.filter((sale: any) => sale.status === 'Pago')
+                
                 return (
                     <div>
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-semibold text-gray-700">Compras</h2>
-                            <button
-                                onClick={() => openModal('purchase')}
-                                className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
-                            >
-                                <PlusCircle size={20} className="mr-2" />
-                                Nova Compra
-                            </button>
+                            <h2 className="text-2xl font-semibold text-gray-700">Compras Realizadas</h2>
+                            <p className="text-sm text-gray-500">Vendas pagas são automaticamente registradas aqui</p>
                         </div>
 
-                        {purchases.length === 0 ? (
+                        {paidSales.length === 0 && purchases.length === 0 ? (
                             <p className="text-center py-8 text-gray-500">Nenhuma compra registrada.</p>
                         ) : (
                             <div className="space-y-4">
+                                {/* Mostrar vendas pagas primeiro */}
+                                {paidSales.map((sale: any) => (
+                                    <div key={`sale-${sale.id}`} className="p-4 border rounded-lg bg-white flex justify-between items-start">
+                                        <div className="flex-grow pr-4">
+                                            <p className="font-semibold text-gray-800 mb-1">
+                                                Pedido #{sale.order_number || sale.id.slice(0, 8)} — Cliente: {sale.customer_name || sale.customer_email || 'N/A'}
+                                            </p>
+                                            <p className="text-sm text-gray-600">Valor: R$ {Number(sale.total_amount).toFixed(2).replace('.', ',')}</p>
+                                            <p className="text-sm text-gray-500 mt-1">
+                                                Data: {new Date(sale.created_at).toLocaleDateString('pt-BR')}
+                                            </p>
+                                            <p className="text-sm text-gray-500">
+                                                Status: <span className={`px-2 py-1 text-xs rounded-full ${getStatusClass(sale.status)}`}>{sale.status}</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                                
+                                {/* Mostrar compras de fornecedores */}
                                 {purchases.map((purchase: any) => (
                                     <div key={purchase.id} className="p-4 border rounded-lg bg-white flex justify-between items-start">
                                         <div className="flex-grow pr-4">
