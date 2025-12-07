@@ -623,50 +623,27 @@ export async function getCoupons() {
 
 export async function getNavbarCoupons() {
   try {
-    // Primeiro, tentar buscar com filtro de show_in_navbar
-    let query = supabase
+    // Buscar todos os cupons ativos e válidos
+    const { data, error } = await supabase
       .from('coupons')
       .select('*')
       .eq('status', 'Ativo')
       .gte('valid_until', new Date().toISOString().split('T')[0])
       .order('created_at', { ascending: false });
     
-    // Tentar adicionar filtro de show_in_navbar, mas se não existir, buscar tudo e filtrar depois
-    const { data, error } = await query;
-    
     if (error) {
-      // Se o erro for sobre coluna não encontrada, tentar buscar sem filtro
-      if (error.message?.includes('column') || error.code === 'PGRST116') {
-        console.warn('Coluna show_in_navbar não existe ainda. Buscando todos os cupons ativos.');
-        // Buscar todos os cupons ativos sem o filtro de show_in_navbar
-        const { data: allCoupons, error: allError } = await supabase
-          .from('coupons')
-          .select('*')
-          .eq('status', 'Ativo')
-          .gte('valid_until', new Date().toISOString().split('T')[0])
-          .order('created_at', { ascending: false });
-        
-        if (allError) throw allError;
-        
-        // Se a coluna não existe, retornar array vazio (pois não podemos filtrar)
-        // Ou retornar todos se preferir mostrar todos os cupons quando a coluna não existe
-        return allCoupons || [];
-      }
-      throw error;
+      console.error('Erro ao buscar cupons:', error);
+      return [];
     }
     
-    // Se temos dados, verificar se a coluna show_in_navbar existe
-    if (data && data.length > 0) {
-      // Se a propriedade show_in_navbar existe, filtrar
-      if ('show_in_navbar' in data[0]) {
-        return data.filter((coupon: any) => coupon.show_in_navbar === true) || [];
-      } else {
-        // Se não existe, retornar todos (ou vazio, dependendo da preferência)
-        return [];
-      }
+    // Se a coluna show_in_navbar existir, filtrar por ela
+    // Caso contrário, retornar todos os cupons ativos
+    if (data && data.length > 0 && 'show_in_navbar' in data[0]) {
+      return data.filter((coupon: any) => coupon.show_in_navbar === true);
     }
     
-    return [];
+    // Retornar todos os cupons ativos se a coluna não existir
+    return data || [];
   } catch (error: any) {
     console.error('Erro ao buscar cupons da navbar:', error);
     return [];

@@ -113,7 +113,11 @@ const CouponForm = ({ initialData, onSave, onCancel }: { initialData: any, onSav
     const [usageLimit, setUsageLimit] = useState<string>(initialData?.usage_limit ? String(initialData.usage_limit) : '')
     const [minPurchaseAmount, setMinPurchaseAmount] = useState<string>(initialData?.min_purchase_amount ? String(initialData.min_purchase_amount) : '')
     const [status, setStatus] = useState<'Ativo' | 'Inativo' | 'Expirado'>(initialData?.status || 'Ativo')
-    const [showInNavbar, setShowInNavbar] = useState(initialData?.show_in_navbar || false)
+    // Padrão true para novos cupons aparecerem no carrossel automaticamente
+    const [showInNavbar, setShowInNavbar] = useState(initialData?.show_in_navbar !== undefined ? initialData.show_in_navbar : true)
+    
+    // Sempre mostrar o checkbox - a coluna show_in_navbar agora existe no banco
+    const hasNavbarSupport = true
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
@@ -128,6 +132,7 @@ const CouponForm = ({ initialData, onSave, onCancel }: { initialData: any, onSav
             usage_limit: usageLimit ? parseInt(usageLimit) : undefined,
             min_purchase_amount: minPurchaseAmount ? parseFloat(minPurchaseAmount) : undefined,
             status,
+            // Sempre incluir show_in_navbar agora que a coluna existe no banco
             show_in_navbar: showInNavbar,
         })
     }
@@ -1411,24 +1416,20 @@ export default function Dashboard() {
                 if (formData.status) {
                     couponData.status = formData.status
                 }
-                // Só adiciona show_in_navbar se a coluna existir (não causa erro se não existir)
-                if (formData.show_in_navbar !== undefined) {
-                    couponData.show_in_navbar = formData.show_in_navbar
-                }
+                // Sempre incluir show_in_navbar na atualização
+                couponData.show_in_navbar = formData.show_in_navbar !== undefined ? formData.show_in_navbar : true
                 await updateCoupon(editingItem.id, couponData)
                 // Recarregar dados do Supabase para garantir sincronização
                 const updatedCoupons = await getCoupons()
                 setCoupons(updatedCoupons || [])
             } else {
-                // Criar novo cupom - remover show_in_navbar se a coluna não existir
+                // Criar novo cupom - agora sempre com show_in_navbar
                 const newCouponData: any = {
                     ...couponData,
                     usage_count: 0,
                     status: formData.status || 'Ativo',
-                }
-                // Só adiciona show_in_navbar se estiver definido (evita erro se coluna não existir)
-                if (formData.show_in_navbar !== undefined) {
-                    newCouponData.show_in_navbar = formData.show_in_navbar
+                    // Sempre incluir show_in_navbar (padrão true se não especificado)
+                    show_in_navbar: formData.show_in_navbar !== undefined ? formData.show_in_navbar : true,
                 }
                 await createCoupon(newCouponData)
                 // Recarregar dados do Supabase para garantir sincronização
@@ -2679,93 +2680,6 @@ export default function Dashboard() {
                         )}
                     </div>
                 )
-            case 'purchased':
-                return (
-                    <div>
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-semibold text-gray-700 flex items-center">
-                                <Package className="mr-2" size={24} />
-                                Produtos Comprados
-                            </h2>
-                            <button
-                                onClick={loadAllData}
-                                className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
-                            >
-                                Atualizar
-                            </button>
-                        </div>
-                        {purchasedItems.length === 0 ? (
-                            <p className="text-center py-8 text-gray-500">Nenhum produto comprado ainda.</p>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full bg-white">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pedido</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantidade</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preço Unit.</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200">
-                                        {purchasedItems.map((item: any) => (
-                                            <tr key={item.id} className="hover:bg-gray-50">
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                    {item.sale?.order_number || item.sale_id?.substring(0, 8) || '-'}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-900">
-                                                    {item.sale?.customer_name || '-'}
-                                                </td>
-                                                <td className="py-4 px-4 text-sm text-gray-900">
-                                                    {item.product?.name || item.product_name}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
-                                                    {item.quantity}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-600">
-                                                    R$ {Number(item.unit_price).toFixed(2).replace('.', ',')}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                                                    R$ {Number(item.total_price).toFixed(2).replace('.', ',')}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {new Date(item.created_at).toLocaleDateString('pt-BR')}
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap">
-                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(item.sale?.status || 'Pendente')}`}>
-                                                        {item.sale?.status || 'Pendente'}
-                                                    </span>
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
-                                                    {item.sale?.customer_email && (
-                                                        <button
-                                                            onClick={() => {
-                                                                setSelectedUserForEmail({
-                                                                    email: item.sale.customer_email,
-                                                                    name: item.sale.customer_name
-                                                                })
-                                                                setEmailModalOpen(true)
-                                                            }}
-                                                            className="text-cyan-600 hover:text-cyan-900 flex items-center gap-1"
-                                                        >
-                                                            <Mail size={16} />
-                                                            Enviar Email
-                                                        </button>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
-                )
             default:
                 return null;
         }
@@ -2784,7 +2698,6 @@ export default function Dashboard() {
         { id: 'images', label: 'Imagens', icon: ImageIcon },
         { id: 'faq', label: 'FAQ', icon: FileText },
         { id: 'purchases', label: 'Compras', icon: Package },
-        { id: 'purchased', label: 'Produtos Comprados', icon: Package },
     ]
 
     return (

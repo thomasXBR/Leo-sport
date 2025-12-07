@@ -217,15 +217,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }, [user, normalizeCartItem]);
 
     const removeFromCart = useCallback(async (productId: number) => {
+        // Encontrar o item antes de atualizar o estado
+        const item = cartItems.find(item => item.product.id === productId);
+        
         // Atualizar estado imediatamente para melhor UX
         setCartItems(prevItems => prevItems.filter(item => item.product.id !== productId));
         
-        if (user) {
+        if (user && item?.cartId) {
             try {
-                const item = cartItems.find(item => item.product.id === productId);
-                if (item?.cartId) {
-                    await deleteUserCartItemDB(item.cartId);
-                }
+                await deleteUserCartItemDB(item.cartId);
             } catch (error) {
                 console.error('Error removing from cart:', error);
                 // Recarregar carrinho em caso de erro
@@ -242,9 +242,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     const updateQuantity = useCallback(async (productId: number, quantity: number) => {
         if (quantity <= 0) {
-            await removeFromCart(productId);
+            removeFromCart(productId);
             return;
         }
+
+        // Encontrar o item antes de atualizar
+        const item = cartItems.find(item => item.product.id === productId);
 
         // Atualizar estado imediatamente para melhor UX
         setCartItems(prevItems =>
@@ -253,12 +256,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
             )
         );
 
-        if (user) {
+        if (user && item?.cartId) {
             try {
-                const item = cartItems.find(item => item.product.id === productId);
-                if (item?.cartId) {
-                    await updateUserCartItemDB(item.cartId, quantity);
-                }
+                await updateUserCartItemDB(item.cartId, quantity);
             } catch (error) {
                 console.error('Error updating cart quantity:', error);
                 // Recarregar carrinho em caso de erro
