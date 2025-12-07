@@ -94,21 +94,23 @@ export default function ProductRegistrationForm({ onSuccess, onError, initialDat
           .order('name', { ascending: true });
 
         if (error) {
-          console.error('Erro ao carregar categorias:', error);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Erro ao carregar categorias:', error);
+          }
           setSports([]);
         } else if (data && data.length > 0) {
           const loadedSports: Sport[] = data.map((category: any) => ({
             id: category.id,
             name: category.name
           }));
-          console.log('Sports loaded from categories:', loadedSports);
           setSports(loadedSports);
         } else {
-          console.warn('No sports found in categories table');
           setSports([]);
         }
       } catch (err) {
-        console.error('Failed to load sports:', err);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Failed to load sports:', err);
+        }
         setSports([]);
       } finally {
         setLoadingContent(false);
