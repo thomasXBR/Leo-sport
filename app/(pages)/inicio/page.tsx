@@ -76,13 +76,14 @@ export default function InicioPage() {
     { icon: Star, label: getContent('stats_rating_label', 'Avaliação Média'), value: getContent('stats_rating_value', '4.8') },
   ];
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
-      </div>
-    );
-  }
+  // Removido o bloqueio de loading - o site agora carrega com valores padrão
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-screen flex items-center justify-center">
+  //       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="space-y-16">

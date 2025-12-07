@@ -28,15 +28,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Carregar sessão e perfil ao inicializar
   useEffect(() => {
     // Verificar sessão atual
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        loadProfile(session.user.id);
-      } else {
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          loadProfile(session.user.id);
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch((error) => {
+        console.error('Erro ao carregar sessão:', error);
         setLoading(false);
-      }
-    });
+      });
 
     // Escutar mudanças de autenticação
     const {

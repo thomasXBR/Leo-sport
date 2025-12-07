@@ -22,16 +22,18 @@ export function useSiteContent() {
   }, []);
 
   const loadContent = async () => {
-    setLoading(true);
-    setError(null);
     try {
+      setLoading(true);
+      setError(null);
       const data = await getSiteContent();
       setContent(data || []);
     } catch (err: any) {
-      console.error('Erro ao carregar conteúdo:', err);
+      console.error('Erro ao carregar conteúdo do site:', err);
       setError(err.message);
       setContent([]);
+      // Mesmo com erro, permitir que o site continue funcionando
     } finally {
+      // Garantir que loading sempre seja desativado
       setLoading(false);
     }
   };

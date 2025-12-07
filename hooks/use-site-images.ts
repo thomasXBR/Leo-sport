@@ -22,16 +22,18 @@ export function useSiteImages() {
   }, []);
 
   const loadImages = async () => {
-    setLoading(true);
-    setError(null);
     try {
+      setLoading(true);
+      setError(null);
       const data = await getSiteImages();
       setImages(data || []);
     } catch (err: any) {
-      console.error('Erro ao carregar imagens:', err);
+      console.error('Erro ao carregar imagens do site:', err);
       setError(err.message);
       setImages([]);
+      // Mesmo com erro, permitir que o site continue funcionando
     } finally {
+      // Garantir que loading sempre seja desativado
       setLoading(false);
     }
   };

@@ -813,13 +813,23 @@ export async function deletePartnership(id: string) {
 // ============================================
 
 export async function getSiteContent() {
-  const { data, error } = await supabase
-    .from('site_content')
-    .select('*')
-    .order('section, content_key');
-  
-  if (error) throw error;
-  return data;
+  try {
+    const { data, error } = await supabase
+      .from('site_content')
+      .select('*')
+      .order('section, content_key');
+    
+    if (error) {
+      console.error('Erro ao buscar conteúdo do site:', error);
+      // Retornar array vazio em vez de lançar erro
+      return [];
+    }
+    return data || [];
+  } catch (err: any) {
+    console.error('Erro na função getSiteContent:', err);
+    // Retornar array vazio para não quebrar a aplicação
+    return [];
+  }
 }
 
 export async function updateSiteContent(id: string, value: string) {
@@ -1127,13 +1137,23 @@ export type SiteImage = {
 };
 
 export async function getSiteImages() {
-  const { data, error } = await supabase
-    .from('site_images')
-    .select('*')
-    .order('created_at', { ascending: false });
-  
-  if (error) throw error;
-  return data as SiteImage[];
+  try {
+    const { data, error } = await supabase
+      .from('site_images')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Erro ao buscar imagens do site:', error);
+      // Retornar array vazio em vez de lançar erro
+      return [];
+    }
+    return (data || []) as SiteImage[];
+  } catch (err: any) {
+    console.error('Erro na função getSiteImages:', err);
+    // Retornar array vazio para não quebrar a aplicação
+    return [];
+  }
 }
 
 export async function createSiteImage(image: Omit<SiteImage, 'id' | 'created_at' | 'updated_at'>) {
