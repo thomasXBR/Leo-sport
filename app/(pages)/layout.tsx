@@ -27,16 +27,7 @@ export default function PublicLayout({
               <CouponCarousel onHasCouponsChange={setHasCoupons} />
             </>
           )}
-          <main
-            className="flex-1 overflow-x-hidden"
-            style={{
-              paddingTop: isAdminPage
-                ? '0'
-                : hasCoupons
-                  ? '96px' // header (~64px) + carrossel (~32px) sem folga extra
-                  : '72px', // apenas header (reduz espaço em branco)
-            }}
-          >
+          <main className="flex-1 overflow-x-hidden pt-0">
             {children}
           </main>
           {!isAdminPage && <Footer />}
