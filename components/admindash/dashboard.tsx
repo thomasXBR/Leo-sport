@@ -1673,6 +1673,10 @@ export default function Dashboard() {
         }
     }
 
+    useEffect(() => {
+        updateSalesChart(sales, chartGranularity)
+    }, [sales, chartGranularity])
+
     if (loading) {
         return (
             <div className="flex justify-center items-center min-h-screen">
@@ -1763,10 +1767,6 @@ export default function Dashboard() {
             </Dialog>
         )
     }
-
-    useEffect(() => {
-        updateSalesChart(sales, chartGranularity)
-    }, [sales, chartGranularity])
 
     function renderTabContent() {
         switch (activeTab) {
