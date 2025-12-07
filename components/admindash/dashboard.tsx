@@ -1070,6 +1070,76 @@ export default function Dashboard() {
         }
     }
 
+    // Atualiza dados do gráfico de vendas de acordo com granularidade
+    function updateSalesChart(salesList: any[], granularity: 'day' | 'month' | 'year') {
+        if (!salesList || salesList.length === 0) {
+            setSalesData(prev => ({
+                ...prev,
+                labels: ['Sem dados'],
+                datasets: [{ ...prev.datasets[0], data: [0] }]
+            }))
+            return
+        }
+
+        const buckets: Record<string, number> = {}
+
+        salesList
+            .filter((s: any) => s.status === 'Pago')
+            .forEach((sale: any) => {
+                const date = new Date(sale.created_at)
+                let key = ''
+                if (granularity === 'day') {
+                    key = date.toLocaleDateString('pt-BR') // dd/mm/aaaa
+                } else if (granularity === 'month') {
+                    const month = date.toLocaleDateString('pt-BR', { month: 'short' })
+                    key = `${month.toUpperCase()}/${date.getFullYear()}`
+                } else {
+                    key = `${date.getFullYear()}`
+                }
+                const total = Number(sale.total_amount || 0)
+                buckets[key] = (buckets[key] || 0) + total
+            })
+
+        // Garantir que o dia atual apareça mesmo sem vendas
+        if (granularity === 'day') {
+            const todayKey = new Date().toLocaleDateString('pt-BR')
+            if (!(todayKey in buckets)) {
+                buckets[todayKey] = 0
+            }
+        }
+
+        // Ordenar por data
+        const labels = Object.keys(buckets).sort((a, b) => {
+            const parse = (label: string) => {
+                if (granularity === 'day') {
+                    const [d, m, y] = label.split('/').map(Number)
+                    return new Date(y, m - 1, d).getTime()
+                }
+                if (granularity === 'month') {
+                    const [mon, yStr] = label.split('/')
+                    const y = Number(yStr)
+                    const months = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
+                    const m = months.indexOf(mon.toUpperCase())
+                    return new Date(y, m >= 0 ? m : 0, 1).getTime()
+                }
+                return new Date(Number(label), 0, 1).getTime()
+            }
+            return parse(a) - parse(b)
+        })
+
+        const data = labels.map(l => Number(buckets[l]?.toFixed(2) || 0))
+
+        setSalesData(prev => ({
+            ...prev,
+            labels,
+            datasets: [{
+                ...prev.datasets[0],
+                label: granularity === 'day' ? 'Vendas diárias (R$)' : granularity === 'month' ? 'Vendas mensais (R$)' : 'Vendas anuais (R$)',
+                data,
+            }]
+        }))
+    }
+
     // Carregar dados do Supabase
     useEffect(() => {
         loadAllData()
@@ -1692,75 +1762,6 @@ export default function Dashboard() {
                 </DialogContent>
             </Dialog>
         )
-    }
-
-    const updateSalesChart = (salesList: any[], granularity: 'day' | 'month' | 'year') => {
-        if (!salesList || salesList.length === 0) {
-            setSalesData(prev => ({
-                ...prev,
-                labels: ['Sem dados'],
-                datasets: [{ ...prev.datasets[0], data: [0] }]
-            }))
-            return
-        }
-
-        const buckets: Record<string, number> = {}
-
-        salesList
-            .filter((s: any) => s.status === 'Pago')
-            .forEach((sale: any) => {
-                const date = new Date(sale.created_at)
-                let key = ''
-                if (granularity === 'day') {
-                    key = date.toLocaleDateString('pt-BR') // dd/mm/aaaa
-                } else if (granularity === 'month') {
-                    const month = date.toLocaleDateString('pt-BR', { month: 'short' })
-                    key = `${month.toUpperCase()}/${date.getFullYear()}`
-                } else {
-                    key = `${date.getFullYear()}`
-                }
-                const total = Number(sale.total_amount || 0)
-                buckets[key] = (buckets[key] || 0) + total
-            })
-
-        // Garantir que o dia atual apareça mesmo sem vendas
-        if (granularity === 'day') {
-            const todayKey = new Date().toLocaleDateString('pt-BR')
-            if (!(todayKey in buckets)) {
-                buckets[todayKey] = 0
-            }
-        }
-
-        // Ordenar por data
-        const labels = Object.keys(buckets).sort((a, b) => {
-            const parse = (label: string) => {
-                if (granularity === 'day') {
-                    const [d, m, y] = label.split('/').map(Number)
-                    return new Date(y, m - 1, d).getTime()
-                }
-                if (granularity === 'month') {
-                    const [mon, yStr] = label.split('/')
-                    const y = Number(yStr)
-                    const months = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
-                    const m = months.indexOf(mon.toUpperCase())
-                    return new Date(y, m >= 0 ? m : 0, 1).getTime()
-                }
-                return new Date(Number(label), 0, 1).getTime()
-            }
-            return parse(a) - parse(b)
-        })
-
-        const data = labels.map(l => Number(buckets[l]?.toFixed(2) || 0))
-
-        setSalesData(prev => ({
-            ...prev,
-            labels,
-            datasets: [{
-                ...prev.datasets[0],
-                label: granularity === 'day' ? 'Vendas diárias (R$)' : granularity === 'month' ? 'Vendas mensais (R$)' : 'Vendas anuais (R$)',
-                data,
-            }]
-        }))
     }
 
     useEffect(() => {
