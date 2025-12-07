@@ -404,12 +404,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
               <div className="space-y-4">
                 <div className="flex gap-4">
                   <AddToCartButton product={normalizedProduct} />
-                  <Button size="lg" variant="outline" aria-label="Favoritar">
-                    <Heart size={20} />
-                  </Button>
-                  <Button size="lg" variant="outline" aria-label="Compartilhar">
-                    <Share2 size={20} />
-                  </Button>
                 </div>
               </div>
 
