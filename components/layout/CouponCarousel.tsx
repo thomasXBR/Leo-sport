@@ -37,13 +37,7 @@ export default function CouponCarousel({ onHasCouponsChange }: Props) {
         }
     };
 
-    if (loading) {
-        return null;
-    }
-
-    if (coupons.length === 0) {
-        return null;
-    }
+    if (loading || coupons.length === 0) return null;
 
     const formatCouponMessage = (coupon: Coupon) => {
         // Usar o texto personalizado do admin se existir, senão usar o padrão
@@ -61,7 +55,7 @@ export default function CouponCarousel({ onHasCouponsChange }: Props) {
     return (
         <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white py-2 overflow-hidden relative fixed top-16 left-0 right-0 z-40">
             <style jsx>{`
-                @keyframes scroll-left {
+                @keyframes coupon-marquee {
                     0% {
                         transform: translateX(0);
                     }
@@ -69,23 +63,23 @@ export default function CouponCarousel({ onHasCouponsChange }: Props) {
                         transform: translateX(-50%);
                     }
                 }
-                
-                .animate-scroll {
-                    animation: scroll-left 20s linear infinite;
+
+                .marquee-track {
+                    animation: coupon-marquee 18s linear infinite;
                 }
-                
-                .animate-scroll:hover {
+
+                .marquee-track:hover {
                     animation-play-state: paused;
                 }
             `}</style>
             
             <div className="flex items-center justify-center">
                 <div className="overflow-hidden h-8 relative w-full">
-                    <div className="flex animate-scroll whitespace-nowrap">
+                    <div className="flex marquee-track whitespace-nowrap min-w-max">
                         {duplicatedCoupons.map((coupon, index) => (
                             <div
                                 key={`${coupon.id}-${index}`}
-                                className="inline-flex items-center gap-2 px-8 text-sm sm:text-base font-medium"
+                                className="inline-flex items-center gap-2 px-8 text-sm sm:text-base font-medium flex-shrink-0"
                             >
                                 <Ticket className="w-4 h-4 flex-shrink-0" />
                                 <span>{formatCouponMessage(coupon)}</span>
