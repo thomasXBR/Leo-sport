@@ -34,7 +34,7 @@ export default function PublicLayout({
                 ? '0'
                 : hasCoupons
                   ? '136px' // header + carrossel
-                  : '104px', // apenas header
+                  : '88px', // só o header; sem espaço extra (evita barra branca)
             }}
           >
             {children}
