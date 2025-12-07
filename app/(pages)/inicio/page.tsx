@@ -86,28 +86,22 @@ export default function InicioPage() {
   // }
 
   return (
-    <div className="space-y-16">
-      {/* Top Navigation Bar */}
-      <nav className="flex items-center gap-4 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Removido: Botões Home, Produtos e Contato */}
-        {/* Removido: Botões lado a lado: Entrar, Carrinho, Criar Conta */}
-      </nav>
-
+    <div className="space-y-10">
       {/* Hero Section */}
-      <section className="relative text-white overflow-hidden">
+      <section className="relative text-white overflow-hidden min-h-[520px]">
         {/* Background Image */}
         <div className="absolute inset-0">
           <Image
             src={getImage('hero_background', '/images/INICIO.jpg')}
             alt="Sports Equipment on Grass"
             fill
-            className="object-cover"
+            className="object-cover object-center"
             priority
           />
           <div className="absolute inset-0 bg-black/50" />
         </div>
         {/* Content */}
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-24 lg:py-28">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               {getContent('hero_title', 'Bem-vindo à')}{' '}

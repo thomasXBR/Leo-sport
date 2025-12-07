@@ -1657,6 +1657,10 @@ export default function Dashboard() {
                     />
                 )
                 break
+            case 'inventory':
+                modalTitle = isEdit ? 'Editar Movimentação' : 'Nova Movimentação de Estoque'
+                modalContent = <p>Formulário de Estoque Pendente</p>
+                break
             case 'product':
                 modalTitle = isEdit ? 'Editar Produto' : 'Adicionar Novo Produto'
                 modalContent = (
@@ -1673,11 +1677,6 @@ export default function Dashboard() {
                         }}
                     />
                 )
-                break
-            case 'inventory':
-                modalTitle = isEdit ? 'Editar Movimentação' : 'Nova Movimentação de Estoque'
-                // Aqui você precisaria de um componente InventoryForm
-                modalContent = <p>Formulário de Estoque Pendente</p>
                 break
             case 'partner':
                 modalTitle = isEdit ? 'Editar Parceria' : 'Adicionar Nova Parceria'
