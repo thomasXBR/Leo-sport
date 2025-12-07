@@ -33,8 +33,8 @@ export default function PublicLayout({
               paddingTop: isAdminPage
                 ? '0'
                 : hasCoupons
-                  ? '136px' // header + carrossel
-                  : '88px', // só o header; sem espaço extra (evita barra branca)
+                  ? '96px' // header (~64px) + carrossel (~32px) sem folga extra
+                  : '72px', // apenas header (reduz espaço em branco)
             }}
           >
             {children}

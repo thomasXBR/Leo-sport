@@ -49,7 +49,7 @@ export default function CouponCarousel({ onHasCouponsChange }: Props) {
         return `🎉 Ganhe descontos especiais usando o cupom: ${code}`;
     };
 
-    // Duplicar cupons para criar efeito de loop infinito
+    // Duplicar cupons e adicionar espaçadores para efeito contínuo suave
     const duplicatedCoupons = [...coupons, ...coupons];
 
     return (
@@ -75,7 +75,8 @@ export default function CouponCarousel({ onHasCouponsChange }: Props) {
             
             <div className="flex items-center justify-center">
                 <div className="overflow-hidden h-8 relative w-full">
-                    <div className="flex marquee-track whitespace-nowrap min-w-max">
+                    <div className="flex marquee-track whitespace-nowrap min-w-max pl-[50vw]">
+                        <div className="inline-flex w-[20vw]" aria-hidden="true" />
                         {duplicatedCoupons.map((coupon, index) => (
                             <div
                                 key={`${coupon.id}-${index}`}
@@ -86,10 +87,12 @@ export default function CouponCarousel({ onHasCouponsChange }: Props) {
                                 <span className="mx-4 text-white/50">•</span>
                             </div>
                         ))}
+                        <div className="inline-flex w-[20vw]" aria-hidden="true" />
                     </div>
                 </div>
             </div>
         </div>
     );
 }
+
 
