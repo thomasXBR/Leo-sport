@@ -2,12 +2,17 @@
 
 import { useCart } from '@/contexts/CartContext';
 import { Button } from '@/components/ui/button';
-import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Trash2, Plus, Minus, ShoppingBag, Tag, X } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 export default function CarrinhoPage() {
-    const { cartItems, removeFromCart, updateQuantity, clearCart, cartTotal, cartCount } = useCart();
+    const { cartItems, removeFromCart, updateQuantity, clearCart, cartTotal, cartCount, applyCoupon, removeCoupon, appliedCoupon, discountAmount, finalTotal } = useCart();
+    const [couponCode, setCouponCode] = useState('');
+    const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
 
     const handleQuantityChange = (productId: number, change: number) => {
         const item = cartItems.find(item => item.product.id === productId);
@@ -33,6 +38,33 @@ export default function CarrinhoPage() {
         }
         const total = numPrice * quantity;
         return `R$ ${total.toFixed(2).replace('.', ',')}`;
+    };
+
+    const handleApplyCoupon = async () => {
+        if (!couponCode.trim()) {
+            toast.error('Digite um código de cupom');
+            return;
+        }
+
+        setIsApplyingCoupon(true);
+        try {
+            const result = await applyCoupon(couponCode);
+            if (result.success) {
+                toast.success(result.message);
+                setCouponCode('');
+            } else {
+                toast.error(result.message);
+            }
+        } catch (error) {
+            toast.error('Erro ao aplicar cupom');
+        } finally {
+            setIsApplyingCoupon(false);
+        }
+    };
+
+    const handleRemoveCoupon = () => {
+        removeCoupon();
+        toast.info('Cupom removido');
     };
 
     return (
@@ -141,6 +173,48 @@ export default function CarrinhoPage() {
                             <div className="bg-white rounded-lg shadow-sm p-6 sticky top-24">
                                 <h2 className="text-xl font-semibold text-gray-900 mb-6">Resumo do Pedido</h2>
 
+                                {/* Cupom de Desconto */}
+                                <div className="mb-6 pb-6 border-b">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Cupom de Desconto
+                                    </label>
+                                    {appliedCoupon ? (
+                                        <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                                            <div className="flex items-center gap-2">
+                                                <Tag className="w-4 h-4 text-green-600" />
+                                                <span className="text-sm font-semibold text-green-700">
+                                                    {appliedCoupon.code}
+                                                </span>
+                                            </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={handleRemoveCoupon}
+                                                className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex gap-2">
+                                            <Input
+                                                value={couponCode}
+                                                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                                placeholder="Digite o cupom"
+                                                className="flex-1"
+                                                onKeyPress={(e) => e.key === 'Enter' && handleApplyCoupon()}
+                                            />
+                                            <Button
+                                                onClick={handleApplyCoupon}
+                                                disabled={isApplyingCoupon || !couponCode.trim()}
+                                                className="bg-blue-900 hover:bg-blue-950"
+                                            >
+                                                {isApplyingCoupon ? 'Aplicando...' : 'Aplicar'}
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+
                                 <div className="space-y-3 mb-6">
                                     <div className="flex justify-between text-gray-600">
                                         <span>Subtotal ({cartCount} {cartCount === 1 ? 'item' : 'itens'})</span>
@@ -148,6 +222,14 @@ export default function CarrinhoPage() {
                                             R$ {cartTotal.toFixed(2).replace('.', ',')}
                                         </span>
                                     </div>
+                                    {appliedCoupon && discountAmount > 0 && (
+                                        <div className="flex justify-between text-green-600">
+                                            <span>Desconto ({appliedCoupon.code})</span>
+                                            <span className="font-semibold">
+                                                - R$ {discountAmount.toFixed(2).replace('.', ',')}
+                                            </span>
+                                        </div>
+                                    )}
                                     <div className="flex justify-between text-gray-600">
                                         <span>Frete</span>
                                         <span className="font-semibold text-gray-900">Grátis</span>
@@ -155,7 +237,7 @@ export default function CarrinhoPage() {
                                     <div className="border-t pt-3">
                                         <div className="flex justify-between text-lg font-bold text-gray-900">
                                             <span>Total</span>
-                                            <span>R$ {cartTotal.toFixed(2).replace('.', ',')}</span>
+                                            <span>R$ {finalTotal.toFixed(2).replace('.', ',')}</span>
                                         </div>
                                     </div>
                                 </div>

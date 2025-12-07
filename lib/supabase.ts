@@ -709,6 +709,96 @@ export async function deleteCoupon(id: string) {
   if (error) throw error;
 }
 
+/**
+ * Validar cupom de desconto
+ * @param code - Código do cupom
+ * @param purchaseAmount - Valor total da compra
+ * @returns Cupom válido ou null se inválido
+ */
+export async function validateCoupon(code: string, purchaseAmount: number) {
+  try {
+    const { data, error } = await supabase
+      .from('coupons')
+      .select('*')
+      .eq('code', code.toUpperCase())
+      .single();
+    
+    if (error || !data) {
+      return { valid: false, message: 'Cupom não encontrado' };
+    }
+    
+    // Verificar se está ativo
+    if (data.status !== 'Ativo') {
+      return { valid: false, message: 'Cupom inativo' };
+    }
+    
+    // Verificar data de validade
+    const hoje = new Date().toISOString().split('T')[0];
+    if (data.valid_until < hoje) {
+      return { valid: false, message: 'Cupom expirado' };
+    }
+    
+    if (data.valid_from > hoje) {
+      return { valid: false, message: 'Cupom ainda não está válido' };
+    }
+    
+    // Verificar limite de uso
+    if (data.usage_limit && data.usage_count >= data.usage_limit) {
+      return { valid: false, message: 'Cupom esgotado' };
+    }
+    
+    // Verificar valor mínimo de compra
+    if (data.min_purchase_amount && purchaseAmount < data.min_purchase_amount) {
+      return { 
+        valid: false, 
+        message: `Compra mínima de R$ ${data.min_purchase_amount.toFixed(2).replace('.', ',')} necessária` 
+      };
+    }
+    
+    // Calcular desconto
+    let discountAmount = 0;
+    if (data.discount_type === 'Percentual') {
+      const percentage = parseFloat(data.discount_value);
+      discountAmount = (purchaseAmount * percentage) / 100;
+    } else if (data.discount_type === 'Fixo') {
+      discountAmount = parseFloat(data.discount_value);
+    }
+    
+    return {
+      valid: true,
+      coupon: data,
+      discountAmount,
+      message: 'Cupom aplicado com sucesso!'
+    };
+  } catch (error: any) {
+    console.error('Erro ao validar cupom:', error);
+    return { valid: false, message: 'Erro ao validar cupom' };
+  }
+}
+
+/**
+ * Incrementar contador de uso do cupom
+ * @param couponId - ID do cupom
+ */
+export async function incrementCouponUsage(couponId: string) {
+  try {
+    const { data: coupon } = await supabase
+      .from('coupons')
+      .select('usage_count')
+      .eq('id', couponId)
+      .single();
+    
+    if (coupon) {
+      await supabase
+        .from('coupons')
+        .update({ usage_count: coupon.usage_count + 1 })
+        .eq('id', couponId);
+    }
+  } catch (error) {
+    console.error('Erro ao incrementar uso do cupom:', error);
+  }
+}
+
 // ============================================
 // FUNÇÕES CRUD - PARCERIAS
 // ============================================

@@ -8,20 +8,27 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ShoppingBag, Loader2, AlertCircle } from 'lucide-react';
+import { ShoppingBag, Loader2, AlertCircle, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMercadoPago } from '@/hooks/useMercadoPago';
 import Link from 'next/link';
 
 export default function CheckoutPage() {
     const router = useRouter();
-    const { cartItems, cartTotal, cartCount } = useCart();
+    const { cartItems, cartTotal, cartCount, appliedCoupon, discountAmount, finalTotal } = useCart();
     const { user, profile } = useAuth();
     const { createWebCheckout, loading } = useMercadoPago();
     
     const [customerName, setCustomerName] = useState('');
     const [customerEmail, setCustomerEmail] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
+    const [cep, setCep] = useState('');
+    const [endereco, setEndereco] = useState('');
+    const [numero, setNumero] = useState('');
+    const [complemento, setComplemento] = useState('');
+    const [bairro, setBairro] = useState('');
+    const [cidade, setCidade] = useState('');
+    const [estado, setEstado] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState('');
 
@@ -51,6 +58,36 @@ export default function CheckoutPage() {
 
         if (!customerEmail || !customerEmail.includes('@')) {
             setError('Por favor, informe um email válido');
+            return;
+        }
+
+        if (!cep || cep.length < 8) {
+            setError('Por favor, informe um CEP válido');
+            return;
+        }
+
+        if (!endereco || endereco.trim().length < 3) {
+            setError('Por favor, informe o endereço');
+            return;
+        }
+
+        if (!numero || numero.trim().length < 1) {
+            setError('Por favor, informe o número');
+            return;
+        }
+
+        if (!bairro || bairro.trim().length < 2) {
+            setError('Por favor, informe o bairro');
+            return;
+        }
+
+        if (!cidade || cidade.trim().length < 2) {
+            setError('Por favor, informe a cidade');
+            return;
+        }
+
+        if (!estado || estado.trim().length < 2) {
+            setError('Por favor, informe o estado');
             return;
         }
 
@@ -190,6 +227,98 @@ export default function CheckoutPage() {
                                     />
                                 </div>
 
+                                <div className="pt-4 border-t">
+                                    <h3 className="font-semibold text-gray-900 mb-4">Endereço de Entrega</h3>
+                                    
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <Label htmlFor="cep">CEP *</Label>
+                                            <Input
+                                                id="cep"
+                                                value={cep}
+                                                onChange={(e) => setCep(e.target.value.replace(/\D/g, ''))}
+                                                placeholder="00000-000"
+                                                maxLength={8}
+                                                required
+                                                className="mt-1"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="estado">Estado *</Label>
+                                            <Input
+                                                id="estado"
+                                                value={estado}
+                                                onChange={(e) => setEstado(e.target.value)}
+                                                placeholder="Ex: SP"
+                                                maxLength={2}
+                                                required
+                                                className="mt-1"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-4">
+                                        <Label htmlFor="endereco">Endereço *</Label>
+                                        <Input
+                                            id="endereco"
+                                            value={endereco}
+                                            onChange={(e) => setEndereco(e.target.value)}
+                                            placeholder="Rua, Avenida, etc."
+                                            required
+                                            className="mt-1"
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4 mt-4">
+                                        <div>
+                                            <Label htmlFor="numero">Número *</Label>
+                                            <Input
+                                                id="numero"
+                                                value={numero}
+                                                onChange={(e) => setNumero(e.target.value)}
+                                                placeholder="123"
+                                                required
+                                                className="mt-1"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="complemento">Complemento</Label>
+                                            <Input
+                                                id="complemento"
+                                                value={complemento}
+                                                onChange={(e) => setComplemento(e.target.value)}
+                                                placeholder="Apto, Bloco, etc."
+                                                className="mt-1"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4 mt-4">
+                                        <div>
+                                            <Label htmlFor="bairro">Bairro *</Label>
+                                            <Input
+                                                id="bairro"
+                                                value={bairro}
+                                                onChange={(e) => setBairro(e.target.value)}
+                                                placeholder="Seu bairro"
+                                                required
+                                                className="mt-1"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="cidade">Cidade *</Label>
+                                            <Input
+                                                id="cidade"
+                                                value={cidade}
+                                                onChange={(e) => setCidade(e.target.value)}
+                                                placeholder="Sua cidade"
+                                                required
+                                                className="mt-1"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
                                     <p className="text-sm text-blue-800">
                                         <strong>ℹ️ Informação:</strong> Você será redirecionado para o Mercado Pago para finalizar o pagamento de forma segura.
@@ -239,6 +368,14 @@ export default function CheckoutPage() {
                                                 R$ {cartTotal.toFixed(2).replace('.', ',')}
                                             </span>
                                         </div>
+                                        {appliedCoupon && discountAmount > 0 && (
+                                            <div className="flex justify-between text-green-600">
+                                                <span>Desconto ({appliedCoupon.code})</span>
+                                                <span className="font-semibold">
+                                                    - R$ {discountAmount.toFixed(2).replace('.', ',')}
+                                                </span>
+                                            </div>
+                                        )}
                                         <div className="flex justify-between text-gray-600">
                                             <span>Frete</span>
                                             <span className="font-semibold text-gray-900">Grátis</span>
@@ -246,7 +383,7 @@ export default function CheckoutPage() {
                                         <div className="border-t pt-2">
                                             <div className="flex justify-between text-lg font-bold text-gray-900">
                                                 <span>Total</span>
-                                                <span>R$ {cartTotal.toFixed(2).replace('.', ',')}</span>
+                                                <span>R$ {finalTotal.toFixed(2).replace('.', ',')}</span>
                                             </div>
                                         </div>
                                     </div>

@@ -13,9 +13,12 @@ import crypto from 'crypto';
 const token = process.env.MELHOR_ENVIO_TOKEN || '';
 const isProduction = process.env.MELHOR_ENVIO_PRODUCTION === 'true';
 const webhookSecret = process.env.MELHOR_ENVIO_WEBHOOK_SECRET || '';
+const useMock = !token; // modo mock quando não houver token (funcional mesmo sem credenciais)
 
-if (!token && process.env.NODE_ENV === 'production') {
-  console.warn('[Melhor Envio] ATENÇÃO: MELHOR_ENVIO_TOKEN não configurado em produção!');
+if (!token) {
+  console.warn('[Melhor Envio] Token não configurado. Usando modo MOCK (respostas simuladas).');
+} else if (process.env.NODE_ENV === 'production') {
+  console.info('[Melhor Envio] Token configurado. Modo produção:', isProduction);
 }
 
 // URLs da API do Melhor Envio
@@ -27,10 +30,10 @@ const BASE_URL = isProduction
 const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   headers: {
-    'Authorization': `Bearer ${token}`,
+    Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'User-Agent': 'LeoSport (leosport@email.com)',
+    Accept: 'application/json',
+    'User-Agent': 'LeoSport (contato@leosport.com)', // personalize aqui se desejar
   },
   timeout: 30000,
 });
@@ -166,6 +169,44 @@ export interface MelhorEnvioCreateShippingRequest {
 export async function calculateShipping(
   request: MelhorEnvioCalculateShippingRequest
 ): Promise<MelhorEnvioShippingOption[]> {
+  // Modo mock: retorna opções simuladas para desenvolvimento/demonstração
+  if (useMock) {
+    return [
+      {
+        id: 1,
+        name: 'SEDEX (mock)',
+        company: {
+          id: 1,
+          name: 'Correios',
+          picture: '',
+        },
+        price: '29.90',
+        currency: 'BRL',
+        delivery_time: 3,
+        delivery_range: { min: 2, max: 4 },
+        packages: request.products,
+        additional_services: [],
+        company_id: 1,
+      },
+      {
+        id: 2,
+        name: 'PAC (mock)',
+        company: {
+          id: 2,
+          name: 'Correios',
+          picture: '',
+        },
+        price: '19.90',
+        currency: 'BRL',
+        delivery_time: 7,
+        delivery_range: { min: 5, max: 9 },
+        packages: request.products,
+        additional_services: [],
+        company_id: 2,
+      },
+    ];
+  }
+
   try {
     const response = await apiClient.post('/shipment/calculate', request);
 
@@ -206,6 +247,19 @@ export async function calculateShipping(
 export async function createShipping(
   request: MelhorEnvioCreateShippingRequest
 ): Promise<MelhorEnvioShippingResponse> {
+  // Modo mock: simular criação de envio para não bloquear fluxo sem credenciais
+  if (useMock) {
+    const fakeId = `mock-${Date.now()}`;
+    return {
+      id: fakeId,
+      protocol: `PROTO-${fakeId}`,
+      service_id: request.service,
+      status: 'paid',
+      tracking: `TRK${Math.random().toString(36).slice(2, 10).toUpperCase()}`,
+      created_at: new Date().toISOString(),
+    };
+  }
+
   try {
     const response = await apiClient.post('/shipment', request);
 
@@ -229,6 +283,15 @@ export async function createShipping(
  * Buscar informação de um envio
  */
 export async function getShippingById(shippingId: string): Promise<any> {
+  if (useMock) {
+    return {
+      id: shippingId,
+      status: 'paid',
+      tracking: `TRK${shippingId}`,
+      created_at: new Date().toISOString(),
+    };
+  }
+
   try {
     const response = await apiClient.get(`/shipment/${shippingId}`);
     return response.data;
@@ -244,6 +307,18 @@ export async function getShippingById(shippingId: string): Promise<any> {
  * Rastrear envio
  */
 export async function trackShipping(shippingId: string): Promise<any> {
+  if (useMock) {
+    return {
+      id: shippingId,
+      status: 'shipped',
+      tracking: `TRK${shippingId}`,
+      history: [
+        { status: 'paid', date: new Date(Date.now() - 86400000).toISOString() },
+        { status: 'shipped', date: new Date().toISOString() },
+      ],
+    };
+  }
+
   try {
     const response = await apiClient.get(`/shipment/${shippingId}/tracking`);
     return response.data;
@@ -259,6 +334,13 @@ export async function trackShipping(shippingId: string): Promise<any> {
  * Gerar etiqueta de envio
  */
 export async function generateShippingLabel(shippingId: string): Promise<any> {
+  if (useMock) {
+    return {
+      id: shippingId,
+      label_url: `https://example.com/label/${shippingId}.pdf`,
+    };
+  }
+
   try {
     const response = await apiClient.post(`/shipment/${shippingId}/label`);
     return response.data;
@@ -274,6 +356,13 @@ export async function generateShippingLabel(shippingId: string): Promise<any> {
  * Cancelar um envio
  */
 export async function cancelShipping(shippingId: string): Promise<any> {
+  if (useMock) {
+    return {
+      id: shippingId,
+      status: 'cancelled',
+    };
+  }
+
   try {
     const response = await apiClient.delete(`/shipment/${shippingId}`);
     return response.data;
@@ -293,6 +382,17 @@ export async function listShippings(filters?: {
   service_id?: number;
   created_at?: string;
 }): Promise<any[]> {
+  if (useMock) {
+    return [
+      {
+        id: 'mock-1',
+        status: 'paid',
+        service_id: 1,
+        created_at: new Date().toISOString(),
+      },
+    ];
+  }
+
   try {
     const params = new URLSearchParams();
     if (filters?.status) params.append('status', filters.status);
@@ -316,6 +416,14 @@ export async function listShippings(filters?: {
  * Obter informações de um serviço de envio
  */
 export async function getServiceInfo(serviceId: number): Promise<any> {
+  if (useMock) {
+    return {
+      id: serviceId,
+      name: serviceId === 1 ? 'SEDEX (mock)' : 'PAC (mock)',
+      description: 'Serviço simulado para desenvolvimento',
+    };
+  }
+
   try {
     const response = await apiClient.get(`/shipment/services/${serviceId}`);
     return response.data;

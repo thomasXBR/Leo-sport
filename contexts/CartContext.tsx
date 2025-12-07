@@ -9,7 +9,9 @@ import {
     updateUserCartItem as updateUserCartItemDB,
     deleteUserCartItem as deleteUserCartItemDB,
     clearUserCart as clearUserCartDB,
-    type UserCart 
+    validateCoupon,
+    type UserCart,
+    type Coupon
 } from '@/lib/supabase';
 import { supabase } from '@/lib/supabase';
 
@@ -28,6 +30,11 @@ interface CartContextType {
     cartTotal: number;
     cartCount: number;
     loading: boolean;
+    applyCoupon: (code: string) => Promise<{ success: boolean; message: string }>;
+    removeCoupon: () => void;
+    appliedCoupon: Coupon | null;
+    discountAmount: number;
+    finalTotal: number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -36,6 +43,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [hasSynced, setHasSynced] = useState(false);
+    const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+    const [discountAmount, setDiscountAmount] = useState(0);
     const { user } = useAuth();
     const isLoadingRef = useRef(false);
     const isSyncingRef = useRef(false);
@@ -304,6 +313,52 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // Calculate total items count
     const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
 
+    // Aplicar cupom
+    const applyCoupon = useCallback(async (code: string): Promise<{ success: boolean; message: string }> => {
+        if (!code || code.trim() === '') {
+            return { success: false, message: 'Por favor, digite um código de cupom' };
+        }
+
+        try {
+            const result = await validateCoupon(code, cartTotal);
+            
+            if (result.valid && result.coupon && result.discountAmount !== undefined) {
+                setAppliedCoupon(result.coupon);
+                setDiscountAmount(result.discountAmount);
+                return { success: true, message: result.message || 'Cupom aplicado com sucesso!' };
+            } else {
+                return { success: false, message: result.message || 'Cupom inválido' };
+            }
+        } catch (error: any) {
+            console.error('Erro ao aplicar cupom:', error);
+            return { success: false, message: 'Erro ao validar cupom' };
+        }
+    }, [cartTotal]);
+
+    // Remover cupom
+    const removeCoupon = useCallback(() => {
+        setAppliedCoupon(null);
+        setDiscountAmount(0);
+    }, []);
+
+    // Calcular total final com desconto
+    const finalTotal = Math.max(0, cartTotal - discountAmount);
+
+    // Revalidar cupom quando o total do carrinho mudar
+    useEffect(() => {
+        if (appliedCoupon) {
+            // Revalidar cupom com o novo total
+            validateCoupon(appliedCoupon.code, cartTotal).then(result => {
+                if (result.valid && result.discountAmount !== undefined) {
+                    setDiscountAmount(result.discountAmount);
+                } else {
+                    // Se o cupom não é mais válido, removê-lo
+                    removeCoupon();
+                }
+            });
+        }
+    }, [cartTotal, appliedCoupon, removeCoupon]);
+
     return (
         <CartContext.Provider
             value={{
@@ -315,6 +370,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 cartTotal,
                 cartCount,
                 loading,
+                applyCoupon,
+                removeCoupon,
+                appliedCoupon,
+                discountAmount,
+                finalTotal,
             }}
         >
             {children}
