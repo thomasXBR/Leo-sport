@@ -2819,13 +2819,6 @@ export default function Dashboard() {
                     <div>
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-semibold text-gray-700">Compras</h2>
-                            <button
-                                onClick={() => openModal('purchase')}
-                                className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
-                            >
-                                <PlusCircle size={20} className="mr-2" />
-                                Nova Compra
-                            </button>
                         </div>
 
                         {purchases.length === 0 ? (
@@ -2845,18 +2838,6 @@ export default function Dashboard() {
                                             )}
                                         </div>
                                         <div className="flex space-x-2 flex-shrink-0">
-                                            <button
-                                                onClick={() => openFileSelector(purchase.id, 'purchase')}
-                                                className="flex items-center gap-2 bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700"
-                                                title="Adicionar/Atualizar PDF"
-                                            >
-                                                {uploading && uploadingFileType === 'purchase' && uploadingPurchaseId === purchase.id ? (
-                                                    <Loader2 className="animate-spin" size={16} />
-                                                ) : (
-                                                    <Package size={16} />
-                                                )}
-                                                <span className="text-sm">Anexar PDF</span>
-                                            </button>
                                             <button
                                                 onClick={() => openDeleteDialog('purchase', purchase.id, purchase.purchase_number || purchase.supplier_name)}
                                                 className="bg-red-600 text-white px-3 py-2 rounded hover:bg-red-700"

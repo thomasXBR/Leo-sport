@@ -15,6 +15,10 @@ import { createPurchase } from '@/lib/supabase';
  * para compatibilidade com configurações do Mercado Pago
  */
 
+// Forçar modo dinâmico para evitar cache e permitir requisições externas
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 const WEBHOOK_LOG_ENABLED = process.env.WEBHOOK_LOG_ENABLED !== 'false';
 
 /**
@@ -46,6 +50,21 @@ function mapPaymentStatusToOrderStatus(paymentStatus: string): {
   }
 }
 
+// Headers CORS para permitir requisições do Mercado Pago
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+};
+
+// Suporte a OPTIONS para CORS preflight
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
+}
+
 export async function POST(request: NextRequest) {
   const requestId = `webhook_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const receivedAt = new Date().toISOString();
@@ -65,9 +84,17 @@ export async function POST(request: NextRequest) {
     // Validar estrutura da notificação
     if (!validateWebhookNotification(body)) {
       console.error('[Webhook] Notificação inválida:', body);
+      // Retornar 200 mesmo com notificação inválida para evitar reenvios do Mercado Pago
       return NextResponse.json(
-        { error: 'Notificação inválida' },
-        { status: 400 }
+        { 
+          received: true,
+          requestId,
+          message: 'Notificação inválida, mas aceita',
+        },
+        { 
+          status: 200,
+          headers: corsHeaders,
+        }
       );
     }
 
@@ -101,8 +128,16 @@ export async function POST(request: NextRequest) {
       console.error('[Webhook] Erro ao buscar pagamento:', error);
       // Retornar 200 mesmo com erro para evitar reenvios
       return NextResponse.json(
-        { received: true, error: 'Erro ao buscar pagamento' },
-        { status: 200 }
+        { 
+          received: true, 
+          requestId,
+          error: 'Erro ao buscar pagamento',
+          message: 'Webhook recebido, mas não foi possível buscar o pagamento',
+        },
+        { 
+          status: 200,
+          headers: corsHeaders,
+        }
       );
     }
 
@@ -231,7 +266,10 @@ export async function POST(request: NextRequest) {
       requestId,
       processed: true,
       message: 'Webhook processado com sucesso',
-    }, { status: 200 });
+    }, { 
+      status: 200,
+      headers: corsHeaders,
+    });
   } catch (error: any) {
     console.error('[Webhook] Erro ao processar webhook:', {
       requestId,
@@ -248,7 +286,10 @@ export async function POST(request: NextRequest) {
         error: error.message,
         message: 'Webhook recebido, mas houve um erro no processamento',
       },
-      { status: 200 }
+      { 
+        status: 200,
+        headers: corsHeaders,
+      }
     );
   }
 }
@@ -481,7 +522,10 @@ export async function GET() {
       method: 'Use POST para receber notificações',
       status: 'active',
     },
-    { status: 200 }
+    { 
+      status: 200,
+      headers: corsHeaders,
+    }
   );
 }
 
