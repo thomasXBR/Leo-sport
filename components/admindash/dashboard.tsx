@@ -42,7 +42,7 @@ import {
     getSiteContent, updateSiteContent, getFAQs, createFAQ, updateFAQ, deleteFAQ, getPurchases, createPurchase, updatePurchase, deletePurchase,
     getSiteImages, createSiteImage, updateSiteImage, deleteSiteImage,
     getAllUsers, getAllUserCarts, getAllSaleItems,
-    uploadInvoicePdf, uploadSiteImage,
+    uploadInvoicePdf, uploadSiteImage, generateInvoicePdf,
     type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent, type FAQ, type Purchase, type SiteImage,
 } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
@@ -1046,11 +1046,28 @@ export default function Dashboard() {
             const id = fileType === 'purchase' ? purchaseId : invoiceId
             if (!id) return
 
+            // Obter o ID do usuário autenticado para definir como owner (apenas para invoices)
+            let ownerId: string | undefined
+            if (fileType === 'invoice') {
+                const { data: { user }, error: userError } = await supabase.auth.getUser()
+                if (userError || !user) {
+                    throw new Error('Usuário não autenticado. É necessário estar logado para fazer upload de PDFs.')
+                }
+                ownerId = user.id
+            }
+
             // Upload to Supabase Storage
             const bucketName = fileType === 'purchase' ? 'purchases-pdfs' : 'invoices'
             const folderName = fileType === 'purchase' ? 'purchases' : 'invoices'
             const path = `${folderName}/${id}/${Date.now()}_${file.name}`
-            const { error: uploadError } = await supabase.storage.from(bucketName).upload(path, file, { upsert: true })
+            
+            // Para invoices, incluir owner no metadata conforme políticas do Supabase
+            const uploadOptions: any = { upsert: true }
+            if (fileType === 'invoice' && ownerId) {
+                uploadOptions.metadata = { owner: ownerId }
+            }
+            
+            const { error: uploadError } = await supabase.storage.from(bucketName).upload(path, file, uploadOptions)
             if (uploadError) throw uploadError
 
             // Get public URL (or use createSignedUrl for private buckets)
@@ -1067,9 +1084,9 @@ export default function Dashboard() {
             // Reload data
             await loadAllData()
             alert('PDF anexado com sucesso.')
-        } catch (err) {
+        } catch (err: any) {
             console.error('Erro ao enviar PDF:', err)
-            alert('Erro ao enviar PDF. Verifique o console.')
+            alert(`Erro ao enviar PDF: ${err.message || 'Verifique o console.'}`)
         } finally {
             setUploading(false)
             setUploadingPurchaseId(null)
@@ -1473,8 +1490,34 @@ export default function Dashboard() {
                 const newInvoice = await createInvoice(invoiceData)
                 invoiceId = newInvoice.id
 
-                // Se houver um novo arquivo PDF, fazer upload
-                if (formData.pdf_file) {
+                // Gerar PDF automaticamente se não houver um arquivo PDF fornecido
+                if (!formData.pdf_file) {
+                    setUploading(true)
+                    try {
+                        // Gerar PDF da nota fiscal
+                        const pdfBlob = await generateInvoicePdf({ ...newInvoice, ...invoiceData })
+                        
+                        // Converter Blob para File
+                        const pdfFile = new File([pdfBlob], `nota_fiscal_${invoiceData.invoice_number}.pdf`, {
+                            type: 'application/pdf'
+                        })
+                        
+                        // Fazer upload do PDF gerado
+                        pdfUrl = await uploadInvoicePdf(pdfFile, invoiceId)
+
+                        // Atualizar invoice com a URL do PDF
+                        await updateInvoice(invoiceId, { pdf_url: pdfUrl })
+                        invoiceData.pdf_url = pdfUrl
+                    } catch (error: any) {
+                        console.error('Erro ao gerar PDF da nota fiscal:', error)
+                        alert(`Erro ao gerar PDF: ${error.message || 'Tente novamente.'}`)
+                        setUploading(false)
+                        // Continuar mesmo se houver erro na geração do PDF
+                    } finally {
+                        setUploading(false)
+                    }
+                } else {
+                    // Se houver um novo arquivo PDF fornecido, fazer upload
                     setUploading(true)
                     try {
                         pdfUrl = await uploadInvoicePdf(formData.pdf_file, invoiceId)
@@ -2211,9 +2254,51 @@ export default function Dashboard() {
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
                                                     <div className="flex items-center gap-2">
                                                         <button
+                                                            onClick={async () => {
+                                                                try {
+                                                                    setUploading(true)
+                                                                    setUploadingFileType('invoice')
+                                                                    setUploadingInvoiceId(invoice.id)
+                                                                    
+                                                                    // Gerar novo PDF
+                                                                    const pdfBlob = await generateInvoicePdf(invoice)
+                                                                    const pdfFile = new File([pdfBlob], `nota_fiscal_${invoice.invoice_number}.pdf`, {
+                                                                        type: 'application/pdf'
+                                                                    })
+                                                                    
+                                                                    // Fazer upload do PDF gerado
+                                                                    const pdfUrl = await uploadInvoicePdf(pdfFile, invoice.id)
+                                                                    
+                                                                    // Atualizar invoice com a nova URL do PDF
+                                                                    await updateInvoice(invoice.id, { pdf_url: pdfUrl })
+                                                                    
+                                                                    // Recarregar dados
+                                                                    await loadAllData()
+                                                                    
+                                                                    alert('PDF gerado e atualizado com sucesso!')
+                                                                } catch (error: any) {
+                                                                    console.error('Erro ao gerar PDF:', error)
+                                                                    alert(`Erro ao gerar PDF: ${error.message || 'Tente novamente.'}`)
+                                                                } finally {
+                                                                    setUploading(false)
+                                                                    setUploadingFileType(null)
+                                                                    setUploadingInvoiceId(null)
+                                                                }
+                                                            }}
+                                                            className="flex items-center gap-1 bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+                                                            title="Gerar/Re-gerar PDF"
+                                                            disabled={uploading && uploadingFileType === 'invoice' && uploadingInvoiceId === invoice.id}
+                                                        >
+                                                            {uploading && uploadingFileType === 'invoice' && uploadingInvoiceId === invoice.id ? (
+                                                                <Loader2 className="animate-spin" size={14} />
+                                                            ) : (
+                                                                <FileText size={14} />
+                                                            )}
+                                                        </button>
+                                                        <button
                                                             onClick={() => openFileSelector(invoice.id, 'invoice')}
                                                             className="flex items-center gap-1 bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
-                                                            title="Adicionar/Atualizar PDF"
+                                                            title="Adicionar/Atualizar PDF Manual"
                                                         >
                                                             {uploading && uploadingFileType === 'invoice' && uploadingInvoiceId === invoice.id ? (
                                                                 <Loader2 className="animate-spin" size={14} />
