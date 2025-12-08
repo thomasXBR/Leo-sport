@@ -2254,60 +2254,8 @@ export default function Dashboard() {
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
                                                     <div className="flex items-center gap-2">
-                                                        <button
-                                                            onClick={async () => {
-                                                                try {
-                                                                    setUploading(true)
-                                                                    setUploadingFileType('invoice')
-                                                                    setUploadingInvoiceId(invoice.id)
 
-                                                                    // Gerar novo PDF (importação dinâmica)
-                                                                    const { generateInvoicePdf } = await import('@/lib/invoice-pdf')
-                                                                    const pdfBlob = await generateInvoicePdf(invoice)
-                                                                    const pdfFile = new File([pdfBlob], `nota_fiscal_${invoice.invoice_number}.pdf`, {
-                                                                        type: 'application/pdf'
-                                                                    })
 
-                                                                    // Fazer upload do PDF gerado
-                                                                    const pdfUrl = await uploadInvoicePdf(pdfFile, invoice.id)
-
-                                                                    // Atualizar invoice com a nova URL do PDF
-                                                                    await updateInvoice(invoice.id, { pdf_url: pdfUrl })
-
-                                                                    // Recarregar dados
-                                                                    await loadAllData()
-
-                                                                    alert('PDF gerado e atualizado com sucesso!')
-                                                                } catch (error: any) {
-                                                                    console.error('Erro ao gerar PDF:', error)
-                                                                    alert(`Erro ao gerar PDF: ${error.message || 'Tente novamente.'}`)
-                                                                } finally {
-                                                                    setUploading(false)
-                                                                    setUploadingFileType(null)
-                                                                    setUploadingInvoiceId(null)
-                                                                }
-                                                            }}
-                                                            className="flex items-center gap-1 bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
-                                                            title="Gerar/Re-gerar PDF"
-                                                            disabled={uploading && uploadingFileType === 'invoice' && uploadingInvoiceId === invoice.id}
-                                                        >
-                                                            {uploading && uploadingFileType === 'invoice' && uploadingInvoiceId === invoice.id ? (
-                                                                <Loader2 className="animate-spin" size={14} />
-                                                            ) : (
-                                                                <FileText size={14} />
-                                                            )}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => openFileSelector(invoice.id, 'invoice')}
-                                                            className="flex items-center gap-1 bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
-                                                            title="Adicionar/Atualizar PDF Manual"
-                                                        >
-                                                            {uploading && uploadingFileType === 'invoice' && uploadingInvoiceId === invoice.id ? (
-                                                                <Loader2 className="animate-spin" size={14} />
-                                                            ) : (
-                                                                <Package size={14} />
-                                                            )}
-                                                        </button>
                                                         <button
                                                             onClick={() => openModal('invoice', invoice)}
                                                             className="text-cyan-600 hover:text-cyan-900"
