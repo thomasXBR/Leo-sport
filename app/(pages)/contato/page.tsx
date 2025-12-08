@@ -1,16 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { MapPin, Phone, Mail, Clock } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, ChevronLeft, ChevronRight, HelpCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useSiteContent } from '@/hooks/use-site-content';
 import { useSiteImages } from '@/hooks/use-site-images';
-import FAQCarousel from '@/components/layout/FAQCarousel';
+import { getFAQs, type FAQ } from '@/lib/supabase';
 
 export default function ContatoPage() {
   const { getContent, loading } = useSiteContent();
@@ -21,6 +21,10 @@ export default function ContatoPage() {
     subject: '',
     message: ''
   });
+  const [faqs, setFaqs] = useState<FAQ[]>([]);
+  const [faqLoading, setFaqLoading] = useState(true);
+  const [currentFaqPage, setCurrentFaqPage] = useState(1);
+  const FAQS_PER_PAGE = 2;
 
   const contactInfo = [
     {
@@ -44,6 +48,46 @@ export default function ContatoPage() {
       content: getContent('contact_hours_content', 'Segunda a Sexta: 8h às 18h\nSábado: 8h às 14h')
     }
   ];
+
+  // Carregar FAQs do Supabase
+  useEffect(() => {
+    const loadFAQs = async () => {
+      try {
+        setFaqLoading(true);
+        const faqsData = await getFAQs();
+        setFaqs(faqsData || []);
+      } catch (error) {
+        console.error('Erro ao carregar FAQs:', error);
+        setFaqs([]);
+      } finally {
+        setFaqLoading(false);
+      }
+    };
+
+    loadFAQs();
+  }, []);
+
+  // Cálculos de paginação para FAQ
+  const totalFaqPages = Math.ceil(faqs.length / FAQS_PER_PAGE);
+  const currentFaqs = faqs.slice(
+    (currentFaqPage - 1) * FAQS_PER_PAGE,
+    currentFaqPage * FAQS_PER_PAGE
+  );
+
+  // Ajustar página atual se necessário
+  useEffect(() => {
+    if (currentFaqPage > totalFaqPages && totalFaqPages > 0) {
+      setCurrentFaqPage(totalFaqPages);
+    }
+  }, [faqs, totalFaqPages, currentFaqPage]);
+
+  const handleFaqPageChange = (direction: 'prev' | 'next') => {
+    if (direction === 'prev' && currentFaqPage > 1) {
+      setCurrentFaqPage(prev => prev - 1);
+    } else if (direction === 'next' && currentFaqPage < totalFaqPages) {
+      setCurrentFaqPage(prev => prev + 1);
+    }
+  };
 
   if (loading) {
     return (
@@ -123,12 +167,89 @@ export default function ContatoPage() {
             </div>
 
             {/* FAQ Section */}
-            <div className="mt-12 pb-4">
-              <h3 className="text-xl font-bold text-gray-900 mb-6">
-                {getContent('contact_faq_title', 'Perguntas Frequentes')}
-              </h3>
-              <FAQCarousel />
-            </div>
+            {faqs.length > 0 && (
+              <div className="mt-12 pb-4">
+                <div className="text-center mb-6">
+                  <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-100 rounded-full mb-3">
+                    <HelpCircle className="w-7 h-7 text-blue-900" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900">
+                    {getContent('contact_faq_title', 'Perguntas Frequentes')}
+                  </h3>
+                  <p className="text-gray-600">
+                    Dúvidas mais comuns sobre contato e suporte
+                  </p>
+                </div>
+
+                {faqLoading ? (
+                  <div className="flex justify-center items-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-900"></div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-4 mb-6">
+                      {currentFaqs.map((faq) => (
+                        <Card key={faq.id} className="hover:shadow-lg transition-shadow duration-300">
+                          <CardContent className="p-5">
+                            <div className="space-y-3">
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 w-8 h-8 bg-blue-900 text-white rounded-full flex items-center justify-center font-bold text-sm mt-1">
+                                  Q
+                                </div>
+                                <div className="flex-1">
+                                  <h4 className="text-lg font-semibold text-gray-900 mb-1">
+                                    {faq.perguntas_frequentes}
+                                  </h4>
+                                </div>
+                              </div>
+                              <div className="flex items-start gap-3 ml-11">
+                                <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-900 rounded-full flex items-center justify-center font-bold text-sm mt-1">
+                                  A
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-gray-700 leading-relaxed whitespace-pre-line">
+                                    {faq.respostas}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+
+                    {/* Paginação */}
+                    {totalFaqPages > 1 && (
+                      <div className="flex items-center justify-center gap-4 mt-4">
+                        <Button
+                          onClick={() => handleFaqPageChange('prev')}
+                          disabled={currentFaqPage === 1}
+                          variant="outline"
+                          size="icon"
+                          className="rounded-full"
+                        >
+                          <ChevronLeft className="w-5 h-5" />
+                        </Button>
+
+                        <span className="text-sm text-gray-600">
+                          Página {currentFaqPage} de {totalFaqPages}
+                        </span>
+
+                        <Button
+                          onClick={() => handleFaqPageChange('next')}
+                          disabled={currentFaqPage === totalFaqPages}
+                          variant="outline"
+                          size="icon"
+                          className="rounded-full"
+                        >
+                          <ChevronRight className="w-5 h-5" />
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Contact Form */}
