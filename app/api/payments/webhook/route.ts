@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
   const receivedAt = new Date().toISOString();
 
   try {
+    // Aceitar requisições mesmo sem autenticação (webhooks do Mercado Pago não usam auth tradicional)
     const body = await request.json();
 
     if (WEBHOOK_LOG_ENABLED) {
@@ -101,10 +102,35 @@ export async function POST(request: NextRequest) {
     try {
       payment = await getPaymentById(paymentId);
     } catch (error: any) {
-      console.error('[Webhook] Erro ao buscar pagamento:', error);
-      // Retornar 200 mesmo com erro para evitar reenvios
+      // Em caso de simulação ou erro de autenticação, aceitar a notificação mesmo assim
+      // O Mercado Pago pode enviar notificações antes do pagamento estar totalmente processado
+      console.warn('[Webhook] Não foi possível buscar pagamento (pode ser simulação ou pagamento ainda não disponível):', {
+        paymentId,
+        error: error.message,
+        action: body.action,
+      });
+      
+      // Se for uma simulação ou teste, retornar sucesso sem processar
+      // Isso evita erros 401 em testes
+      if (body.live_mode === false || !process.env.MERCADO_PAGO_ACCESS_TOKEN) {
+        return NextResponse.json(
+          { 
+            received: true, 
+            requestId,
+            message: 'Notificação recebida (modo simulação/teste)',
+            note: 'Pagamento não encontrado, mas notificação aceita'
+          },
+          { status: 200 }
+        );
+      }
+      
+      // Em produção, ainda retornar 200 para evitar reenvios, mas logar o erro
       return NextResponse.json(
-        { received: true, error: 'Erro ao buscar pagamento' },
+        { 
+          received: true, 
+          requestId,
+          error: 'Erro ao buscar pagamento, mas notificação aceita'
+        },
         { status: 200 }
       );
     }

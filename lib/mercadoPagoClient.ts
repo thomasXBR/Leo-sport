@@ -472,7 +472,8 @@ export function validateWebhookNotification(
   notification: MercadoPagoPaymentNotification
 ): boolean {
   // Validar estrutura básica da notificação
-  if (!notification.id || !notification.type || !notification.data?.id) {
+  // Aceitar mesmo sem todos os campos para permitir simulações
+  if (!notification.type || !notification.data?.id) {
     return false;
   }
 
