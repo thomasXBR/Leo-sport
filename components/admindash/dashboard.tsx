@@ -34,7 +34,6 @@ import {
 } from '@/components/ui/alert-dialog'
 import {
     getProducts, createProduct, updateProduct, deleteProduct,
-    getInventoryItems, createInventoryMovement, deleteInventoryMovement,
     getSales, getSalesDataForChart, getSalesWithItems, getSaleById,
     getInvoices, createInvoice, updateInvoice, deleteInvoice,
     getPartnerships, createPartnership, updatePartnership, deletePartnership,
@@ -857,7 +856,6 @@ export default function Dashboard() {
 
     // Estados dos dados
     const [products, setProducts] = useState<Product[]>([])
-    const [inventoryItems, setInventoryItems] = useState<any[]>([])
     const [sales, setSales] = useState<any[]>([])
     const [invoices, setInvoices] = useState<Invoice[]>([])
     const [partnersList, setPartnersList] = useState<Partnership[]>([])
@@ -947,7 +945,7 @@ export default function Dashboard() {
 
     // Estados dos modais
     const [isModalOpen, setIsModalOpen] = useState(false)
-    const [modalType, setModalType] = useState<'invoice' | 'partner' | 'coupon' | 'product' | 'inventory' | 'faq' | 'purchase' | null>(null)
+    const [modalType, setModalType] = useState<'invoice' | 'partner' | 'coupon' | 'product' | 'faq' | 'purchase' | null>(null)
     const [editingItem, setEditingItem] = useState<any>(null)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [itemToDelete, setItemToDelete] = useState<{ type: string; id: string; name: string } | null>(null)
@@ -1213,9 +1211,8 @@ export default function Dashboard() {
         try {
             setLoading(true)
             // Carregar apenas os dados essenciais inicialmente
-            const [productsData, inventoryData, salesDataResp, invoicesData, partnersData, couponsData, contentData, faqsData, purchasesData, imagesData, usersData, salesWithItemsData, purchasedItemsData] = await Promise.all([
+            const [productsData, salesDataResp, invoicesData, partnersData, couponsData, contentData, faqsData, purchasesData, imagesData, usersData, salesWithItemsData, purchasedItemsData] = await Promise.all([
                 getProducts().catch(() => []),
-                getInventoryItems().catch(() => []),
                 getSales().catch(() => []),
                 getInvoices().catch(() => []),
                 getPartnerships().catch(() => []),
@@ -1230,7 +1227,6 @@ export default function Dashboard() {
             ])
 
             setProducts(productsData || [])
-            setInventoryItems(inventoryData || [])
             setSales(salesDataResp || [])
             setInvoices(invoicesData || [])
             // Separar solicitações pendentes das parcerias ativas/inativas
@@ -1391,10 +1387,6 @@ export default function Dashboard() {
                     // Recarregar dados do Supabase para garantir sincronização
                     const updatedCoupons = await getCoupons()
                     setCoupons(updatedCoupons || [])
-                    break
-                case 'inventory':
-                    await deleteInventoryMovement(itemToDelete.id)
-                    loadAllData() // Recarregar para atualizar estoque
                     break
                 case 'product':
                     await deleteProduct(itemToDelete.id)
@@ -1659,24 +1651,6 @@ export default function Dashboard() {
         }
     }
 
-    const handleSaveInventory = async (formData: any) => {
-        try {
-            await createInventoryMovement({
-                product_id: formData.product_id,
-                product_name: '',
-                movement_type: formData.movement_type,
-                quantity: parseInt(formData.quantity),
-                previous_quantity: 0,
-                new_quantity: 0,
-                reason: formData.reason || '',
-            })
-            closeModal()
-            loadAllData()
-        } catch (error) {
-            console.error('Erro ao salvar movimento de estoque:', error)
-            alert('Erro ao salvar. Tente novamente.')
-        }
-    }
 
     const handleSaveContent = async (id: string, value: string) => {
         try {
@@ -1812,10 +1786,6 @@ export default function Dashboard() {
                     />
                 )
                 break
-            case 'inventory':
-                modalTitle = isEdit ? 'Editar Movimentação' : 'Nova Movimentação de Estoque'
-                modalContent = <p>Formulário de Estoque Pendente</p>
-                break
             case 'product':
                 modalTitle = isEdit ? 'Editar Produto' : 'Adicionar Novo Produto'
                 modalContent = (
@@ -1950,68 +1920,6 @@ export default function Dashboard() {
                         </div>
                     </div>
                 );
-            case 'inventory':
-                return (
-                    <div>
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-2xl font-semibold text-gray-700">Gestão de Estoque</h2>
-                            <button
-                                onClick={() => openModal('inventory')}
-                                className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
-                            >
-                                <PlusCircle size={20} className="mr-2" />
-                                Nova Movimentação
-                            </button>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full bg-white">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
-                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantidade</th>
-                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200">
-                                    {inventoryItems.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={4} className="py-8 text-center text-gray-500">
-                                                Nenhum item em estoque
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        inventoryItems.map((item) => (
-                                            <tr key={item.id}>
-                                                <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">{item.name}</td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-gray-500">{item.quantity}</td>
-                                                <td className="py-4 px-4 whitespace-nowrap">
-                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(item.status)}`}>
-                                                        {item.status}
-                                                    </span>
-                                                </td>
-                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
-                                                    <button
-                                                        onClick={() => openModal('inventory', item)}
-                                                        className="text-cyan-600 hover:text-cyan-900 mr-3"
-                                                    >
-                                                        <Edit size={18} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => openDeleteDialog('inventory', item.id, item.name)}
-                                                        className="text-red-600 hover:text-red-900"
-                                                    >
-                                                        <Trash2 size={18} />
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                );
             case 'users':
                 const usersToShow = filterConsentEmails
                     ? users.filter((u: any) => u.consent_emails === true)
@@ -2089,7 +1997,7 @@ export default function Dashboard() {
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
                                                     <div className="flex gap-2 items-center">
-                                                        {user.consent_emails !== true && user.email ? (
+                                                        {user.consent_emails === true && user.email ? (
                                                             <button
                                                                 onClick={() => {
                                                                     setSelectedUserForEmail(user)
@@ -2101,8 +2009,6 @@ export default function Dashboard() {
                                                                 <Mail size={16} />
                                                                 Email
                                                             </button>
-                                                        ) : user.consent_emails === true ? (
-                                                            <span className="text-gray-400 text-xs">Já aceitou</span>
                                                         ) : (
                                                             <span className="text-gray-400 text-xs">N/A</span>
                                                         )}
@@ -2948,7 +2854,6 @@ export default function Dashboard() {
 
     const menuItems = [
         { id: 'sales', label: 'Vendas', icon: DollarSign },
-        { id: 'inventory', label: 'Estoque', icon: Package },
         { id: 'users', label: 'Usuários', icon: User },
         { id: 'products', label: 'Produtos', icon: ShoppingCart },
         { id: 'invoices', label: 'Notas Fiscais', icon: FileText },
