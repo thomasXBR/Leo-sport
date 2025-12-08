@@ -18,9 +18,8 @@ export async function generateInvoicePdf(invoice: Invoice): Promise<Blob> {
 
   // Importar jsPDF dinamicamente (client-side only)
   // Usar import dinâmico para evitar problemas no build do Next.js
-  // @ts-ignore - jspdf pode não ter tipos completos
-  const jsPDFModule = await import('jspdf');
-  const jsPDF = jsPDFModule.default || jsPDFModule.jsPDF || jsPDFModule;
+  // jspdf v3 usa named export { jsPDF }
+  const { jsPDF } = await import('jspdf');
   
   const doc = new jsPDF({
     orientation: 'portrait',

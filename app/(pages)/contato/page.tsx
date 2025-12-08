@@ -2,10 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
 import { MapPin, Phone, Mail, Clock, ChevronLeft, ChevronRight, HelpCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useSiteContent } from '@/hooks/use-site-content';
@@ -15,12 +12,6 @@ import { getFAQs, type FAQ } from '@/lib/supabase';
 export default function ContatoPage() {
   const { getContent, loading } = useSiteContent();
   const { getImage } = useSiteImages();
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    subject: '',
-    message: ''
-  });
   const [faqs, setFaqs] = useState<FAQ[]>([]);
   const [faqLoading, setFaqLoading] = useState(true);
   const [currentFaqPage, setCurrentFaqPage] = useState(1);
@@ -97,18 +88,6 @@ export default function ContatoPage() {
     );
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: Implement contact form submission
-    console.log('Contact form submitted:', formData);
-    alert('Mensagem enviada com sucesso! Retornaremos em breve.');
-    setFormData({ name: '', email: '', subject: '', message: '' });
-  };
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
   return (
     <div className="space-y-16">
       {/* Hero Section */}
@@ -137,8 +116,8 @@ export default function ContatoPage() {
         </div>
       </section>
 
-      {/* Contact Info and Form */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Contact Info and FAQ */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Contact Information */}
           <div>
@@ -165,18 +144,20 @@ export default function ContatoPage() {
                 </div>
               ))}
             </div>
+          </div>
 
-            {/* FAQ Section */}
+          {/* FAQ Section */}
+          <div>
             {faqs.length > 0 && (
-              <div className="mt-12 pb-4">
-                <div className="text-center mb-6">
+              <div className="pb-6">
+                <div className="mb-6">
                   <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-100 rounded-full mb-3">
                     <HelpCircle className="w-7 h-7 text-blue-900" />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900">
+                  <h2 className="text-2xl font-bold text-gray-900">
                     {getContent('contact_faq_title', 'Perguntas Frequentes')}
-                  </h3>
-                  <p className="text-gray-600">
+                  </h2>
+                  <p className="text-gray-600 mt-2">
                     Dúvidas mais comuns sobre contato e suporte
                   </p>
                 </div>
@@ -250,73 +231,6 @@ export default function ContatoPage() {
                 )}
               </div>
             )}
-          </div>
-
-          {/* Contact Form */}
-          <div>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl">{getContent('contact_form_title', 'Envie sua Mensagem')}</CardTitle>
-                <p className="text-gray-600">
-                  {getContent('contact_form_subtitle', 'Preencha o formulário e retornaremos em até 24 horas')}
-                </p>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Nome Completo *</Label>
-                      <Input
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) => handleInputChange('name', e.target.value)}
-                        placeholder="Seu nome completo"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="email">E-mail *</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => handleInputChange('email', e.target.value)}
-                        placeholder="seu@email.com"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="subject">Assunto *</Label>
-                    <Input
-                      id="subject"
-                      value={formData.subject}
-                      onChange={(e) => handleInputChange('subject', e.target.value)}
-                      placeholder="Como podemos ajudar?"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="message">Mensagem *</Label>
-                    <Textarea
-                      id="message"
-                      value={formData.message}
-                      onChange={(e) => handleInputChange('message', e.target.value)}
-                      placeholder="Descreva sua dúvida ou sugestão..."
-                      rows={6}
-                      required
-                    />
-                  </div>
-
-                  <Button type="submit" className="w-full bg-blue-900 hover:bg-blue-950" size="lg">
-                    Enviar Mensagem
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </section>
