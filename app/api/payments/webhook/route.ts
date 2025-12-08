@@ -96,52 +96,85 @@ export async function POST(request: NextRequest) {
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
   };
 
+  // IMPORTANTE: Retornar 200 IMEDIATAMENTE para evitar timeout e reenvios
+  // Processar tudo de forma assíncrona em background
+  let body;
   try {
-    // Aceitar requisições mesmo sem autenticação (webhooks do Mercado Pago não usam auth tradicional)
-    // Não verificar Authorization header - webhooks são públicos
-    let body;
-    try {
-      body = await request.json();
-    } catch (jsonError: any) {
-      // Se houver erro ao parsear JSON, ainda retornar 200 para evitar reenvios
-      console.warn('[Webhook] Erro ao parsear JSON:', jsonError.message);
-      return NextResponse.json(
-        { 
-          received: true, 
-          requestId,
-          message: 'JSON inválido, mas notificação aceita'
-        },
-        { 
-          status: 200,
-          headers: corsHeaders,
-        }
-      );
-    }
-
-    if (WEBHOOK_LOG_ENABLED) {
-      console.log('[Webhook Mercado Pago] Recebido:', {
+    body = await request.json();
+  } catch (jsonError: any) {
+    // Se houver erro ao parsear JSON, ainda retornar 200
+    console.warn('[Webhook] Erro ao parsear JSON:', jsonError.message);
+    return NextResponse.json(
+      { 
+        received: true, 
         requestId,
-        receivedAt,
-        type: body.type,
-        action: body.action,
-      });
-    }
+        message: 'JSON inválido, mas notificação aceita'
+      },
+      { 
+        status: 200,
+        headers: corsHeaders,
+      }
+    );
+  }
 
+  // Log inicial
+  if (WEBHOOK_LOG_ENABLED) {
+    console.log('[Webhook Mercado Pago] Recebido:', {
+      requestId,
+      receivedAt,
+      type: body.type,
+      action: body.action,
+      live_mode: body.live_mode,
+    });
+  }
+
+  // Validar estrutura básica (mas não bloquear)
+  const isValid = validateWebhookNotification(body);
+  if (!isValid) {
+    console.warn('[Webhook] Notificação inválida (mas aceita):', body);
+  }
+
+  // Processar em background (não bloquear a resposta)
+  processWebhookAsync(body, requestId, receivedAt).catch((error) => {
+    console.error('[Webhook] Erro no processamento assíncrono:', {
+      requestId,
+      error: error.message,
+    });
+  });
+
+  // Retornar 200 IMEDIATAMENTE (antes de qualquer processamento)
+  return NextResponse.json(
+    { 
+      received: true,
+      requestId,
+      processed: 'async',
+      message: 'Notificação recebida e será processada'
+    },
+    { 
+      status: 200,
+      headers: corsHeaders,
+    }
+  );
+}
+
+/**
+ * Processa o webhook de forma assíncrona (não bloqueia a resposta)
+ */
+async function processWebhookAsync(body: any, requestId: string, receivedAt: string) {
+  try {
     // Validar estrutura da notificação
     if (!validateWebhookNotification(body)) {
-      console.warn('[Webhook] Notificação inválida (mas aceita para evitar reenvios):', body);
-      // Retornar 200 mesmo com notificação inválida para evitar reenvios do Mercado Pago
-      return NextResponse.json(
-        { 
-          received: true,
-          requestId,
-          message: 'Notificação inválida, mas aceita'
-        },
-        { 
-          status: 200,
-          headers: corsHeaders,
-        }
-      );
+      console.warn('[Webhook] Notificação inválida, ignorando processamento:', body);
+      return;
+    }
+
+    // Se for simulação e não tiver token, apenas logar
+    if (body.live_mode === false && !process.env.MERCADO_PAGO_ACCESS_TOKEN) {
+      console.log('[Webhook] Modo simulação/teste - notificação aceita mas não processada:', {
+        requestId,
+        paymentId: body.data?.id,
+      });
+      return;
     }
 
     // Buscar dados completos do pagamento
@@ -151,43 +184,15 @@ export async function POST(request: NextRequest) {
     try {
       payment = await getPaymentById(paymentId);
     } catch (error: any) {
-      // Em caso de simulação ou erro de autenticação, aceitar a notificação mesmo assim
-      // O Mercado Pago pode enviar notificações antes do pagamento estar totalmente processado
-      console.warn('[Webhook] Não foi possível buscar pagamento (pode ser simulação ou pagamento ainda não disponível):', {
+      // Em caso de erro (simulação, token inválido, etc), apenas logar
+      console.warn('[Webhook] Não foi possível buscar pagamento:', {
+        requestId,
         paymentId,
         error: error.message,
         action: body.action,
+        hasToken: !!process.env.MERCADO_PAGO_ACCESS_TOKEN,
       });
-      
-      // Se for uma simulação ou teste, retornar sucesso sem processar
-      // Isso evita erros 401 em testes
-      if (body.live_mode === false || !process.env.MERCADO_PAGO_ACCESS_TOKEN) {
-        return NextResponse.json(
-          { 
-            received: true, 
-            requestId,
-            message: 'Notificação recebida (modo simulação/teste)',
-            note: 'Pagamento não encontrado, mas notificação aceita'
-          },
-          { 
-            status: 200,
-            headers: corsHeaders,
-          }
-        );
-      }
-      
-      // Em produção, ainda retornar 200 para evitar reenvios, mas logar o erro
-      return NextResponse.json(
-        { 
-          received: true, 
-          requestId,
-          error: 'Erro ao buscar pagamento, mas notificação aceita'
-        },
-        { 
-          status: 200,
-          headers: corsHeaders,
-        }
-      );
+      return;
     }
 
     // Extrair informações relevantes
@@ -308,36 +313,12 @@ export async function POST(request: NextRequest) {
         payment_id: paymentIdFromMP,
       });
     }
-
-    // Sempre retornar 200 para o Mercado Pago para evitar reenvios
-    return NextResponse.json({ 
-      received: true,
-      requestId,
-      processed: true,
-    }, { 
-      status: 200,
-      headers: corsHeaders,
-    });
   } catch (error: any) {
-    console.error('[Webhook] Erro ao processar webhook:', {
+    console.error('[Webhook] Erro no processamento assíncrono:', {
       requestId,
       error: error.message,
       stack: error.stack,
     });
-    
-    // Sempre retornar 200 para evitar que o Mercado Pago fique reenviando
-    // O erro foi logado para investigação
-    return NextResponse.json(
-      { 
-        received: true, 
-        requestId,
-        error: error.message 
-      },
-      { 
-        status: 200,
-        headers: corsHeaders,
-      }
-    );
   }
 }
 
