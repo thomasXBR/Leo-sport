@@ -57,14 +57,11 @@ export function MercadoPagoCheckout({
         },
       });
 
-      if (preference?.init_point) {
+      // Usar init_point sempre que disponível (produção ou teste)
+      const checkoutUrl = preference?.init_point || preference?.sandbox_init_point;
+      if (checkoutUrl) {
         onSuccess?.(preference.preference_id);
-        // Redirecionar para checkout do Mercado Pago
-        window.location.href = preference.init_point;
-      } else if (preference?.sandbox_init_point) {
-        onSuccess?.(preference.preference_id);
-        // Para modo de teste
-        window.location.href = preference.sandbox_init_point;
+        window.location.href = checkoutUrl;
       } else {
         throw new Error('URL de checkout não disponível');
       }

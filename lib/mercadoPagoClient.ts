@@ -11,10 +11,20 @@ import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
  */
 
 const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || '';
-const isTestMode = process.env.MERCADO_PAGO_TEST_MODE === 'true' || !accessToken;
+
+// Detectar modo de teste baseado no token (tokens de teste começam com "TEST-")
+// Ou pela variável de ambiente MERCADO_PAGO_TEST_MODE
+const isTestMode = 
+  process.env.MERCADO_PAGO_TEST_MODE === 'true' || 
+  !accessToken ||
+  accessToken.startsWith('TEST-');
 
 if (!accessToken && process.env.NODE_ENV === 'production') {
   console.warn('[Mercado Pago] ATENÇÃO: MERCADO_PAGO_ACCESS_TOKEN não configurado em produção!');
+}
+
+if (isTestMode && accessToken && !accessToken.startsWith('TEST-') && process.env.NODE_ENV === 'production') {
+  console.warn('[Mercado Pago] ATENÇÃO: Token de produção detectado, mas MERCADO_PAGO_TEST_MODE está ativado!');
 }
 
 // Inicializar cliente Mercado Pago
@@ -151,7 +161,7 @@ export async function createPaymentPreference(
       })),
       metadata: {
         ...preferenceData.metadata,
-        test_mode: isTestMode,
+        // Não adicionar test_mode - o Mercado Pago detecta automaticamente pelo token
       },
     };
 

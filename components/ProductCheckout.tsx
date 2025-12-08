@@ -58,12 +58,11 @@ export function ProductCheckout({
           installments,
         });
 
-        if (preference?.init_point) {
+        // Usar init_point sempre que disponível (produção ou teste)
+        const checkoutUrl = preference?.init_point || preference?.sandbox_init_point;
+        if (checkoutUrl) {
           onSuccess?.(preference.preference_id);
-          window.location.href = preference.init_point;
-        } else if (preference?.sandbox_init_point) {
-          onSuccess?.(preference.preference_id);
-          window.location.href = preference.sandbox_init_point;
+          window.location.href = checkoutUrl;
         }
       } else {
         const preference = await createMobileCheckout({

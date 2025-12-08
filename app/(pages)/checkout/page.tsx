@@ -138,12 +138,11 @@ export default function CheckoutPage() {
                 payerPhone: customerPhone || undefined,
             });
 
-            if (preference?.init_point) {
-                // Redirecionar para o checkout do Mercado Pago
-                window.location.href = preference.init_point;
-            } else if (preference?.sandbox_init_point) {
-                // Modo sandbox
-                window.location.href = preference.sandbox_init_point;
+            // Usar init_point sempre que disponível (produção ou teste)
+            // O Mercado Pago retorna init_point para ambos os casos
+            const checkoutUrl = preference?.init_point || preference?.sandbox_init_point;
+            if (checkoutUrl) {
+                window.location.href = checkoutUrl;
             } else {
                 throw new Error('URL de checkout não disponível');
             }
