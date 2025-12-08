@@ -69,13 +69,54 @@ function mapPaymentStatusToOrderStatus(paymentStatus: string): {
   }
 }
 
+// Configuração para tornar a rota pública (sem autenticação)
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+// Permitir CORS para webhooks do Mercado Pago
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    },
+  });
+}
+
 export async function POST(request: NextRequest) {
   const requestId = `webhook_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const receivedAt = new Date().toISOString();
 
+  // Headers padrão para todas as respostas (CORS)
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+  };
+
   try {
     // Aceitar requisições mesmo sem autenticação (webhooks do Mercado Pago não usam auth tradicional)
-    const body = await request.json();
+    // Não verificar Authorization header - webhooks são públicos
+    let body;
+    try {
+      body = await request.json();
+    } catch (jsonError: any) {
+      // Se houver erro ao parsear JSON, ainda retornar 200 para evitar reenvios
+      console.warn('[Webhook] Erro ao parsear JSON:', jsonError.message);
+      return NextResponse.json(
+        { 
+          received: true, 
+          requestId,
+          message: 'JSON inválido, mas notificação aceita'
+        },
+        { 
+          status: 200,
+          headers: corsHeaders,
+        }
+      );
+    }
 
     if (WEBHOOK_LOG_ENABLED) {
       console.log('[Webhook Mercado Pago] Recebido:', {
@@ -88,10 +129,18 @@ export async function POST(request: NextRequest) {
 
     // Validar estrutura da notificação
     if (!validateWebhookNotification(body)) {
-      console.error('[Webhook] Notificação inválida:', body);
+      console.warn('[Webhook] Notificação inválida (mas aceita para evitar reenvios):', body);
+      // Retornar 200 mesmo com notificação inválida para evitar reenvios do Mercado Pago
       return NextResponse.json(
-        { error: 'Notificação inválida' },
-        { status: 400 }
+        { 
+          received: true,
+          requestId,
+          message: 'Notificação inválida, mas aceita'
+        },
+        { 
+          status: 200,
+          headers: corsHeaders,
+        }
       );
     }
 
@@ -120,7 +169,10 @@ export async function POST(request: NextRequest) {
             message: 'Notificação recebida (modo simulação/teste)',
             note: 'Pagamento não encontrado, mas notificação aceita'
           },
-          { status: 200 }
+          { 
+            status: 200,
+            headers: corsHeaders,
+          }
         );
       }
       
@@ -131,7 +183,10 @@ export async function POST(request: NextRequest) {
           requestId,
           error: 'Erro ao buscar pagamento, mas notificação aceita'
         },
-        { status: 200 }
+        { 
+          status: 200,
+          headers: corsHeaders,
+        }
       );
     }
 
@@ -259,7 +314,10 @@ export async function POST(request: NextRequest) {
       received: true,
       requestId,
       processed: true,
-    }, { status: 200 });
+    }, { 
+      status: 200,
+      headers: corsHeaders,
+    });
   } catch (error: any) {
     console.error('[Webhook] Erro ao processar webhook:', {
       requestId,
@@ -275,7 +333,10 @@ export async function POST(request: NextRequest) {
         requestId,
         error: error.message 
       },
-      { status: 200 }
+      { 
+        status: 200,
+        headers: corsHeaders,
+      }
     );
   }
 }
@@ -491,15 +552,25 @@ async function registerPurchaseFromPayment({
   }
 }
 
-// Permitir apenas POST
+// Permitir GET para testes (retorna informações sobre o webhook)
 export async function GET() {
   return NextResponse.json(
     { 
       message: 'Webhook do Mercado Pago',
       method: 'Use POST para receber notificações',
       endpoint: '/api/payments/webhook',
+      status: 'ativo',
+      cors: 'habilitado',
+      authentication: 'não requerida',
     },
-    { status: 405 }
+    { 
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+      },
+    }
   );
 }
 
