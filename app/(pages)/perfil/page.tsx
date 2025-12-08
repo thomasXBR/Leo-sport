@@ -8,11 +8,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Calendar, User as UserIcon, Shield, Save, ShoppingBag, FileText, Download, Eye, Menu, X as XIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import { getUserOrders, getUserInvoices, normalizeInvoicePdfUrl, type Sale, type Invoice } from '@/lib/supabase';
+import { getUserOrders, getUserInvoices, type Sale, type Invoice } from '@/lib/supabase';
 
 export default function PerfilPage() {
   const { user, profile, updateProfile, updatePassword, loading } = useAuth();
@@ -23,6 +24,7 @@ export default function PerfilPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [userType, setUserType] = useState<'comprador' | 'vendedor' | 'admin'>('comprador');
+  const [consentEmails, setConsentEmails] = useState(false);
 
   // Password change
   const [currentPassword, setCurrentPassword] = useState('');
@@ -47,6 +49,8 @@ export default function PerfilPage() {
       setName(profile.name || '');
       setDescription(profile.description || '');
       setUserType(profile.user_type || 'comprador');
+      // Garantir que consent_emails seja boolean (true/false), não null ou undefined
+      setConsentEmails(profile.consent_emails === true);
     }
   }, [user, profile, loading, router]);
 
@@ -95,6 +99,7 @@ export default function PerfilPage() {
         name,
         description,
         user_type: userType,
+        consent_emails: consentEmails,
       });
 
       if (result.error) {
@@ -211,8 +216,8 @@ export default function PerfilPage() {
                 key={item.id}
                 onClick={() => setActiveTab(item.id as 'information' | 'purchases')}
                 className={`w-full flex items-center gap-3 p-3 rounded-lg mb-1 transition-all duration-200 ${activeTab === item.id
-                    ? 'bg-cyan-700 text-white shadow-lg'
-                    : 'text-cyan-100 hover:bg-cyan-800'
+                  ? 'bg-cyan-700 text-white shadow-lg'
+                  : 'text-cyan-100 hover:bg-cyan-800'
                   }`}
                 title={!sidebarOpen ? item.label : ''}
               >
@@ -292,6 +297,25 @@ export default function PerfilPage() {
                       placeholder="Sobre você..."
                       className="mt-1"
                       rows={3}
+                    />
+                  </div>
+
+                  <Separator />
+
+                  <div className="flex items-center justify-between py-2">
+                    <div className="flex-1">
+                      <Label htmlFor="consentEmails" className="text-base font-medium">
+                        Receber emails promocionais e atualizações
+                      </Label>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Ao ativar, você receberá emails com ofertas, novidades e atualizações importantes da LeoSport.
+                      </p>
+                    </div>
+                    <Switch
+                      id="consentEmails"
+                      checked={consentEmails}
+                      onCheckedChange={setConsentEmails}
+                      className="ml-4"
                     />
                   </div>
 
@@ -523,7 +547,7 @@ export default function PerfilPage() {
                                     asChild
                                     className="flex items-center gap-1"
                                   >
-                                    <a href={normalizeInvoicePdfUrl(invoice.pdf_url)} target="_blank" rel="noopener noreferrer">
+                                    <a href={invoice.pdf_url} target="_blank" rel="noopener noreferrer">
                                       <Eye className="w-4 h-4" />
                                       Visualizar
                                     </a>
@@ -536,7 +560,7 @@ export default function PerfilPage() {
                                     asChild
                                     className="flex items-center gap-1"
                                   >
-                                    <a href={normalizeInvoicePdfUrl(invoice.pdf_url)} download>
+                                    <a href={invoice.pdf_url} download>
                                       <Download className="w-4 h-4" />
                                       Baixar
                                     </a>

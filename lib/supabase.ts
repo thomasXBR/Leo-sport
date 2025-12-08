@@ -12,6 +12,7 @@ export type UserProfile = {
   avatar_url?: string;
   description?: string;
   user_type: 'comprador' | 'vendedor' | 'admin';
+  consent_emails?: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -1425,7 +1426,7 @@ export async function uploadInvoicePdf(
   // Upload para o bucket 'invoices' com owner no metadata
   const bucketName = 'invoices';
   
-  const { error: uploadError, data: uploadData } = await supabase.storage
+  const { error: uploadError } = await supabase.storage
     .from(bucketName)
     .upload(path, file, {
       upsert: true,
@@ -1441,69 +1442,16 @@ export async function uploadInvoicePdf(
     throw new Error(`Erro ao fazer upload do PDF: ${uploadError.message}`);
   }
 
-  // Obter URL pública - usar getPublicUrl que funciona para buckets públicos
+  // Obter URL pública
   const { data: urlData } = supabase.storage
     .from(bucketName)
     .getPublicUrl(path);
 
-  if (!urlData?.publicUrl) {
-    // Fallback: construir URL manualmente se getPublicUrl falhar
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const publicUrl = `${supabaseUrl}/storage/v1/object/public/${bucketName}/${path}`;
-    console.warn('getPublicUrl retornou vazio, usando URL construída manualmente:', publicUrl);
-    return publicUrl;
-  }
-
-  console.log('PDF uploadado com sucesso. URL:', urlData.publicUrl);
   return urlData.publicUrl;
 }
 
 // Re-exportar generateInvoicePdf de arquivo separado para evitar análise do jspdf em todas as páginas
 export { generateInvoicePdf } from './invoice-pdf';
-
-/**
- * Normalizar URL de PDF do Supabase Storage
- * Garante que a URL está no formato correto para acesso público
- * @param pdfUrl - URL do PDF (pode estar em formato incorreto)
- * @returns URL normalizada e válida
- */
-export function normalizeInvoicePdfUrl(pdfUrl: string): string {
-  if (!pdfUrl) return pdfUrl;
-  
-  // Se já é uma URL completa e válida, retornar como está
-  if (pdfUrl.startsWith('http://') || pdfUrl.startsWith('https://')) {
-    // Verificar se é uma URL do Supabase Storage
-    if (pdfUrl.includes('/storage/v1/object/public/')) {
-      return pdfUrl;
-    }
-    // Se for uma URL do Supabase mas não no formato correto, tentar corrigir
-    if (pdfUrl.includes('supabase.co') || pdfUrl.includes('supabase.in')) {
-      // Tentar extrair o caminho e reconstruir
-      try {
-        const url = new URL(pdfUrl);
-        const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)/);
-        if (pathMatch) {
-          const bucketName = pathMatch[1];
-          const filePath = pathMatch[2];
-          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || url.origin;
-          return `${supabaseUrl}/storage/v1/object/public/${bucketName}/${filePath}`;
-        }
-      } catch (e) {
-        console.warn('Erro ao normalizar URL:', e);
-      }
-    }
-    return pdfUrl;
-  }
-  
-  // Se for um caminho relativo, construir URL completa
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  if (pdfUrl.startsWith('/')) {
-    return `${supabaseUrl}${pdfUrl}`;
-  }
-  
-  // Se for apenas o caminho do arquivo, construir URL completa
-  return `${supabaseUrl}/storage/v1/object/public/invoices/${pdfUrl}`;
-}
 
 /**
  * Deletar PDF do storage

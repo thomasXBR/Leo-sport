@@ -42,7 +42,7 @@ import {
     getSiteContent, updateSiteContent, getFAQs, createFAQ, updateFAQ, deleteFAQ, getPurchases, createPurchase, updatePurchase, deletePurchase,
     getSiteImages, createSiteImage, updateSiteImage, deleteSiteImage,
     getAllUsers, getAllUserCarts, getAllSaleItems,
-    uploadInvoicePdf, uploadSiteImage, normalizeInvoicePdfUrl,
+    uploadInvoicePdf, uploadSiteImage,
     type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent, type FAQ, type Purchase, type SiteImage,
 } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
@@ -464,7 +464,7 @@ const InvoiceForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
                         </p>
                         {initialData?.pdf_url && !pdfFile && (
                             <a
-                                href={normalizeInvoicePdfUrl(initialData.pdf_url)}
+                                href={initialData.pdf_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="mt-2 inline-block text-sm text-cyan-600 hover:underline"
@@ -875,7 +875,7 @@ export default function Dashboard() {
     const [sidebarOpen, setSidebarOpen] = useState(true)
     const [emailModalOpen, setEmailModalOpen] = useState(false)
     const [selectedUserForEmail, setSelectedUserForEmail] = useState<any>(null)
-    const [filterAcceptedTerms, setFilterAcceptedTerms] = useState(false)
+    const [filterConsentEmails, setFilterConsentEmails] = useState(false)
 
     const FAQS_PER_PAGE = 6
     const [currentPage, setCurrentPage] = useState(1)
@@ -2013,8 +2013,8 @@ export default function Dashboard() {
                     </div>
                 );
             case 'users':
-                const usersToShow = filterAcceptedTerms
-                    ? users.filter((u: any) => u.accept_terms === true)
+                const usersToShow = filterConsentEmails
+                    ? users.filter((u: any) => u.consent_emails === true)
                     : users
                 return (
                     <div>
@@ -2027,20 +2027,20 @@ export default function Dashboard() {
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input
                                         type="checkbox"
-                                        checked={filterAcceptedTerms}
-                                        onChange={(e) => setFilterAcceptedTerms(e.target.checked)}
+                                        checked={filterConsentEmails}
+                                        onChange={(e) => setFilterConsentEmails(e.target.checked)}
                                         className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
                                     />
                                     <span className="text-sm font-medium text-gray-700">
-                                        Apenas usuários que aceitaram termos
+                                        Apenas usuários que aceitaram receber emails
                                     </span>
                                 </label>
                             </div>
                         </div>
                         {usersToShow.length === 0 ? (
                             <p className="text-center py-8 text-gray-500">
-                                {filterAcceptedTerms
-                                    ? 'Nenhum usuário que aceitou os termos encontrado.'
+                                {filterConsentEmails
+                                    ? 'Nenhum usuário que aceitou receber emails encontrado.'
                                     : 'Nenhum usuário encontrado.'}
                             </p>
                         ) : (
@@ -2051,14 +2051,14 @@ export default function Dashboard() {
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aceitou Termos</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aceitou Receber Emails</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data de Criação</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-200">
                                         {usersToShow.map((user: any) => (
-                                            <tr key={user.id} className={user.accept_terms ? 'bg-green-50' : ''}>
+                                            <tr key={user.id} className={user.consent_emails === true ? 'bg-green-50' : ''}>
                                                 <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">
                                                     {user.name || '-'}
                                                 </td>
@@ -2074,9 +2074,9 @@ export default function Dashboard() {
                                                     </span>
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap">
-                                                    {user.accept_terms ? (
+                                                    {user.consent_emails === true ? (
                                                         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                            ✓ Sim
+                                                            Sim
                                                         </span>
                                                     ) : (
                                                         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
@@ -2089,7 +2089,7 @@ export default function Dashboard() {
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
                                                     <div className="flex gap-2 items-center">
-                                                        {user.accept_terms && user.email ? (
+                                                        {user.consent_emails !== true && user.email ? (
                                                             <button
                                                                 onClick={() => {
                                                                     setSelectedUserForEmail(user)
@@ -2101,6 +2101,8 @@ export default function Dashboard() {
                                                                 <Mail size={16} />
                                                                 Email
                                                             </button>
+                                                        ) : user.consent_emails === true ? (
+                                                            <span className="text-gray-400 text-xs">Já aceitou</span>
                                                         ) : (
                                                             <span className="text-gray-400 text-xs">N/A</span>
                                                         )}
@@ -2245,7 +2247,7 @@ export default function Dashboard() {
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm">
                                                     {invoice.pdf_url ? (
-                                                        <a href={normalizeInvoicePdfUrl(invoice.pdf_url)} target="_blank" rel="noreferrer" className="text-cyan-600 hover:underline">
+                                                        <a href={invoice.pdf_url} target="_blank" rel="noreferrer" className="text-cyan-600 hover:underline">
                                                             Visualizar PDF
                                                         </a>
                                                     ) : (
@@ -2254,8 +2256,60 @@ export default function Dashboard() {
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
                                                     <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={async () => {
+                                                                try {
+                                                                    setUploading(true)
+                                                                    setUploadingFileType('invoice')
+                                                                    setUploadingInvoiceId(invoice.id)
 
+                                                                    // Gerar novo PDF (importação dinâmica)
+                                                                    const { generateInvoicePdf } = await import('@/lib/invoice-pdf')
+                                                                    const pdfBlob = await generateInvoicePdf(invoice)
+                                                                    const pdfFile = new File([pdfBlob], `nota_fiscal_${invoice.invoice_number}.pdf`, {
+                                                                        type: 'application/pdf'
+                                                                    })
 
+                                                                    // Fazer upload do PDF gerado
+                                                                    const pdfUrl = await uploadInvoicePdf(pdfFile, invoice.id)
+
+                                                                    // Atualizar invoice com a nova URL do PDF
+                                                                    await updateInvoice(invoice.id, { pdf_url: pdfUrl })
+
+                                                                    // Recarregar dados
+                                                                    await loadAllData()
+
+                                                                    alert('PDF gerado e atualizado com sucesso!')
+                                                                } catch (error: any) {
+                                                                    console.error('Erro ao gerar PDF:', error)
+                                                                    alert(`Erro ao gerar PDF: ${error.message || 'Tente novamente.'}`)
+                                                                } finally {
+                                                                    setUploading(false)
+                                                                    setUploadingFileType(null)
+                                                                    setUploadingInvoiceId(null)
+                                                                }
+                                                            }}
+                                                            className="flex items-center gap-1 bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+                                                            title="Gerar/Re-gerar PDF"
+                                                            disabled={uploading && uploadingFileType === 'invoice' && uploadingInvoiceId === invoice.id}
+                                                        >
+                                                            {uploading && uploadingFileType === 'invoice' && uploadingInvoiceId === invoice.id ? (
+                                                                <Loader2 className="animate-spin" size={14} />
+                                                            ) : (
+                                                                <FileText size={14} />
+                                                            )}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => openFileSelector(invoice.id, 'invoice')}
+                                                            className="flex items-center gap-1 bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                                                            title="Adicionar/Atualizar PDF Manual"
+                                                        >
+                                                            {uploading && uploadingFileType === 'invoice' && uploadingInvoiceId === invoice.id ? (
+                                                                <Loader2 className="animate-spin" size={14} />
+                                                            ) : (
+                                                                <Package size={14} />
+                                                            )}
+                                                        </button>
                                                         <button
                                                             onClick={() => openModal('invoice', invoice)}
                                                             className="text-cyan-600 hover:text-cyan-900"
@@ -2868,7 +2922,7 @@ export default function Dashboard() {
                                             <p className="text-sm text-gray-500 mt-1">Data: {new Date(purchase.purchase_date || purchase.created_at).toLocaleDateString('pt-BR')}</p>
                                             {purchase.pdf_url && (
                                                 <p className="mt-2">
-                                                    <a href={normalizeInvoicePdfUrl(purchase.pdf_url)} target="_blank" rel="noreferrer" className="text-cyan-600 hover:underline">Visualizar PDF</a>
+                                                    <a href={purchase.pdf_url} target="_blank" rel="noreferrer" className="text-cyan-600 hover:underline">Visualizar PDF</a>
                                                 </p>
                                             )}
                                         </div>
