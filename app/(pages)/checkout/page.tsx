@@ -50,6 +50,12 @@ export default function CheckoutPage() {
     const handleCheckout = async () => {
         setError('');
         
+        // Exigir login
+        if (!user) {
+            setError('Para continuar, faça login.');
+            return;
+        }
+
         // Validações
         if (!customerName || customerName.trim().length < 2) {
             setError('Por favor, informe seu nome completo');
@@ -390,8 +396,8 @@ export default function CheckoutPage() {
 
                                     <Button
                                         onClick={handleCheckout}
-                                        disabled={isProcessing || loading}
-                                        className="w-full bg-blue-900 hover:bg-blue-950 text-white font-semibold"
+                                        disabled={isProcessing || loading || !user}
+                                        className={`w-full font-semibold ${(!user) ? 'bg-blue-900/50 cursor-not-allowed' : 'bg-blue-900 hover:bg-blue-950 text-white'}`}
                                         size="lg"
                                     >
                                         {isProcessing || loading ? (
@@ -403,6 +409,11 @@ export default function CheckoutPage() {
                                             'Finalizar Pagamento'
                                         )}
                                     </Button>
+                                    {!user && (
+                                        <p className="text-sm text-red-600 mt-2 text-center">
+                                            Para continuar, faça login.
+                                        </p>
+                                    )}
 
                                     <Link href="/carrinho" className="block">
                                         <Button
