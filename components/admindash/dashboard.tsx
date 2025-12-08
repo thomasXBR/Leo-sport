@@ -42,7 +42,7 @@ import {
     getSiteContent, updateSiteContent, getFAQs, createFAQ, updateFAQ, deleteFAQ, getPurchases, createPurchase, updatePurchase, deletePurchase,
     getSiteImages, createSiteImage, updateSiteImage, deleteSiteImage,
     getAllUsers, getAllUserCarts, getAllSaleItems,
-    uploadInvoicePdf, uploadSiteImage, generateInvoicePdf,
+    uploadInvoicePdf, uploadSiteImage,
     type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent, type FAQ, type Purchase, type SiteImage,
 } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
@@ -1494,7 +1494,8 @@ export default function Dashboard() {
                 if (!formData.pdf_file) {
                     setUploading(true)
                     try {
-                        // Gerar PDF da nota fiscal
+                        // Gerar PDF da nota fiscal (importação dinâmica)
+                        const { generateInvoicePdf } = await import('@/lib/invoice-pdf')
                         const pdfBlob = await generateInvoicePdf({ ...newInvoice, ...invoiceData })
                         
                         // Converter Blob para File
@@ -2260,7 +2261,8 @@ export default function Dashboard() {
                                                                     setUploadingFileType('invoice')
                                                                     setUploadingInvoiceId(invoice.id)
                                                                     
-                                                                    // Gerar novo PDF
+                                                                    // Gerar novo PDF (importação dinâmica)
+                                                                    const { generateInvoicePdf } = await import('@/lib/invoice-pdf')
                                                                     const pdfBlob = await generateInvoicePdf(invoice)
                                                                     const pdfFile = new File([pdfBlob], `nota_fiscal_${invoice.invoice_number}.pdf`, {
                                                                         type: 'application/pdf'
