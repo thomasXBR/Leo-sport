@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Calendar, User as UserIcon, Shield, Save, ShoppingBag, FileText, Download, Eye, Menu, X as XIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import { getUserOrders, getUserInvoices, type Sale, type Invoice } from '@/lib/supabase';
+import { getUserOrders, getUserInvoices, normalizeInvoicePdfUrl, type Sale, type Invoice } from '@/lib/supabase';
 
 export default function PerfilPage() {
   const { user, profile, updateProfile, updatePassword, loading } = useAuth();
@@ -31,7 +31,7 @@ export default function PerfilPage() {
 
   const [saving, setSaving] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
-  
+
   // Histórico de compras e notas fiscais
   const [orders, setOrders] = useState<(Sale & { items?: any[] })[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -60,7 +60,7 @@ export default function PerfilPage() {
 
   const loadUserOrders = async () => {
     if (!user?.id) return;
-    
+
     setLoadingOrders(true);
     try {
       const userOrders = await getUserOrders(user.id);
@@ -75,7 +75,7 @@ export default function PerfilPage() {
 
   const loadUserInvoices = async () => {
     if (!user?.id && !user?.email) return;
-    
+
     setLoadingInvoices(true);
     try {
       const userInvoices = await getUserInvoices(user.id, user.email || undefined);
@@ -210,11 +210,10 @@ export default function PerfilPage() {
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id as 'information' | 'purchases')}
-                className={`w-full flex items-center gap-3 p-3 rounded-lg mb-1 transition-all duration-200 ${
-                  activeTab === item.id
+                className={`w-full flex items-center gap-3 p-3 rounded-lg mb-1 transition-all duration-200 ${activeTab === item.id
                     ? 'bg-cyan-700 text-white shadow-lg'
                     : 'text-cyan-100 hover:bg-cyan-800'
-                }`}
+                  }`}
                 title={!sidebarOpen ? item.label : ''}
               >
                 <Icon size={20} className="flex-shrink-0" />
@@ -232,332 +231,332 @@ export default function PerfilPage() {
             <>
               {/* Personal Information */}
               <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Informações Pessoais</CardTitle>
-            <CardDescription>Atualize suas informações básicas</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="name">Nome Completo</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Seu nome completo"
-                className="mt-1"
-              />
-            </div>
+                <CardHeader>
+                  <CardTitle>Informações Pessoais</CardTitle>
+                  <CardDescription>Atualize suas informações básicas</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="name">Nome Completo</Label>
+                    <Input
+                      id="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Seu nome completo"
+                      className="mt-1"
+                    />
+                  </div>
 
-            <div>
-              <Label htmlFor="currentPassword">Senha Atual</Label>
-              <Input
-                id="currentPassword"
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Digite sua senha atual"
-                className="mt-1"
-              />
-            </div>
+                  <div>
+                    <Label htmlFor="currentPassword">Senha Atual</Label>
+                    <Input
+                      id="currentPassword"
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Digite sua senha atual"
+                      className="mt-1"
+                    />
+                  </div>
 
-            <div>
-              <Label htmlFor="newPassword">Nova Senha</Label>
-              <Input
-                id="newPassword"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Digite sua nova senha"
-                className="mt-1"
-              />
-            </div>
+                  <div>
+                    <Label htmlFor="newPassword">Nova Senha</Label>
+                    <Input
+                      id="newPassword"
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Digite sua nova senha"
+                      className="mt-1"
+                    />
+                  </div>
 
-            <div>
-              <Label htmlFor="confirmNewPassword">Confirmar Nova Senha</Label>
-              <Input
-                id="confirmNewPassword"
-                type="password"
-                value={confirmNewPassword}
-                onChange={(e) => setConfirmNewPassword(e.target.value)}
-                placeholder="Confirme sua nova senha"
-                className="mt-1"
-              />
-            </div>
+                  <div>
+                    <Label htmlFor="confirmNewPassword">Confirmar Nova Senha</Label>
+                    <Input
+                      id="confirmNewPassword"
+                      type="password"
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      placeholder="Confirme sua nova senha"
+                      className="mt-1"
+                    />
+                  </div>
 
-            <div>
-              <Label htmlFor="description">Descrição</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Sobre você..."
-                className="mt-1"
-                rows={3}
-              />
-            </div>
+                  <div>
+                    <Label htmlFor="description">Descrição</Label>
+                    <Textarea
+                      id="description"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Sobre você..."
+                      className="mt-1"
+                      rows={3}
+                    />
+                  </div>
 
-            <div className="flex gap-4">
-              <Button
-                onClick={handleSaveProfile}
-                disabled={saving}
-                className="flex-1 bg-blue-900 hover:bg-blue-950"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                {saving ? 'Salvando...' : 'Salvar Alterações'}
-              </Button>
+                  <div className="flex gap-4">
+                    <Button
+                      onClick={handleSaveProfile}
+                      disabled={saving}
+                      className="flex-1 bg-blue-900 hover:bg-blue-950"
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      {saving ? 'Salvando...' : 'Salvar Alterações'}
+                    </Button>
 
-              <Button
-                onClick={handleChangePassword}
-                disabled={changingPassword || !newPassword || !confirmNewPassword}
-                variant="outline"
-                className="flex-1"
-              >
-                {changingPassword ? 'Alterando...' : 'Alterar Senha'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+                    <Button
+                      onClick={handleChangePassword}
+                      disabled={changingPassword || !newPassword || !confirmNewPassword}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      {changingPassword ? 'Alterando...' : 'Alterar Senha'}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
 
-        {/* Account Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Informações da Conta</CardTitle>
-            <CardDescription>Detalhes sobre sua conta no sistema</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center space-x-3 py-3">
-              <UserIcon className="w-5 h-5 text-gray-500" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-700">ID do Usuário</p>
-                <p className="text-sm text-gray-900 font-mono break-all">{user.id}</p>
-              </div>
-            </div>
+              {/* Account Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Informações da Conta</CardTitle>
+                  <CardDescription>Detalhes sobre sua conta no sistema</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center space-x-3 py-3">
+                    <UserIcon className="w-5 h-5 text-gray-500" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-700">ID do Usuário</p>
+                      <p className="text-sm text-gray-900 font-mono break-all">{user.id}</p>
+                    </div>
+                  </div>
 
-            <Separator />
+                  <Separator />
 
-            <div className="flex items-center space-x-3 py-3">
-              <Mail className="w-5 h-5 text-gray-500" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-700">Email</p>
-                <p className="text-sm text-gray-900">{user.email || profile.email}</p>
-              </div>
-            </div>
+                  <div className="flex items-center space-x-3 py-3">
+                    <Mail className="w-5 h-5 text-gray-500" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-700">Email</p>
+                      <p className="text-sm text-gray-900">{user.email || profile.email}</p>
+                    </div>
+                  </div>
 
-            <Separator />
+                  <Separator />
 
-            <div className="flex items-center space-x-3 py-3">
-              <Shield className="w-5 h-5 text-gray-500" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-700">Tipo de usuário</p>
-                <p className="text-sm text-gray-900 capitalize">
-                  {userType === 'comprador' ? 'Comprador' : userType === 'vendedor' ? 'Vendedor' : 'Administrador'}
-                </p>
-              </div>
-            </div>
+                  <div className="flex items-center space-x-3 py-3">
+                    <Shield className="w-5 h-5 text-gray-500" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-700">Tipo de usuário</p>
+                      <p className="text-sm text-gray-900 capitalize">
+                        {userType === 'comprador' ? 'Comprador' : userType === 'vendedor' ? 'Vendedor' : 'Administrador'}
+                      </p>
+                    </div>
+                  </div>
 
-            <Separator />
+                  <Separator />
 
-            <div className="flex items-center space-x-3 py-3">
-              <Calendar className="w-5 h-5 text-gray-500" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-700">Conta criada em</p>
-                <p className="text-sm text-gray-900">{formatDate(profile.created_at)}</p>
-              </div>
-            </div>
+                  <div className="flex items-center space-x-3 py-3">
+                    <Calendar className="w-5 h-5 text-gray-500" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-700">Conta criada em</p>
+                      <p className="text-sm text-gray-900">{formatDate(profile.created_at)}</p>
+                    </div>
+                  </div>
 
-            <Separator />
+                  <Separator />
 
-            <div className="flex items-center space-x-3 py-3">
-              <Calendar className="w-5 h-5 text-gray-500" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-700">Última alteração da conta</p>
-                <p className="text-sm text-gray-900">{formatDate(profile.updated_at)}</p>
-              </div>
-            </div>
-          </CardContent>
+                  <div className="flex items-center space-x-3 py-3">
+                    <Calendar className="w-5 h-5 text-gray-500" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-700">Última alteração da conta</p>
+                      <p className="text-sm text-gray-900">{formatDate(profile.updated_at)}</p>
+                    </div>
+                  </div>
+                </CardContent>
               </Card>
             </>
           ) : (
             <>
               {/* Histórico de Compras */}
               <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ShoppingBag className="w-5 h-5" />
-              Histórico de Compras
-            </CardTitle>
-            <CardDescription>Visualize todos os seus pedidos realizados</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loadingOrders ? (
-              <div className="text-center py-8">
-                <div className="w-8 h-8 border-4 border-blue-900 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                <p className="mt-4 text-gray-600">Carregando pedidos...</p>
-              </div>
-            ) : orders.length === 0 ? (
-              <div className="text-center py-8">
-                <ShoppingBag className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">Você ainda não realizou nenhuma compra.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {orders.map((order) => (
-                  <div key={order.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-semibold text-gray-900">Pedido #{order.order_number || order.id.slice(0, 8)}</h3>
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                            {order.status}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600">
-                          Data: {formatDate(order.created_at)}
-                        </p>
-                        {order.items && order.items.length > 0 && (
-                          <p className="text-sm text-gray-600 mt-1">
-                            {order.items.length} item{order.items.length > 1 ? 's' : ''}
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-gray-900">
-                          {formatCurrency(order.total_amount)}
-                        </p>
-                        {order.payment_method && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            {order.payment_method}
-                          </p>
-                        )}
-                      </div>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ShoppingBag className="w-5 h-5" />
+                    Histórico de Compras
+                  </CardTitle>
+                  <CardDescription>Visualize todos os seus pedidos realizados</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loadingOrders ? (
+                    <div className="text-center py-8">
+                      <div className="w-8 h-8 border-4 border-blue-900 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                      <p className="mt-4 text-gray-600">Carregando pedidos...</p>
                     </div>
-                    {order.items && order.items.length > 0 && (
-                      <div className="mt-4 pt-4 border-t">
-                        <p className="text-sm font-medium text-gray-700 mb-3">Itens do pedido:</p>
-                        <div className="space-y-3">
-                          {order.items.map((item: any, index: number) => (
-                            <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                              {item.product?.image_url && (
-                                <img 
-                                  src={item.product.image_url} 
-                                  alt={item.product.name || 'Produto'}
-                                  className="w-16 h-16 object-cover rounded"
-                                />
+                  ) : orders.length === 0 ? (
+                    <div className="text-center py-8">
+                      <ShoppingBag className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600">Você ainda não realizou nenhuma compra.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {orders.map((order) => (
+                        <div key={order.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-semibold text-gray-900">Pedido #{order.order_number || order.id.slice(0, 8)}</h3>
+                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
+                                  {order.status}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-600">
+                                Data: {formatDate(order.created_at)}
+                              </p>
+                              {order.items && order.items.length > 0 && (
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {order.items.length} item{order.items.length > 1 ? 's' : ''}
+                                </p>
                               )}
-                              <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-900">
-                                  {item.product?.name || item.product_name || 'Produto'}
-                                </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-lg font-bold text-gray-900">
+                                {formatCurrency(order.total_amount)}
+                              </p>
+                              {order.payment_method && (
                                 <p className="text-xs text-gray-500 mt-1">
-                                  Quantidade: {item.quantity || 1}
+                                  {order.payment_method}
                                 </p>
-                                <p className="text-sm font-semibold text-gray-900 mt-2">
-                                  {formatCurrency(item.total_price || (item.unit_price * (item.quantity || 1)))}
-                                </p>
+                              )}
+                            </div>
+                          </div>
+                          {order.items && order.items.length > 0 && (
+                            <div className="mt-4 pt-4 border-t">
+                              <p className="text-sm font-medium text-gray-700 mb-3">Itens do pedido:</p>
+                              <div className="space-y-3">
+                                {order.items.map((item: any, index: number) => (
+                                  <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                                    {item.product?.image_url && (
+                                      <img
+                                        src={item.product.image_url}
+                                        alt={item.product.name || 'Produto'}
+                                        className="w-16 h-16 object-cover rounded"
+                                      />
+                                    )}
+                                    <div className="flex-1">
+                                      <p className="text-sm font-medium text-gray-900">
+                                        {item.product?.name || item.product_name || 'Produto'}
+                                      </p>
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        Quantidade: {item.quantity || 1}
+                                      </p>
+                                      <p className="text-sm font-semibold text-gray-900 mt-2">
+                                        {formatCurrency(item.total_price || (item.unit_price * (item.quantity || 1)))}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Notas Fiscais */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              Notas Fiscais
-            </CardTitle>
-            <CardDescription>Visualize as notas fiscais emitidas pelo admin para suas compras</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loadingInvoices ? (
-              <div className="text-center py-8">
-                <div className="w-8 h-8 border-4 border-blue-900 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                <p className="mt-4 text-gray-600">Carregando notas fiscais...</p>
-              </div>
-            ) : invoices.length === 0 ? (
-              <div className="text-center py-8">
-                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">Nenhuma nota fiscal disponível no momento.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {invoices.map((invoice) => (
-                  <div key={invoice.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-semibold text-gray-900">
-                            Nota Fiscal #{invoice.invoice_number}
-                          </h3>
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(invoice.status)}`}>
-                            {invoice.status}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600">
-                          Emitida em: {formatDate(invoice.issue_date)}
-                        </p>
-                        {invoice.customer_name && (
-                          <p className="text-sm text-gray-600 mt-1">
-                            Cliente: {invoice.customer_name}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                        <div className="text-right sm:text-left">
-                          <p className="text-lg font-bold text-gray-900">
-                            {formatCurrency(invoice.total_amount)}
-                          </p>
-                        </div>
-                        <div className="flex gap-2">
-                          {invoice.pdf_url && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              asChild
-                              className="flex items-center gap-1"
-                            >
-                              <a href={invoice.pdf_url} target="_blank" rel="noopener noreferrer">
-                                <Eye className="w-4 h-4" />
-                                Visualizar
-                              </a>
-                            </Button>
-                          )}
-                          {invoice.pdf_url && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              asChild
-                              className="flex items-center gap-1"
-                            >
-                              <a href={invoice.pdf_url} download>
-                                <Download className="w-4 h-4" />
-                                Baixar
-                              </a>
-                            </Button>
                           )}
                         </div>
-                      </div>
+                      ))}
                     </div>
-                    {invoice.nfse_key && (
-                      <div className="mt-4 pt-4 border-t">
-                        <p className="text-xs text-gray-500">
-                          <strong>Chave de acesso:</strong> {invoice.nfse_key}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Notas Fiscais */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="w-5 h-5" />
+                    Notas Fiscais
+                  </CardTitle>
+                  <CardDescription>Visualize as notas fiscais emitidas pelo admin para suas compras</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loadingInvoices ? (
+                    <div className="text-center py-8">
+                      <div className="w-8 h-8 border-4 border-blue-900 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                      <p className="mt-4 text-gray-600">Carregando notas fiscais...</p>
+                    </div>
+                  ) : invoices.length === 0 ? (
+                    <div className="text-center py-8">
+                      <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600">Nenhuma nota fiscal disponível no momento.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {invoices.map((invoice) => (
+                        <div key={invoice.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-semibold text-gray-900">
+                                  Nota Fiscal #{invoice.invoice_number}
+                                </h3>
+                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(invoice.status)}`}>
+                                  {invoice.status}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-600">
+                                Emitida em: {formatDate(invoice.issue_date)}
+                              </p>
+                              {invoice.customer_name && (
+                                <p className="text-sm text-gray-600 mt-1">
+                                  Cliente: {invoice.customer_name}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                              <div className="text-right sm:text-left">
+                                <p className="text-lg font-bold text-gray-900">
+                                  {formatCurrency(invoice.total_amount)}
+                                </p>
+                              </div>
+                              <div className="flex gap-2">
+                                {invoice.pdf_url && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    asChild
+                                    className="flex items-center gap-1"
+                                  >
+                                    <a href={normalizeInvoicePdfUrl(invoice.pdf_url)} target="_blank" rel="noopener noreferrer">
+                                      <Eye className="w-4 h-4" />
+                                      Visualizar
+                                    </a>
+                                  </Button>
+                                )}
+                                {invoice.pdf_url && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    asChild
+                                    className="flex items-center gap-1"
+                                  >
+                                    <a href={normalizeInvoicePdfUrl(invoice.pdf_url)} download>
+                                      <Download className="w-4 h-4" />
+                                      Baixar
+                                    </a>
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          {invoice.nfse_key && (
+                            <div className="mt-4 pt-4 border-t">
+                              <p className="text-xs text-gray-500">
+                                <strong>Chave de acesso:</strong> {invoice.nfse_key}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
               </Card>
             </>
           )}

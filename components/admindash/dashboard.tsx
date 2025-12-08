@@ -42,7 +42,7 @@ import {
     getSiteContent, updateSiteContent, getFAQs, createFAQ, updateFAQ, deleteFAQ, getPurchases, createPurchase, updatePurchase, deletePurchase,
     getSiteImages, createSiteImage, updateSiteImage, deleteSiteImage,
     getAllUsers, getAllUserCarts, getAllSaleItems,
-    uploadInvoicePdf, uploadSiteImage,
+    uploadInvoicePdf, uploadSiteImage, normalizeInvoicePdfUrl,
     type Product, type Invoice, type Coupon, type Partnership, type SiteContent as SupabaseSiteContent, type FAQ, type Purchase, type SiteImage,
 } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
@@ -115,7 +115,7 @@ const CouponForm = ({ initialData, onSave, onCancel }: { initialData: any, onSav
     const [status, setStatus] = useState<'Ativo' | 'Inativo' | 'Expirado'>(initialData?.status || 'Ativo')
     // Padrão true para novos cupons aparecerem no carrossel automaticamente
     const [showInNavbar, setShowInNavbar] = useState(initialData?.show_in_navbar !== undefined ? initialData.show_in_navbar : true)
-    
+
     // Sempre mostrar o checkbox - a coluna show_in_navbar agora existe no banco
     const hasNavbarSupport = true
 
@@ -464,7 +464,7 @@ const InvoiceForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
                         </p>
                         {initialData?.pdf_url && !pdfFile && (
                             <a
-                                href={initialData.pdf_url}
+                                href={normalizeInvoicePdfUrl(initialData.pdf_url)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="mt-2 inline-block text-sm text-cyan-600 hover:underline"
@@ -984,15 +984,15 @@ export default function Dashboard() {
     // Helpers para estatísticas de vendas
     const getTopBuyers = (list: any[], limit = 5) => {
         const totals: Record<string, { name: string; email: string; total: number; orders: number }> = {}
-        ;(list || []).forEach((sale: any) => {
-            const email = sale.customer_email || 'N/D'
-            const name = sale.customer_name || email || 'N/D'
-            const key = email || name
-            const total = Number(sale.total_amount || 0)
-            if (!totals[key]) totals[key] = { name, email, total: 0, orders: 0 }
-            totals[key].total += total
-            totals[key].orders += 1
-        })
+            ; (list || []).forEach((sale: any) => {
+                const email = sale.customer_email || 'N/D'
+                const name = sale.customer_name || email || 'N/D'
+                const key = email || name
+                const total = Number(sale.total_amount || 0)
+                if (!totals[key]) totals[key] = { name, email, total: 0, orders: 0 }
+                totals[key].total += total
+                totals[key].orders += 1
+            })
         return Object.values(totals)
             .sort((a, b) => b.total - a.total)
             .slice(0, limit)
@@ -1007,12 +1007,12 @@ export default function Dashboard() {
 
     const getBestSellers = (items: any[], limit = 5) => {
         const totals: Record<string, { name: string; quantity: number }> = {}
-        ;(items || []).forEach((item: any) => {
-            const name = item.product_name || item.product?.name || 'Produto'
-            const qty = Number(item.quantity || 0)
-            if (!totals[name]) totals[name] = { name, quantity: 0 }
-            totals[name].quantity += qty
-        })
+            ; (items || []).forEach((item: any) => {
+                const name = item.product_name || item.product?.name || 'Produto'
+                const qty = Number(item.quantity || 0)
+                if (!totals[name]) totals[name] = { name, quantity: 0 }
+                totals[name].quantity += qty
+            })
         return Object.values(totals)
             .sort((a, b) => b.quantity - a.quantity)
             .slice(0, limit)
@@ -1060,13 +1060,13 @@ export default function Dashboard() {
             const bucketName = fileType === 'purchase' ? 'purchases-pdfs' : 'invoices'
             const folderName = fileType === 'purchase' ? 'purchases' : 'invoices'
             const path = `${folderName}/${id}/${Date.now()}_${file.name}`
-            
+
             // Para invoices, incluir owner no metadata conforme políticas do Supabase
             const uploadOptions: any = { upsert: true }
             if (fileType === 'invoice' && ownerId) {
                 uploadOptions.metadata = { owner: ownerId }
             }
-            
+
             const { error: uploadError } = await supabase.storage.from(bucketName).upload(path, file, uploadOptions)
             if (uploadError) throw uploadError
 
@@ -1284,7 +1284,7 @@ export default function Dashboard() {
     const handleViewUserCart = async (user: any) => {
         setSelectedUserCart(user)
         setCartModalOpen(true)
-        
+
         // Buscar carrinho do usuário
         try {
             const { data, error } = await supabase
@@ -1292,7 +1292,7 @@ export default function Dashboard() {
                 .select('*, product:products(*, categories:categories(*))')
                 .eq('user_id', user.id)
                 .order('updated_at', { ascending: false })
-            
+
             if (error) throw error
             setRealtimeUserCart(data || [])
         } catch (error) {
@@ -1317,7 +1317,7 @@ export default function Dashboard() {
                 },
                 async (payload) => {
                     console.log('Atualização em tempo real do carrinho:', payload)
-                    
+
                     // Recarregar carrinho do usuário
                     try {
                         const { data, error } = await supabase
@@ -1325,7 +1325,7 @@ export default function Dashboard() {
                             .select('*, product:products(*, categories:categories(*))')
                             .eq('user_id', selectedUserCart.id)
                             .order('updated_at', { ascending: false })
-                        
+
                         if (error) throw error
                         setRealtimeUserCart(data || [])
                     } catch (error) {
@@ -1497,12 +1497,12 @@ export default function Dashboard() {
                         // Gerar PDF da nota fiscal (importação dinâmica)
                         const { generateInvoicePdf } = await import('@/lib/invoice-pdf')
                         const pdfBlob = await generateInvoicePdf({ ...newInvoice, ...invoiceData })
-                        
+
                         // Converter Blob para File
                         const pdfFile = new File([pdfBlob], `nota_fiscal_${invoiceData.invoice_number}.pdf`, {
                             type: 'application/pdf'
                         })
-                        
+
                         // Fazer upload do PDF gerado
                         pdfUrl = await uploadInvoicePdf(pdfFile, invoiceId)
 
@@ -2067,8 +2067,8 @@ export default function Dashboard() {
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap">
                                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.user_type === 'admin' ? 'bg-red-100 text-red-800' :
-                                                            user.user_type === 'vendedor' ? 'bg-blue-100 text-blue-800' :
-                                                                'bg-gray-100 text-gray-800'
+                                                        user.user_type === 'vendedor' ? 'bg-blue-100 text-blue-800' :
+                                                            'bg-gray-100 text-gray-800'
                                                         }`}>
                                                         {user.user_type || 'N/A'}
                                                     </span>
@@ -2245,7 +2245,7 @@ export default function Dashboard() {
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm">
                                                     {invoice.pdf_url ? (
-                                                        <a href={invoice.pdf_url} target="_blank" rel="noreferrer" className="text-cyan-600 hover:underline">
+                                                        <a href={normalizeInvoicePdfUrl(invoice.pdf_url)} target="_blank" rel="noreferrer" className="text-cyan-600 hover:underline">
                                                             Visualizar PDF
                                                         </a>
                                                     ) : (
@@ -2260,23 +2260,23 @@ export default function Dashboard() {
                                                                     setUploading(true)
                                                                     setUploadingFileType('invoice')
                                                                     setUploadingInvoiceId(invoice.id)
-                                                                    
+
                                                                     // Gerar novo PDF (importação dinâmica)
                                                                     const { generateInvoicePdf } = await import('@/lib/invoice-pdf')
                                                                     const pdfBlob = await generateInvoicePdf(invoice)
                                                                     const pdfFile = new File([pdfBlob], `nota_fiscal_${invoice.invoice_number}.pdf`, {
                                                                         type: 'application/pdf'
                                                                     })
-                                                                    
+
                                                                     // Fazer upload do PDF gerado
                                                                     const pdfUrl = await uploadInvoicePdf(pdfFile, invoice.id)
-                                                                    
+
                                                                     // Atualizar invoice com a nova URL do PDF
                                                                     await updateInvoice(invoice.id, { pdf_url: pdfUrl })
-                                                                    
+
                                                                     // Recarregar dados
                                                                     await loadAllData()
-                                                                    
+
                                                                     alert('PDF gerado e atualizado com sucesso!')
                                                                 } catch (error: any) {
                                                                     console.error('Erro ao gerar PDF:', error)
@@ -2381,8 +2381,8 @@ export default function Dashboard() {
                                                     <div className="flex-1">
                                                         <h4 className="font-bold text-gray-900 text-lg mb-1">{nomeEmpresa}</h4>
                                                         <span className={`inline-block px-2 py-1 text-xs rounded-full font-semibold ${isFornecedor
-                                                                ? 'bg-blue-100 text-blue-800'
-                                                                : 'bg-purple-100 text-purple-800'
+                                                            ? 'bg-blue-100 text-blue-800'
+                                                            : 'bg-purple-100 text-purple-800'
                                                             }`}>
                                                             {isFornecedor ? 'Fornecedor' : 'Representante'}
                                                         </span>
@@ -2524,8 +2524,8 @@ export default function Dashboard() {
                                             <div className="flex justify-between items-start mb-2">
                                                 <h3 className="font-semibold text-gray-800">{partner.company_name}</h3>
                                                 <span className={`px-2 py-1 text-xs rounded-full font-semibold ${displayType === 'Fornecedor' ? 'bg-blue-100 text-blue-800' :
-                                                        displayType === 'Representante' ? 'bg-purple-100 text-purple-800' :
-                                                            'bg-gray-100 text-gray-800'
+                                                    displayType === 'Representante' ? 'bg-purple-100 text-purple-800' :
+                                                        'bg-gray-100 text-gray-800'
                                                     }`}>
                                                     {displayType}
                                                 </span>
@@ -2920,7 +2920,7 @@ export default function Dashboard() {
                                             <p className="text-sm text-gray-500 mt-1">Data: {new Date(purchase.purchase_date || purchase.created_at).toLocaleDateString('pt-BR')}</p>
                                             {purchase.pdf_url && (
                                                 <p className="mt-2">
-                                                    <a href={purchase.pdf_url} target="_blank" rel="noreferrer" className="text-cyan-600 hover:underline">Visualizar PDF</a>
+                                                    <a href={normalizeInvoicePdfUrl(purchase.pdf_url)} target="_blank" rel="noreferrer" className="text-cyan-600 hover:underline">Visualizar PDF</a>
                                                 </p>
                                             )}
                                         </div>
@@ -2979,8 +2979,8 @@ export default function Dashboard() {
                                 key={item.id}
                                 onClick={() => setActiveTab(item.id)}
                                 className={`w-full flex items-center gap-3 p-3 rounded-lg mb-1 transition-all duration-200 ${activeTab === item.id
-                                        ? 'bg-cyan-700 text-white shadow-lg'
-                                        : 'text-cyan-100 hover:bg-cyan-800'
+                                    ? 'bg-cyan-700 text-white shadow-lg'
+                                    : 'text-cyan-100 hover:bg-cyan-800'
                                     }`}
                                 title={!sidebarOpen ? item.label : ''}
                             >
@@ -3055,7 +3055,7 @@ export default function Dashboard() {
                                     </p>
                                 </div>
                             )}
-                            
+
                             {realtimeUserCart.length === 0 ? (
                                 <div className="text-center py-8">
                                     <ShoppingCart size={48} className="mx-auto text-gray-300 mb-3" />
@@ -3065,8 +3065,8 @@ export default function Dashboard() {
                                 <div className="space-y-3">
                                     {realtimeUserCart.map((item: any) => {
                                         const product = item.product
-                                        const productPrice = typeof product?.price === 'number' 
-                                            ? product.price 
+                                        const productPrice = typeof product?.price === 'number'
+                                            ? product.price
                                             : parseFloat(String(product?.price || '0').replace(/[^\d,.-]/g, '').replace(',', '.'))
                                         const totalPrice = productPrice * item.quantity
 
@@ -3109,7 +3109,7 @@ export default function Dashboard() {
                                             </div>
                                         )
                                     })}
-                                    
+
                                     {/* Total do Carrinho */}
                                     <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-4 mt-4">
                                         <div className="flex justify-between items-center">
@@ -3117,8 +3117,8 @@ export default function Dashboard() {
                                             <span className="text-2xl font-bold text-cyan-600">
                                                 R$ {realtimeUserCart.reduce((total, item) => {
                                                     const product = item.product
-                                                    const productPrice = typeof product?.price === 'number' 
-                                                        ? product.price 
+                                                    const productPrice = typeof product?.price === 'number'
+                                                        ? product.price
                                                         : parseFloat(String(product?.price || '0').replace(/[^\d,.-]/g, '').replace(',', '.'))
                                                     return total + (productPrice * item.quantity)
                                                 }, 0).toFixed(2).replace('.', ',')}
