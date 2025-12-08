@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import {
     getProducts, createProduct, updateProduct, deleteProduct,
+    getInventoryItems, createInventoryMovement, deleteInventoryMovement,
     getSales, getSalesDataForChart, getSalesWithItems, getSaleById,
     getInvoices, createInvoice, updateInvoice, deleteInvoice,
     getPartnerships, createPartnership, updatePartnership, deletePartnership,
@@ -803,6 +804,52 @@ const PartnerForm = ({ initialData, onSave, onCancel }: { initialData: any, onSa
     )
 }
 
+// Componente de Formulário de Compras (Placeholder)
+const PurchaseForm = ({ initialData, onSave, onCancel }: { initialData: any, onSave: (data: any) => void, onCancel: () => void }) => {
+    const [supplier, setSupplier] = useState(initialData?.supplier_name || '')
+    const [total, setTotal] = useState<string>(initialData?.total_amount ? String(initialData.total_amount) : '')
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        onSave({ supplier_name: supplier, total_amount: parseFloat(total || '0') })
+    }
+
+    return (
+        <form onSubmit={handleSubmit}>
+            <div className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Fornecedor</label>
+                    <input
+                        type="text"
+                        value={supplier}
+                        onChange={(e) => setSupplier(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        required
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Valor Total (R$)</label>
+                    <input
+                        type="number"
+                        step="0.01"
+                        value={total}
+                        onChange={(e) => setTotal(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        required
+                    />
+                </div>
+            </div>
+            <DialogFooter className="mt-6">
+                <button type="button" onClick={onCancel} className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400">
+                    Cancelar
+                </button>
+                <button type="submit" className="bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700">
+                    <Save size={20} className="inline mr-2" /> Salvar Compra
+                </button>
+            </DialogFooter>
+        </form>
+    )
+}
 
 export default function Dashboard() {
     const [activeTab, setActiveTab] = useState('purchases')
@@ -810,6 +857,7 @@ export default function Dashboard() {
 
     // Estados dos dados
     const [products, setProducts] = useState<Product[]>([])
+    const [inventoryItems, setInventoryItems] = useState<any[]>([])
     const [sales, setSales] = useState<any[]>([])
     const [invoices, setInvoices] = useState<Invoice[]>([])
     const [partnersList, setPartnersList] = useState<Partnership[]>([])
@@ -827,7 +875,7 @@ export default function Dashboard() {
     const [sidebarOpen, setSidebarOpen] = useState(true)
     const [emailModalOpen, setEmailModalOpen] = useState(false)
     const [selectedUserForEmail, setSelectedUserForEmail] = useState<any>(null)
-    const [filterAcceptedEmails, setFilterAcceptedEmails] = useState(false)
+    const [filterAcceptedTerms, setFilterAcceptedTerms] = useState(false)
 
     const FAQS_PER_PAGE = 6
     const [currentPage, setCurrentPage] = useState(1)
@@ -899,7 +947,7 @@ export default function Dashboard() {
 
     // Estados dos modais
     const [isModalOpen, setIsModalOpen] = useState(false)
-    const [modalType, setModalType] = useState<'invoice' | 'partner' | 'coupon' | 'product' | 'faq' | null>(null)
+    const [modalType, setModalType] = useState<'invoice' | 'partner' | 'coupon' | 'product' | 'inventory' | 'faq' | 'purchase' | null>(null)
     const [editingItem, setEditingItem] = useState<any>(null)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [itemToDelete, setItemToDelete] = useState<{ type: string; id: string; name: string } | null>(null)
@@ -931,6 +979,43 @@ export default function Dashboard() {
                 beginAtZero: true,
             },
         },
+    }
+
+    // Helpers para estatísticas de vendas
+    const getTopBuyers = (list: any[], limit = 5) => {
+        const totals: Record<string, { name: string; email: string; total: number; orders: number }> = {}
+        ;(list || []).forEach((sale: any) => {
+            const email = sale.customer_email || 'N/D'
+            const name = sale.customer_name || email || 'N/D'
+            const key = email || name
+            const total = Number(sale.total_amount || 0)
+            if (!totals[key]) totals[key] = { name, email, total: 0, orders: 0 }
+            totals[key].total += total
+            totals[key].orders += 1
+        })
+        return Object.values(totals)
+            .sort((a, b) => b.total - a.total)
+            .slice(0, limit)
+    }
+
+    const getLatestPurchases = (list: any[], limit = 5) => {
+        return (list || [])
+            .slice()
+            .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+            .slice(0, limit)
+    }
+
+    const getBestSellers = (items: any[], limit = 5) => {
+        const totals: Record<string, { name: string; quantity: number }> = {}
+        ;(items || []).forEach((item: any) => {
+            const name = item.product_name || item.product?.name || 'Produto'
+            const qty = Number(item.quantity || 0)
+            if (!totals[name]) totals[name] = { name, quantity: 0 }
+            totals[name].quantity += qty
+        })
+        return Object.values(totals)
+            .sort((a, b) => b.quantity - a.quantity)
+            .slice(0, limit)
     }
 
     const openFileSelector = (id: string, type: 'purchase' | 'invoice' | 'site-image') => {
@@ -1111,8 +1196,9 @@ export default function Dashboard() {
         try {
             setLoading(true)
             // Carregar apenas os dados essenciais inicialmente
-            const [productsData, salesDataResp, invoicesData, partnersData, couponsData, contentData, faqsData, purchasesData, imagesData, usersData, salesWithItemsData, purchasedItemsData] = await Promise.all([
+            const [productsData, inventoryData, salesDataResp, invoicesData, partnersData, couponsData, contentData, faqsData, purchasesData, imagesData, usersData, salesWithItemsData, purchasedItemsData] = await Promise.all([
                 getProducts().catch(() => []),
+                getInventoryItems().catch(() => []),
                 getSales().catch(() => []),
                 getInvoices().catch(() => []),
                 getPartnerships().catch(() => []),
@@ -1127,6 +1213,7 @@ export default function Dashboard() {
             ])
 
             setProducts(productsData || [])
+            setInventoryItems(inventoryData || [])
             setSales(salesDataResp || [])
             setInvoices(invoicesData || [])
             // Separar solicitações pendentes das parcerias ativas/inativas
@@ -1287,6 +1374,10 @@ export default function Dashboard() {
                     // Recarregar dados do Supabase para garantir sincronização
                     const updatedCoupons = await getCoupons()
                     setCoupons(updatedCoupons || [])
+                    break
+                case 'inventory':
+                    await deleteInventoryMovement(itemToDelete.id)
+                    loadAllData() // Recarregar para atualizar estoque
                     break
                 case 'product':
                     await deleteProduct(itemToDelete.id)
@@ -1524,6 +1615,25 @@ export default function Dashboard() {
         }
     }
 
+    const handleSaveInventory = async (formData: any) => {
+        try {
+            await createInventoryMovement({
+                product_id: formData.product_id,
+                product_name: '',
+                movement_type: formData.movement_type,
+                quantity: parseInt(formData.quantity),
+                previous_quantity: 0,
+                new_quantity: 0,
+                reason: formData.reason || '',
+            })
+            closeModal()
+            loadAllData()
+        } catch (error) {
+            console.error('Erro ao salvar movimento de estoque:', error)
+            alert('Erro ao salvar. Tente novamente.')
+        }
+    }
+
     const handleSaveContent = async (id: string, value: string) => {
         try {
             await updateSiteContent(id, value)
@@ -1658,6 +1768,10 @@ export default function Dashboard() {
                     />
                 )
                 break
+            case 'inventory':
+                modalTitle = isEdit ? 'Editar Movimentação' : 'Nova Movimentação de Estoque'
+                modalContent = <p>Formulário de Estoque Pendente</p>
+                break
             case 'product':
                 modalTitle = isEdit ? 'Editar Produto' : 'Adicionar Novo Produto'
                 modalContent = (
@@ -1704,6 +1818,10 @@ export default function Dashboard() {
     function renderTabContent() {
         switch (activeTab) {
             case 'sales':
+                const topBuyers = getTopBuyers(sales, 5)
+                const latestPurchases = getLatestPurchases(salesWithItems, 5)
+                const bestSellers = getBestSellers(purchasedItems, 5)
+
                 return (
                     <div>
                         <div className="flex items-center justify-between mb-4">
@@ -1724,14 +1842,135 @@ export default function Dashboard() {
                         <div className="relative h-[400px]">
                             <Bar options={chartOptions} data={salesData} />
                         </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+                            <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+                                <h3 className="text-lg font-semibold text-gray-800 mb-3">Maiores compradores</h3>
+                                {topBuyers.length === 0 ? (
+                                    <p className="text-sm text-gray-500">Sem dados</p>
+                                ) : (
+                                    <ul className="space-y-3">
+                                        {topBuyers.map((buyer, idx) => (
+                                            <li key={idx} className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="font-semibold text-gray-800">{buyer.name}</p>
+                                                    <p className="text-xs text-gray-500">{buyer.email}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-sm font-semibold text-gray-800">R$ {buyer.total.toFixed(2).replace('.', ',')}</p>
+                                                    <p className="text-xs text-gray-500">{buyer.orders} {buyer.orders === 1 ? 'pedido' : 'pedidos'}</p>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+
+                            <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+                                <h3 className="text-lg font-semibold text-gray-800 mb-3">Últimas compras</h3>
+                                {latestPurchases.length === 0 ? (
+                                    <p className="text-sm text-gray-500">Sem dados</p>
+                                ) : (
+                                    <ul className="space-y-3">
+                                        {latestPurchases.map((sale: any) => (
+                                            <li key={sale.id} className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="font-semibold text-gray-800">{sale.customer_name || 'Cliente'}</p>
+                                                    <p className="text-xs text-gray-500">{new Date(sale.created_at).toLocaleString('pt-BR')}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-sm font-semibold text-gray-800">R$ {Number(sale.total_amount || 0).toFixed(2).replace('.', ',')}</p>
+                                                    <p className="text-xs text-gray-500">{(sale.sale_items || []).length} itens</p>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+
+                            <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+                                <h3 className="text-lg font-semibold text-gray-800 mb-3">Produtos mais vendidos</h3>
+                                {bestSellers.length === 0 ? (
+                                    <p className="text-sm text-gray-500">Sem dados</p>
+                                ) : (
+                                    <ul className="space-y-3">
+                                        {bestSellers.map((prod, idx) => (
+                                            <li key={idx} className="flex items-center justify-between">
+                                                <p className="font-semibold text-gray-800">{prod.name}</p>
+                                                <p className="text-sm text-gray-700">{prod.quantity} un.</p>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            case 'inventory':
+                return (
+                    <div>
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-2xl font-semibold text-gray-700">Gestão de Estoque</h2>
+                            <button
+                                onClick={() => openModal('inventory')}
+                                className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
+                            >
+                                <PlusCircle size={20} className="mr-2" />
+                                Nova Movimentação
+                            </button>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full bg-white">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
+                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantidade</th>
+                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {inventoryItems.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={4} className="py-8 text-center text-gray-500">
+                                                Nenhum item em estoque
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        inventoryItems.map((item) => (
+                                            <tr key={item.id}>
+                                                <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">{item.name}</td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-gray-500">{item.quantity}</td>
+                                                <td className="py-4 px-4 whitespace-nowrap">
+                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(item.status)}`}>
+                                                        {item.status}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
+                                                    <button
+                                                        onClick={() => openModal('inventory', item)}
+                                                        className="text-cyan-600 hover:text-cyan-900 mr-3"
+                                                    >
+                                                        <Edit size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openDeleteDialog('inventory', item.id, item.name)}
+                                                        className="text-red-600 hover:text-red-900"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 );
             case 'users':
-                const usersToShow = filterAcceptedEmails
-                    ? users.filter((u: any) => {
-                        // Verificar se consent_emails é true (boolean ou string 'true')
-                        return u.consent_emails === true || u.consent_emails === 'true' || u.consent_emails === 1
-                    })
+                const usersToShow = filterAcceptedTerms
+                    ? users.filter((u: any) => u.accept_terms === true)
                     : users
                 return (
                     <div>
@@ -1744,20 +1983,20 @@ export default function Dashboard() {
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input
                                         type="checkbox"
-                                        checked={filterAcceptedEmails}
-                                        onChange={(e) => setFilterAcceptedEmails(e.target.checked)}
+                                        checked={filterAcceptedTerms}
+                                        onChange={(e) => setFilterAcceptedTerms(e.target.checked)}
                                         className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
                                     />
                                     <span className="text-sm font-medium text-gray-700">
-                                        Apenas usuários que aceitaram receber emails
+                                        Apenas usuários que aceitaram termos
                                     </span>
                                 </label>
                             </div>
                         </div>
                         {usersToShow.length === 0 ? (
                             <p className="text-center py-8 text-gray-500">
-                                {filterAcceptedEmails
-                                    ? 'Nenhum usuário que aceitou receber emails encontrado.'
+                                {filterAcceptedTerms
+                                    ? 'Nenhum usuário que aceitou os termos encontrado.'
                                     : 'Nenhum usuário encontrado.'}
                             </p>
                         ) : (
@@ -1768,14 +2007,14 @@ export default function Dashboard() {
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aceita Receber Emails</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aceitou Termos</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data de Criação</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-200">
                                         {usersToShow.map((user: any) => (
-                                            <tr key={user.id} className={(user.consent_emails === true || user.consent_emails === 'true' || user.consent_emails === 1) ? 'bg-green-50' : ''}>
+                                            <tr key={user.id} className={user.accept_terms ? 'bg-green-50' : ''}>
                                                 <td className="py-4 px-4 whitespace-nowrap font-medium text-gray-900">
                                                     {user.name || '-'}
                                                 </td>
@@ -1791,7 +2030,7 @@ export default function Dashboard() {
                                                     </span>
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap">
-                                                    {(user.consent_emails === true || user.consent_emails === 'true' || user.consent_emails === 1) ? (
+                                                    {user.accept_terms ? (
                                                         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                                                             ✓ Sim
                                                         </span>
@@ -1806,7 +2045,7 @@ export default function Dashboard() {
                                                 </td>
                                                 <td className="py-4 px-4 whitespace-nowrap text-sm font-medium">
                                                     <div className="flex gap-2 items-center">
-                                                        {(user.consent_emails === true || user.consent_emails === 'true' || user.consent_emails === 1) && user.email ? (
+                                                        {user.accept_terms && user.email ? (
                                                             <button
                                                                 onClick={() => {
                                                                     setSelectedUserForEmail(user)
@@ -2576,39 +2815,23 @@ export default function Dashboard() {
                     </div>
                 );
             case 'purchases':
-                // Mostrar vendas pagas como compras
-                const paidSales = sales.filter((sale: any) => sale.status === 'Pago')
-                
                 return (
                     <div>
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-semibold text-gray-700">Compras Realizadas</h2>
-                            <p className="text-sm text-gray-500">Vendas pagas são automaticamente registradas aqui</p>
+                            <h2 className="text-2xl font-semibold text-gray-700">Compras</h2>
+                            <button
+                                onClick={() => openModal('purchase')}
+                                className="flex items-center bg-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-700 transition-colors"
+                            >
+                                <PlusCircle size={20} className="mr-2" />
+                                Nova Compra
+                            </button>
                         </div>
 
-                        {paidSales.length === 0 && purchases.length === 0 ? (
+                        {purchases.length === 0 ? (
                             <p className="text-center py-8 text-gray-500">Nenhuma compra registrada.</p>
                         ) : (
                             <div className="space-y-4">
-                                {/* Mostrar vendas pagas primeiro */}
-                                {paidSales.map((sale: any) => (
-                                    <div key={`sale-${sale.id}`} className="p-4 border rounded-lg bg-white flex justify-between items-start">
-                                        <div className="flex-grow pr-4">
-                                            <p className="font-semibold text-gray-800 mb-1">
-                                                Pedido #{sale.order_number || sale.id.slice(0, 8)} — Cliente: {sale.customer_name || sale.customer_email || 'N/A'}
-                                            </p>
-                                            <p className="text-sm text-gray-600">Valor: R$ {Number(sale.total_amount).toFixed(2).replace('.', ',')}</p>
-                                            <p className="text-sm text-gray-500 mt-1">
-                                                Data: {new Date(sale.created_at).toLocaleDateString('pt-BR')}
-                                            </p>
-                                            <p className="text-sm text-gray-500">
-                                                Status: <span className={`px-2 py-1 text-xs rounded-full ${getStatusClass(sale.status)}`}>{sale.status}</span>
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                                
-                                {/* Mostrar compras de fornecedores */}
                                 {purchases.map((purchase: any) => (
                                     <div key={purchase.id} className="p-4 border rounded-lg bg-white flex justify-between items-start">
                                         <div className="flex-grow pr-4">
@@ -2655,6 +2878,7 @@ export default function Dashboard() {
 
     const menuItems = [
         { id: 'sales', label: 'Vendas', icon: DollarSign },
+        { id: 'inventory', label: 'Estoque', icon: Package },
         { id: 'users', label: 'Usuários', icon: User },
         { id: 'products', label: 'Produtos', icon: ShoppingCart },
         { id: 'invoices', label: 'Notas Fiscais', icon: FileText },

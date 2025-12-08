@@ -380,6 +380,91 @@ export async function deleteProduct(id: string) {
 }
 
 // ============================================
+// FUNÇÕES - ESTOQUE (INVENTÁRIO)
+// ============================================
+
+export async function getInventoryItems() {
+  const { data, error } = await supabase
+    .from('products')
+    .select('id, name, stock_quantity, status')
+    .order('name');
+
+  if (error) throw error;
+  return (data || []).map(item => ({
+    id: item.id,
+    name: item.name,
+    quantity: item.stock_quantity,
+    status: item.stock_quantity === 0 ? 'Esgotado' :
+            item.stock_quantity < 20 ? 'Estoque Baixo' : 'Em Estoque'
+  }));
+}
+
+export async function createInventoryMovement(movement: {
+  product_id: string;
+  product_name?: string;
+  movement_type: 'Entrada' | 'Saída' | 'Ajuste';
+  quantity: number;
+  previous_quantity?: number;
+  new_quantity?: number;
+  reason?: string;
+}) {
+  // Buscar quantidade atual
+  const { data: product } = await supabase
+    .from('products')
+    .select('stock_quantity, name')
+    .eq('id', movement.product_id)
+    .single();
+
+  if (!product) throw new Error('Produto não encontrado');
+
+  const previousQuantity = product.stock_quantity || 0;
+  let newQuantity = previousQuantity;
+
+  if (movement.movement_type === 'Entrada') {
+    newQuantity = previousQuantity + movement.quantity;
+  } else if (movement.movement_type === 'Saída') {
+    newQuantity = Math.max(0, previousQuantity - movement.quantity);
+  } else if (movement.movement_type === 'Ajuste' && movement.new_quantity !== undefined) {
+    newQuantity = movement.new_quantity;
+  }
+
+  const { data, error } = await supabase
+    .from('inventory_movements')
+    .insert([{
+      ...movement,
+      product_name: movement.product_name || product.name,
+      previous_quantity: previousQuantity,
+      new_quantity: newQuantity,
+      created_by: (await supabase.auth.getUser()).data.user?.id
+    }])
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  // Atualizar estoque do produto
+  const { error: productError } = await supabase
+    .from('products')
+    .update({ stock_quantity: newQuantity })
+    .eq('id', movement.product_id);
+
+  if (productError) {
+    console.error('Erro ao atualizar estoque do produto:', productError);
+  }
+
+  return data;
+}
+
+export async function deleteInventoryMovement(id: string) {
+  const { error } = await supabase
+    .from('inventory_movements')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
+}
+
+// ============================================
 // CRUD - REVIEWS
 // ============================================
 /**
