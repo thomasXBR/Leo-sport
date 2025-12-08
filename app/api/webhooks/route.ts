@@ -3,39 +3,16 @@ import {
   validateWebhookNotification, 
   getPaymentById,
   isPaymentApproved,
-  isPaymentPending,
-  isPaymentRejected,
-  isPaymentCancelled,
-  isPaymentRefunded,
 } from '@/lib/mercadoPagoClient';
 import { supabase } from '@/lib/supabase';
 import { createPurchase } from '@/lib/supabase';
 
-type PaymentItem = {
-  id?: string;
-  title?: string;
-  description?: string;
-  quantity?: number;
-  unit_price?: number;
-};
-
 /**
  * API Route para receber webhooks do Mercado Pago
- * POST /api/payments/webhook
+ * POST /api/webhooks
  * 
- * Eventos suportados:
- * - payment.created: Um novo pagamento foi criado
- * - payment.updated: Um pagamento foi atualizado (status, reembolso, etc)
- * 
- * Status de Pagamento:
- * - pending: Aguardando confirmação
- * - approved: Aprovado
- * - rejected: Rejeitado
- * - refunded: Reembolsado
- * - cancelled: Cancelado
- * - in_process: Em processamento
- * - in_mediation: Em mediação
- * - charged_back: Chargeback
+ * Esta rota é um alias para /api/payments/webhook
+ * para compatibilidade com configurações do Mercado Pago
  */
 
 const WEBHOOK_LOG_ENABLED = process.env.WEBHOOK_LOG_ENABLED !== 'false';
@@ -77,7 +54,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     if (WEBHOOK_LOG_ENABLED) {
-      console.log('[Webhook Mercado Pago] Recebido:', {
+      console.log('[Webhook Mercado Pago] Recebido em /api/webhooks:', {
         requestId,
         receivedAt,
         type: body.type,
@@ -101,6 +78,26 @@ export async function POST(request: NextRequest) {
     try {
       payment = await getPaymentById(paymentId);
     } catch (error: any) {
+      // Se for um teste do Mercado Pago (ID 123456), retornar sucesso sem processar
+      if (paymentId === '123456' || paymentId === '12345678') {
+        if (WEBHOOK_LOG_ENABLED) {
+          console.log('[Webhook] Teste do Mercado Pago recebido:', {
+            requestId,
+            payment_id: paymentId,
+            message: 'Teste de webhook - não processando',
+          });
+        }
+        return NextResponse.json(
+          { 
+            received: true,
+            requestId,
+            message: 'Webhook de teste recebido com sucesso',
+            test: true,
+          },
+          { status: 200 }
+        );
+      }
+      
       console.error('[Webhook] Erro ao buscar pagamento:', error);
       // Retornar 200 mesmo com erro para evitar reenvios
       return NextResponse.json(
@@ -233,6 +230,7 @@ export async function POST(request: NextRequest) {
       received: true,
       requestId,
       processed: true,
+      message: 'Webhook processado com sucesso',
     }, { status: 200 });
   } catch (error: any) {
     console.error('[Webhook] Erro ao processar webhook:', {
@@ -247,12 +245,21 @@ export async function POST(request: NextRequest) {
       { 
         received: true, 
         requestId,
-        error: error.message 
+        error: error.message,
+        message: 'Webhook recebido, mas houve um erro no processamento',
       },
       { status: 200 }
     );
   }
 }
+
+type PaymentItem = {
+  id?: string;
+  title?: string;
+  description?: string;
+  quantity?: number;
+  unit_price?: number;
+};
 
 /**
  * Garante que o pedido esteja registrado com items e faz baixa de estoque
@@ -465,16 +472,16 @@ async function registerPurchaseFromPayment({
   }
 }
 
-// Permitir apenas POST
+// Permitir GET para teste
 export async function GET() {
   return NextResponse.json(
     { 
       message: 'Webhook do Mercado Pago',
+      endpoint: '/api/webhooks',
       method: 'Use POST para receber notificações',
-      endpoint: '/api/payments/webhook',
+      status: 'active',
     },
-    { status: 405 }
+    { status: 200 }
   );
 }
-
 
